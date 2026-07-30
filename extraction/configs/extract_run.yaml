@@ -84,6 +84,7 @@ outputs:
       observe_scorecards:
         - "HEROES Auto Scorecard"
         - "HEROES Auto QA Reporting - VZW"
+        - "Customer Sentiment Scorecard V1"  
 
   # Coaching history feeds recency dampening (soft-suppress recently-coached topics).
   coaching_history:
