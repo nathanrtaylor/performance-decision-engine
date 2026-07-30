@@ -31,6 +31,7 @@ Thumbs.db
 
 # ---- generated artifacts ----
 outputs/runs/**
+outputs/benchmark_recalc/**
 
 # ---- data (generated or external drops) ----
 data/raw/**

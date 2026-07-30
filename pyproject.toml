@@ -28,6 +28,7 @@ dev = [
 cde-run-pipeline = "cde.cli.run_pipeline:main"
 cde-run-engine = "cde.cli.run_engine:main"
 cde-run-simulation = "cde.cli.run_simulation:main"
+cde-recalc-benchmarks = "cde.cli.recalc_benchmarks:main"
 
 [build-system]
 requires = ["setuptools>=69"]
