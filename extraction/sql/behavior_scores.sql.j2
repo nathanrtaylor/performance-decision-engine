@@ -1,57 +1,57 @@
 -- extraction/sql/behavior_scores.sql.j2
+--
+-- Behavior (AI/QA scorecard) pass-rates per expert-week.
+--
+-- Aggregated PURELY from the observe scores table, so numerator/denominator are TRUE
+-- score/opportunity counts. expert_performance_metrics (epm) is used ONLY as a roster
+-- filter via a DISTINCT semi-join -- it is NEVER joined row-for-row. epm is a *tall*
+-- per-metric table (one row per expert/date/metric); the previous row-level join on
+-- (expert_id, date) multiplied every behavior by that expert's metric-count for the day,
+-- inflating numerator/denominator ~100-300x and re-weighting the weekly rate by
+-- metric-count instead of opportunity. A DISTINCT semi-join filters without multiplying.
+--
+-- Cohort (icp_client) is NOT emitted here; it is attached downstream in build_signals by
+-- merging agents.csv on (agent_id, week_ending) -- the single canonical roster/cohort
+-- source. That merge already exists and already backfills icp_client for this source.
 
-WITH epm AS (
-  SELECT
-    a.expert_id AS agent_id,
-    LOWER(a.icp_client) AS icp_client,
-    CAST(a."date" AS DATE) AS dt
-    {% if use_pay_calendar | default(false) %}
-    , CAST(d.week_stop_date AS DATE) AS period
-    {% else %}
-    , CAST(date_add('day', 4, date_trunc('week', CAST(a."date" AS DATE))) AS DATE) AS period
-    {% endif %}
+WITH roster AS (
+  -- distinct cohort-scoped experts over the window (semi-join filter; no row multiplication)
+  SELECT DISTINCT a.expert_id AS agent_id
   FROM {{ source_schema }}.{{ epm_table }} a
-
-  {% if use_pay_calendar | default(false) %}
-  LEFT JOIN {{ pay_calendar_schema }}.{{ pay_calendar_table }} d
-    ON CAST(a."date" AS DATE) = CAST(d.event_date AS DATE)
-  {% endif %}
-
   WHERE CAST(a."date" AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
     AND LOWER(a.icp_client) IN (
       {% for c in icp_clients %}'{{ c | lower }}'{% if not loop.last %},{% endif %}{% endfor %}
     )
-),
-
-observe_data AS (
-  SELECT
-    b.expert_id AS agent_id,
-    CAST(b."date" AS DATE) AS dt,
-    b.template_questions_name AS scorecard_name,
-    b.behavior_name AS behavior,
-    CAST(b.score AS DOUBLE) AS score,
-    CAST(b.opportunity AS DOUBLE) AS opportunity
-  FROM {{ source_schema }}.{{ observe_table }} b
-  WHERE CAST(b."date" AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
-    AND b.template_questions_name IN (
-      {% for sc in observe_scorecards %}'{{ sc }}'{% if not loop.last %},{% endif %}{% endfor %}
-    )
 )
 
 SELECT
-  e.agent_id,
-  e.period AS week_ending,
+  b.expert_id AS agent_id,
+  {% if use_pay_calendar | default(false) %}
+  CAST(d.week_stop_date AS DATE) AS week_ending,
+  {% else %}
+  CAST(date_add('day', 4, date_trunc('week', CAST(b."date" AS DATE))) AS DATE) AS week_ending,
+  {% endif %}
   'all' AS call_type,
-  o.scorecard_name,
-  o.behavior,
-  SUM(COALESCE(o.score, 0.0)) AS numerator,
-  SUM(COALESCE(o.opportunity, 0.0)) AS denominator,
+  b.template_questions_name AS scorecard_name,
+  b.behavior_name AS behavior,
+  SUM(COALESCE(CAST(b.score AS DOUBLE), 0.0))       AS numerator,
+  SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0)) AS denominator,
   CASE
-    WHEN SUM(COALESCE(o.opportunity, 0.0)) = 0 THEN NULL
-    ELSE SUM(COALESCE(o.score, 0.0)) / SUM(COALESCE(o.opportunity, 0.0))
+    WHEN SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0)) = 0 THEN NULL
+    ELSE SUM(COALESCE(CAST(b.score AS DOUBLE), 0.0)) / SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0))
   END AS calc
-FROM epm e
-LEFT JOIN observe_data o
-  ON e.agent_id = o.agent_id
- AND e.dt = o.dt
-GROUP BY 1,2,3,4,5
+FROM {{ source_schema }}.{{ observe_table }} b
+
+{% if use_pay_calendar | default(false) %}
+LEFT JOIN {{ pay_calendar_schema }}.{{ pay_calendar_table }} d
+  ON CAST(b."date" AS DATE) = CAST(d.event_date AS DATE)
+{% endif %}
+
+JOIN roster r
+  ON r.agent_id = b.expert_id
+
+WHERE CAST(b."date" AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+  AND b.template_questions_name IN (
+    {% for sc in observe_scorecards %}'{{ sc }}'{% if not loop.last %},{% endif %}{% endfor %}
+  )
+GROUP BY 1, 2, 3, 4, 5

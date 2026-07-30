@@ -121,6 +121,53 @@ benchmarks:
   recap_resolution:
     default: 0.13
 
+  # ---- sentiment behaviors (Customer Sentiment Scorecard V1 / HEROES Auto QA - VZW) ----
+  # AI-scored PASS-RATES (value = calc = score/opportunity, 0-1; higher = better). Anchored at each
+  # behavior's p25 of the WINDOWED-mean pass-rate (bottom-quartile floor), capped at a 0.95 floor for
+  # near-universal behaviors (flag only clear misses) -- same convention as the quality behaviors above.
+  # SCOPE: this scorecard runs on VERIZON cohorts ONLY, so by_icp_client covers mob-verizon / pss-verizon;
+  # the AT&T cohorts produce no sentiment rows and fall through to `default`. Cohort split is applied only
+  # where mob-verizon vs pss-verizon p25 differ materially (|delta| >= 0.05 OR >= 15% relative); the rest
+  # carry a single default.
+  # All 12 are higher_is_better in metric_catalog (calc = score/opportunity is already a pass-rate, even for
+  # the negatively-framed questions, so a higher share = better); these p25 floors match that direction.
+  customer_frustration_sentiment:
+    default: 0.695
+  customer_complaint_relevance_sentiment:
+    default: 0.918
+    by_icp_client:
+      mob-verizon: 0.870
+      pss-verizon: 0.928
+  expert_recap_resolution_sentiment:
+    default: 0.133
+    by_icp_client:
+      mob-verizon: 0.227
+      pss-verizon: 0.123
+  customer_retention_risk_sentiment:
+    default: 0.95       # raw p25 at ceiling (1.0) -> near-universal floor; no cohort split
+  customer_score_positive_sentiment:
+    default: 0.248
+    by_icp_client:
+      mob-verizon: 0.288
+      pss-verizon: 0.242
+  customer_score_negative_sentiment:
+    default: 0.731      # mob 0.704 vs pss 0.739 (delta 0.035) -> below split threshold, single default
+  expert_listening_sentiment:
+    default: 0.763
+    by_icp_client:
+      mob-verizon: 0.937
+      pss-verizon: 0.750
+  customer_complaint_resolution_time_sentiment:
+    default: 0.95       # near-universal floor
+  customer_complaint_vague_language_sentiment:
+    default: 0.778      # mob 0.791 vs pss 0.776 (delta 0.015) -> single default
+  expert_lack_of_resolution_confidence_sentiment:
+    default: 0.95       # near-universal floor
+  customer_escalation_sentiment:
+    default: 0.95       # near-universal floor
+  customer_repetition_sentiment:
+    default: 0.95       # near-universal floor
+
   # ---- tool-usage metrics: sources currently disabled (no data to cohort-split) ----
   guided_flow_adoption:
     default: 0.65

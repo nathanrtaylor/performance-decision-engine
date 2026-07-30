@@ -55,6 +55,20 @@ topic_map:
     read_t_and_c_s: "Read T&C's"
     #Offer Survey: not a coaching topic, suppressed
 
+    customer_frustration_sentiment: "Sentiment: Customer Frustration"
+    customer_complaint_relevance_sentiment: "Sentiment: Customer Complaint Relevance"
+    expert_recap_resolution_sentiment: "Sentiment: Expert Recap Resolution"
+    customer_retention_risk_sentiment: "Sentiment: Customer Retention Risk"
+    customer_score_positive_sentiment: "Sentiment: Customer Score Positive"
+    customer_score_negative_sentiment: "Sentiment: Customer Score Negative"
+    expert_listening_sentiment: "Sentiment: Expert Listening"
+    customer_complaint_resolution_time_sentiment: "Sentiment: Customer Complaint Resolution Time"
+    customer_complaint_vague_language_sentiment: "Sentiment: Customer Complaint Vague Language"
+    expert_lack_of_resolution_confidence_sentiment: "Sentiment: Expert Lack of Resolution Confidence"
+    customer_escalation_sentiment: "Sentiment: Customer Escalation"
+    customer_repetition_sentiment: "Sentiment: Customer Repetition"
+
+
   # ---------------------------------------------------
   # Optional: topic -> default conversation type
   # (Engine can override based on severity later; start deterministic)
@@ -100,6 +114,18 @@ topic_map:
     "Build Confidence through Language": "Quality Coaching"
     "Act as a Representative of Our Brand": "Quality Coaching"
     "Tailor Products based on Customer Responses": "Quality Coaching"
+    "Sentiment: Customer Frustration": "Quality Coaching"
+    "Sentiment: Customer Complaint Relevance": "Quality Coaching"
+    "Sentiment: Expert Recap Resolution": "Quality Coaching"
+    "Sentiment: Customer Retention Risk": "Quality Coaching"
+    "Sentiment: Customer Score Positive": "Quality Coaching"
+    "Sentiment: Customer Score Negative": "Quality Coaching"
+    "Sentiment: Expert Listening": "Quality Coaching"
+    "Sentiment: Customer Complaint Resolution Time": "Quality Coaching"
+    "Sentiment: Customer Complaint Vague Language": "Quality Coaching"
+    "Sentiment: Expert Lack of Resolution Confidence": "Quality Coaching"
+    "Sentiment: Customer Escalation": "Quality Coaching"
+    "Sentiment: Customer Repetition": "Quality Coaching"
 
   # ---------------------------------------------------
   # Optional: call-type specific topic constraints

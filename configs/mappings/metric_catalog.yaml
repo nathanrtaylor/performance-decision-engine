@@ -523,6 +523,186 @@ metric_catalog:
         type: config
         key: tailor_products_based_on_customer_responses
 
+    customer_frustration_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer show signs of frustration and was that frustration ignored?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share NOT frustration-ignored); higher = better
+      unit: score
+      description: "AI-scored detection of expert showing signs of frustration and ignoring that frustration."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_frustration_sentiment
+
+    customer_complaint_relevance_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer have a sales complaint regarding the timing or relevance of the product offer?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT a relevance complaint); higher = better
+      unit: score
+      description: "AI-scored detection of customer have a sales complaint regarding the timing or relevance of the product offer."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_complaint_relevance_sentiment
+
+    expert_recap_resolution_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the agent recap the resolution?"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert recap of the resolution."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: expert_recap_resolution_sentiment
+
+    customer_retention_risk_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer pose a retention risk due to unresolved issues or frustration?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT retention risk); higher = better
+      unit: score
+      description: "AI-scored detection of customer retention risk."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_retention_risk_sentiment  
+
+    customer_score_positive_sentiment:
+      source: behavior_scores
+      source_metric_key: "Was the overall customer sentiment score Positive?"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of positive customer sentiment."
+      required: false
+      eligible_for_prioritization: false
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_score_positive_sentiment
+
+    customer_score_negative_sentiment:
+      source: behavior_scores
+      source_metric_key: "Was the overall customer sentiment score Negative?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share NOT negative); higher = better
+      unit: score
+      description: "AI-scored detection of negative customer sentiment."
+      required: false
+      eligible_for_prioritization: false
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_score_negative_sentiment
+
+    expert_listening_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the agent actively listen to the customer?"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert listening to the customer."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: expert_listening_sentiment  
+
+    customer_complaint_resolution_time_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer complain about the resolution time for their issue?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT a resolution-time complaint); higher = better
+      unit: score
+      description: "AI-scored detection of customer complaint regarding resolution time."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_complaint_resolution_time_sentiment
+
+    customer_complaint_vague_language_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the expert use vague or unclear language that confused the customer?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT vague language); higher = better
+      unit: score
+      description: "AI-scored detection of customer complaint regarding vague language."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_complaint_vague_language_sentiment
+
+    expert_lack_of_resolution_confidence_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer lack confidence in the resolution?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITH resolution confidence); higher = better
+      unit: score
+      description: "AI-scored detection of expert lack of resolution confidence."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: expert_lack_of_resolution_confidence_sentiment
+
+    customer_escalation_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer request to escalate to a supervisor or someone more knowledgeable?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT an escalation request); higher = better
+      unit: score
+      description: "AI-scored detection of customer escalation requests."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_escalation_sentiment
+
+    customer_repetition_sentiment:
+      source: behavior_scores
+      source_metric_key: "Did the customer have to repeat their issue?"
+      category: quality_behavior
+      direction: higher_is_better   # calc is a pass-rate (share WITHOUT issue repetition); higher = better
+      unit: score
+      description: "AI-scored detection of customer repetition."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: customer_repetition_sentiment         
+
   category_defaults:
     business:         { base_weight_class: high,   confidence_floor: 0.6 }
     tool_usage:       { base_weight_class: medium, confidence_floor: 0.5 }
