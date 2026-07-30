@@ -81,10 +81,12 @@ src/cde/
   engine/
   simulation/
   governance/
+  benchmarks_recalc/          # guardrail-gated benchmark recalculation (propose-only)
   cli/
 
 outputs/
   runs/<timestamp>/
+  benchmark_recalc/<id>/      # recalc dashboard + proposed change-set (not a pipeline run)
 ```
 
 ---
@@ -238,6 +240,63 @@ If no `coaching_history.csv` is present, dampening is a no-op.
 
 ---
 
+# Recalculating Benchmarks
+
+`benchmarks.yaml` is a curated artifact. The **benchmark recalculation** module
+(`src/cde/benchmarks_recalc/`) re-derives candidate benchmark values from the latest extract and
+**proposes** changes only where the evidence clears guardrails. It runs independently of the decision
+pipeline (it only *reads* the same config + extract) and is **propose-only**: it never edits
+`benchmarks.yaml` without explicit authorization.
+
+Trigger it by asking to "recalculate benchmarks", or run:
+
+```bash
+python -m cde.cli.recalc_benchmarks `
+  --configs-dir configs `
+  --out-dir outputs/benchmark_recalc/2026-03-03_recal
+```
+
+`--raw-dir` is optional (resolved from `data_snapshot` in `active.yaml`, like the pipeline).
+
+## How a value is proposed
+
+For each metric/cohort a candidate anchor is computed on the 8-week windowed-mean-per-agent grain (the
+grain the engine scores on), then gated through guardrails. The per-metric verdict is one of:
+
+- **PROPOSE** — cleared every guardrail and moved materially vs the current value.
+- **HOLD** — evidence insufficient / degenerate / outside the observed value range; do not change.
+- **UNCHANGED** — within the materiality threshold of the current value.
+- **SKIPPED** — source inactive (e.g. tool-usage metrics with no data).
+
+Anchors mirror the curated methodology: operational metrics = per-cohort median; quality/sentiment
+behaviors = p25 of the windowed mean, capped at 0.95; degenerate cohort distributions keep their
+absolute default; sentiment is Verizon-only and splits by cohort only when cohorts differ materially.
+Guardrails: sample sufficiency, materiality, non-degeneracy, cohort-split validity, and observed-range
+sanity. Thresholds live in `src/cde/benchmarks_recalc/config.py` (`RecalcThresholds`).
+
+## Outputs (in `--out-dir`)
+
+- `dashboard.html` — OLD vs NEW per metric/cohort, verdict, and justification.
+- `proposed_benchmarks.yaml` — the change-set (PROPOSE rows only), in `benchmarks.yaml` shape.
+- `benchmark_diff.json`, `summary.txt` — full detail.
+
+## Applying (authorized)
+
+Applying is a separate, governed step. Only after review:
+
+```bash
+python -m cde.cli.recalc_benchmarks `
+  --configs-dir configs `
+  --out-dir outputs/benchmark_recalc/2026-03-03_recal `
+  --apply --approver "Your Name"
+```
+
+`--apply` makes value-only edits to existing keys in `configs/mappings/benchmarks.yaml` (preserving the
+file's methodology comments) and appends an entry to `configs/governance/changelog.md`. New cohort
+splits are **not** auto-written; they are deferred for manual merge from `proposed_benchmarks.yaml`.
+
+---
+
 # Decision Receipts
 
 Every recommendation includes:
@@ -260,6 +319,8 @@ Receipts are stored as JSONL for auditability and downstream ingestion.
 - Ops Leadership owns priorities.
 - Analytics supports validation and controlled discovery.
 - Configuration changes are versioned and auditable.
+- Benchmark changes are *proposed* by the recalculation module and applied only with explicit
+  authorization (`--apply --approver`), which records a `configs/governance/changelog.md` entry.
 - Ungoverned overrides are considered system failure.
 
 ---
@@ -347,6 +408,7 @@ if scores["score_total"].max() == 0:
 - Deterministic topic selection
 - Explainable receipts
 - Snapshot reproducibility
+- Guardrail-gated benchmark recalculation (propose-only, authorized apply)
 
 ---
 
