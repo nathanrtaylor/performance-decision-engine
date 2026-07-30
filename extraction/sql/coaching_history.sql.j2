@@ -1,0 +1,31 @@
+-- extraction/sql/coaching_history.sql.j2
+--
+-- Coaching history (delivered/logged coaching events) used for recency dampening:
+-- the engine soft-suppresses a topic that was recently coached to prevent whiplash.
+--
+-- Grain: one row per coaching event. Downstream normalization collapses this to
+--        agent_id x topic x last_coached_period via the governed behavior->topic crosswalk.
+--
+-- agent_id is cast int->varchar to match the expert_id convention used by agent_metrics /
+-- behavior_scores (normalizes leading-zero drift, mirroring pushed_behaviors.sql).
+-- period is the Friday week-ending date, matching agent_metrics/behavior_scores.
+
+SELECT
+  CAST(TRY_CAST(hc.coachee_emp_id AS INTEGER) AS VARCHAR) AS agent_id,
+  CAST(hc.coaching_date AS DATE)                          AS coaching_date,
+  {% if grain == "week" %}
+  CAST(date_add('day', 4, date_trunc('week', CAST(hc.coaching_date AS TIMESTAMP))) AS DATE) AS period,
+  {% else %}
+  CAST(date_trunc('{{ grain }}', CAST(hc.coaching_date AS TIMESTAMP)) AS DATE) AS period,
+  {% endif %}
+  hc.coaching_status,
+  hc.coaching_type,
+  hc.coaching_topic,
+  hc.behavior,
+  hc.behavior_selected,
+  hc.expert_acknowledged
+FROM {{ source_schema }}.{{ coaching_table }} hc
+WHERE CAST(hc.coaching_date AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+  AND hc.coaching_status IN (
+    {% for s in coaching_status_in %}'{{ s }}'{% if not loop.last %},{% endif %}{% endfor %}
+  )

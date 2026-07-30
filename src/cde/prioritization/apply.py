@@ -6,8 +6,23 @@ from typing import Any, Dict
 
 import pandas as pd
 
-from cde.prioritization.weights import get_metric_weight, get_topic_weight
+from cde.prioritization.weights import get_metric_weight, get_topic_weight, _unwrap_root
 from cde.prioritization.eligibility import apply_eligibility
+
+
+def _prioritization_flags(config: Dict[str, Any]) -> tuple[bool, Dict[str, bool]]:
+    """
+    Read governance flags from the metric_catalog:
+      - disallow_prioritization_if_not_flagged (governance)
+      - eligible_for_prioritization (per metric)
+    Returns (enforce, {metric: eligible}).
+    """
+    mc = _unwrap_root(config.get("metric_catalog") or {}, "metric_catalog")
+    gov = mc.get("governance") or {}
+    enforce = bool(gov.get("disallow_prioritization_if_not_flagged", False))
+    metrics = mc.get("metrics") or {}
+    flags = {m: bool((meta or {}).get("eligible_for_prioritization", True)) for m, meta in metrics.items()}
+    return enforce, flags
 
 
 def _load_topic_map(config: Dict[str, Any]) -> Dict[str, Any]:
@@ -94,20 +109,27 @@ def build_topic_candidates(signals: pd.DataFrame, scores: pd.DataFrame, config: 
     _require_cols(scores, ["score_total"], "scores")  # build_signals should output score_total
     _require_cols(signals, ["agent_id", "period", "call_type", "metric"], "signals")
 
-    # Join scores with key signal evidence IF present.
-    evidence_cols = ["value", "benchmark", "gap", "direction"]
-    available_evidence = [c for c in evidence_cols if c in signals.columns]
-    join_cols = ["agent_id", "period", "call_type", "metric"]
-
-    if available_evidence:
-        df = scores.merge(
-            signals[join_cols + available_evidence],
-            on=join_cols,
-            how="left",
-        )
-    else:
-        # still produce a df; just without evidence
+    # Evidence (value/benchmark/gap) shown for the recommendation comes from the 8-WEEK WINDOW
+    # aggregates, which are populated for every scored agent. A point-in-time join on window_end
+    # instead leaves blanks for any agent missing that exact final week (common with weekly
+    # reporting gaps), even though the decision itself is window-based. Window-average evidence is
+    # both always-present and faithful to how the score was computed.
+    if {"level_8w", "benchmark_8w"}.issubset(scores.columns):
         df = scores.copy()
+        df["benchmark"] = pd.to_numeric(df["benchmark_8w"], errors="coerce")
+        df["gap"] = pd.to_numeric(df["level_8w"], errors="coerce")     # mean signed gap over window
+        df["value"] = df["benchmark"] + df["gap"]                       # implied mean value
+        if "direction" not in df.columns:
+            df["direction"] = None
+    else:
+        # Legacy fallback: point-in-time evidence join (used when window aggregates aren't present).
+        evidence_cols = ["value", "benchmark", "gap", "direction"]
+        available_evidence = [c for c in evidence_cols if c in signals.columns]
+        join_cols = ["agent_id", "period", "call_type", "metric"]
+        if available_evidence:
+            df = scores.merge(signals[join_cols + available_evidence], on=join_cols, how="left")
+        else:
+            df = scores.copy()
 
     # Backward/forward compatible score column naming
     rename_map = {
@@ -120,6 +142,21 @@ def build_topic_candidates(signals: pd.DataFrame, scores: pd.DataFrame, config: 
     df = df.rename(columns={k: v for k, v in rename_map.items() if k in df.columns})
 
     _require_cols(df, ["metric", "call_type", "total_score"], "candidates_base")
+
+    # Governance: only metrics flagged eligible_for_prioritization may drive recommendations
+    # (metric_catalog.governance.disallow_prioritization_if_not_flagged). Quality behaviors are
+    # off by default until Ops approves them.
+    enforce_flags, elig_flags = _prioritization_flags(config)
+    if enforce_flags:
+        df = df[df["metric"].map(lambda m: elig_flags.get(m, False))].copy()
+        if df.empty:
+            return pd.DataFrame(
+                columns=[
+                    "agent_id", "period", "call_type", "topic", "priority_score",
+                    "level_score", "trend_score", "risk_score", "confidence_score",
+                    "metric", "metric_weight", "topic_weight",
+                ]
+            )
 
     # Map canonical metric -> topic (drop if unmapped unless explicitly allowed)
     df["topic"] = df["metric"].map(metric_to_topic)
@@ -164,14 +201,9 @@ def build_topic_candidates(signals: pd.DataFrame, scores: pd.DataFrame, config: 
             ]
         )
 
-    # Compute deterministic priority_score (transparent linear composition)
-    pri_model = config.get("priority_model") or {}
-    w_level = float(pri_model.get("w_level", 0.5))
-    w_trend = float(pri_model.get("w_trend", 0.2))
-    w_risk = float(pri_model.get("w_risk", 0.3))
-    w_conf = float(pri_model.get("w_confidence", 0.0))  # usually gate, not driver
-
-    # weights
+    # Priority score = the already-composed multi-axis score_total (scoring/assemble.py) scaled by
+    # versioned business weights. Composition lives in ONE place; here we only apply governance
+    # emphasis (category/metric weight, optional topic weight). No re-weighting of the axes.
     df["metric_weight"] = [
         float(get_metric_weight(m, ct, config)) for m, ct in zip(df["metric"].tolist(), df["call_type"].tolist())
     ]
@@ -179,13 +211,7 @@ def build_topic_candidates(signals: pd.DataFrame, scores: pd.DataFrame, config: 
         float(get_topic_weight(t, ct, config)) for t, ct in zip(df["topic"].tolist(), df["call_type"].tolist())
     ]
 
-    base = (
-        w_level * df.get("level_score", pd.Series(0.0, index=df.index)).fillna(0.0)
-        + w_trend * df.get("trend_score", pd.Series(0.0, index=df.index)).fillna(0.0)
-        + w_risk * df.get("risk_score", pd.Series(0.0, index=df.index)).fillna(0.0)
-        + w_conf * df.get("confidence_score", pd.Series(0.0, index=df.index)).fillna(0.0)
-    )
-
+    base = pd.to_numeric(df.get("total_score", pd.Series(0.0, index=df.index)), errors="coerce").fillna(0.0)
     df["priority_score"] = (base * df["metric_weight"] * df["topic_weight"]).astype(float)
 
     # Aggregate to topic-level candidates per agent/period/call_type

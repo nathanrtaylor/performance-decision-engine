@@ -1,0 +1,55 @@
+# configs/mappings/coaching_history_map.yaml
+#
+# Governed crosswalk: coaching-history behavior -> engine coaching topic.
+# Used to align delivered coaching (from l2_asurion_coachdb_coachdb_helixcoaching) with the
+# engine's topic taxonomy so recently-coached topics can be dampened (soft-suppressed).
+#
+# GOVERNANCE: Coaching Technology + Ops own this file. Topic strings on the right MUST match
+# the topics in mappings/topic_map.yaml. Only confidently-known behaviors are seeded here;
+# any behavior_selected value not present is logged at runtime and simply does NOT dampen
+# (safe default). Complete this crosswalk from the runtime "unmapped behavior_selected" log.
+
+coaching_history_map:
+
+  # Which coaching-history column names the coached subject (locked decision: behavior_selected).
+  map_key: behavior_selected
+
+  # Coaching statuses that count as "coached" (locked decision: Submitted + Excused).
+  # Also enforced at extraction; kept here so normalization is self-contained/testable.
+  count_status:
+    - Submitted
+    - Excused
+
+  # behavior_selected  ->  engine topic (see mappings/topic_map.yaml for valid topics)
+  # High-confidence mappings against the observed coaching vocabulary. Behaviors with no
+  # corresponding engine topic (e.g. "Discovery Questions") are intentionally omitted and simply
+  # do not dampen. Ambiguous behaviors are listed under TODO(Ops) below for governance sign-off.
+  # Matching is case-insensitive (see ingestion/coaching_history.py), so casing variants like
+  # "Transition statement" resolve to the same entry.
+  behavior_to_topic:
+    "One Call Resolution": "Improve One Call Resolution"
+    "OCR Improvement": "Improve One Call Resolution"
+    "Resolution": "Improve Resolution Rate"
+    "Resolutions": "Improve Resolution Rate"
+    "Smart Offer Adherence": "Improve Smart Offer Adoption"
+    "Quality Sales - Smart Offer": "Improve Smart Offer Adoption"
+    "Make an Offer": "Improve Smart Offer Adoption"
+    "Show Compassion": "Strengthen Empathy Statements"
+    "Transition Statement": "Use Clear Transition Statements"
+    "Increased Transfer Rate": "Reduce Client Transfer Rate"
+    "Transfers": "Reduce Client Transfer Rate"
+    "Cancel Rate Reduction": "Reduce Cancel Rate"
+    "Talk Time": "Reduce Talk Time"
+    "AHT Talk Time": "Reduce Talk Time"
+    "Hold Time": "Reduce Hold Time"
+    "AHT Hold Time": "Reduce Hold Time"
+    "ERP": "Improve ERP"
+
+    # --- TODO(Ops): ambiguous behaviors — confirm intended engine topic (currently no dampening) ---
+    # "Quality Sales": ?                 # sales-oriented; -> "Improve NSP100"?
+    # "Efficient Experience": ?          # efficiency; -> Reduce Talk Time / Hold Time / CRT?
+    # "Product Value Reinforcement": ?   # sales; -> "Improve NSP100"?
+    # "Ask for the Sale": ?              # sales; -> "Improve NSP100"?
+    # "Tool Utilization": ?             # -> "Increase Guided Flow Adoption" or "Increase Expert Assist Usage"?
+    # "Drive Results": ?                 # generic
+    # NOTE: "Absent" / "Late Arrival" are attendance, not coaching topics -> leave unmapped.

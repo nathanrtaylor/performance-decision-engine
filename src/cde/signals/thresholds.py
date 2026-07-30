@@ -65,112 +65,112 @@ def apply_signal_thresholds(signals: pd.DataFrame, config: Dict[str, Any]) -> Th
     metrics_meta = (metric_catalog.get("metrics") or {}) if isinstance(metric_catalog, dict) else {}
     sig["_category"] = sig["metric"].map(lambda m: (metrics_meta.get(m) or {}).get("category", "unknown"))
 
-    excluded_rows = []
-    eligible_mask = []
-
     # Candidate rules (global) — production defaults are "fail closed"
     candidate_rules = thr.get("candidate_rules") or {}
-
     require_ref = bool(candidate_rules.get("require_reference_point", True))
     require_bad_mag = bool(candidate_rules.get("require_bad_magnitude", True))
     require_bad_trend = bool(candidate_rules.get("require_bad_trend", False))
     only_worsening = bool(candidate_rules.get("only_worsening", False))
-
     # Development mode: relax gates that depend on benchmarks/history.
     if mode == "development":
-        require_ref = False
-        require_bad_mag = False
-        require_bad_trend = False
-        only_worsening = False
+        require_ref = require_bad_mag = require_bad_trend = only_worsening = False
 
-    for _, row in sig.iterrows():
-        metric = row["metric"]
-        call_type = row.get("call_type")
-        category = row.get("_category", "unknown")
+    # ---- Resolve thresholds once per DISTINCT (metric, call_type, category), then map to columns.
+    #      (Precedence handled in _resolve_thresholds: by_metric > by_call_type+category > by_category > global.)
+    combos = sig[["metric", "call_type", "_category"]].drop_duplicates().itertuples(index=False)
+    resolved = {
+        (m, ct, cat): _resolve_thresholds(thr, metric=m, call_type=ct, category=cat)
+        for m, ct, cat in combos
+    }
+    keys = list(zip(sig["metric"], sig["call_type"], sig["_category"]))
 
-        # Resolve thresholds with precedence: by_metric -> by_call_type+category -> by_category -> global
-        t = _resolve_thresholds(thr, metric=metric, call_type=call_type, category=category)
+    def _tfield(name: str) -> pd.Series:
+        # float dtype so missing thresholds are NaN (not Python None), keeping comparisons vectorizable
+        return pd.Series([_to_float(resolved[k].get(name)) for k in keys], index=sig.index, dtype="float64")
 
-        reasons = []
+    min_conf = _tfield("min_confidence").fillna(0.0)
+    max_vol = _tfield("max_volatility")
+    denom_min = _tfield("min_denominator_default")
+    min_gap = _tfield("min_abs_gap_from_benchmark")
+    min_bad_z = _tfield("min_bad_z")
+    min_bad_trend = _tfield("min_bad_trend_pct")
 
-        # ---- Basic value presence gate (both modes)
-        val = _to_float(row.get("value"))
-        if val is None:
-            reasons.append("MISSING_VALUE")
+    # ---- Coerce signal columns once ----
+    val = pd.to_numeric(sig["value"], errors="coerce")
+    conf = pd.to_numeric(sig["confidence"], errors="coerce")
+    vol = pd.to_numeric(sig["volatility"], errors="coerce")
+    denom = pd.to_numeric(sig["denominator"], errors="coerce")
+    gap = pd.to_numeric(sig["gap"], errors="coerce")
+    z_bad = pd.to_numeric(sig["_z_bad"], errors="coerce")
+    trend = pd.to_numeric(sig["trend"], errors="coerce")
+    higher = sig["direction"].eq("higher_is_better")
 
-        # ---- Confidence gate
-        conf = _to_float(row.get("confidence"))
-        min_conf = _to_float(t.get("min_confidence"), default=0.0)
-        if conf is None:
-            # In development, missing confidence should not block early runs.
-            if mode != "development" and min_conf > 0.0:
-                reasons.append("MISSING_CONFIDENCE")
-        else:
-            if conf < min_conf:
-                reasons.append("LOW_CONFIDENCE")
+    # ---- Vectorized gates (same reasons + precedence as the former per-row loop) ----
+    missing_value = val.isna()
+    low_conf = conf.notna() & (conf < min_conf)
+    missing_conf = (mode != "development") & conf.isna() & (min_conf > 0.0)
+    high_vol = max_vol.notna() & vol.notna() & (vol > max_vol)
+    low_denom = denom_min.notna() & denom.notna() & (denom < denom_min)
+    no_ref = (gap.isna() & z_bad.isna()) & require_ref
 
-        # ---- Volatility gate (optional; usually only meaningful with history)
-        vol = _to_float(row.get("volatility"))
-        max_vol = _to_float(t.get("max_volatility"))
-        if max_vol is not None and vol is not None and vol > max_vol:
-            reasons.append("HIGH_VOLATILITY")
+    # magnitude: prefer benchmark gap, else distribution z; fail-closed when neither is available
+    bad_gap = gap.where(~higher, -gap)
+    mag_pass = pd.Series(
+        np.where(
+            (gap.notna() & min_gap.notna()).to_numpy(), (bad_gap >= min_gap).to_numpy(),
+            np.where((z_bad.notna() & min_bad_z.notna()).to_numpy(), (z_bad >= min_bad_z).to_numpy(), False),
+        ),
+        index=sig.index,
+    )
+    insuff_mag = (~mag_pass) & require_bad_mag
 
-        # ---- Denominator gate (optional; protects against tiny samples)
-        denom_min = _to_float(t.get("min_denominator_default"))
-        denom = _to_float(row.get("denominator"))
-        if denom_min is not None and denom is not None and denom < denom_min:
-            reasons.append("LOW_DENOMINATOR")
+    # trend: direction-adjusted "bad" pct change
+    bad_trend_val = trend.where(~higher, -trend)
+    bad_trend = trend.notna() & min_bad_trend.notna() & (bad_trend_val >= min_bad_trend)
+    insuff_trend = (~bad_trend) & require_bad_trend
+    not_worsening = (~bad_trend) & only_worsening
 
-        # ---- Reference point requirement (production only unless explicitly enabled in dev)
-        gap = _to_float(row.get("gap"))
-        z_bad = _to_float(row.get("_z_bad"))
-        if require_ref and gap is None and z_bad is None:
-            reasons.append("NO_REFERENCE_POINT")
+    reason_masks = {
+        "MISSING_VALUE": missing_value,
+        "MISSING_CONFIDENCE": missing_conf,
+        "LOW_CONFIDENCE": low_conf,
+        "HIGH_VOLATILITY": high_vol,
+        "LOW_DENOMINATOR": low_denom,
+        "NO_REFERENCE_POINT": no_ref,
+        "INSUFFICIENT_MAGNITUDE": insuff_mag,
+        "INSUFFICIENT_BAD_TREND": insuff_trend,
+        "NOT_WORSENING": not_worsening,
+    }
+    rdf = pd.DataFrame(reason_masks).fillna(False)
+    excluded_mask = rdf.any(axis=1)
 
-        # ---- Magnitude gate (production only unless explicitly enabled in dev)
-        if require_bad_mag:
-            mag_pass = _magnitude_pass(row=row, t=t)
-            if not mag_pass:
-                reasons.append("INSUFFICIENT_MAGNITUDE")
+    eligible = sig[~excluded_mask].copy()
+    eligible = eligible.drop(
+        columns=[c for c in ["_z_raw", "_z_bad", "_category"] if c in eligible.columns], errors="ignore"
+    )
 
-        # ---- Trend gate (production only unless explicitly enabled in dev)
-        trend = _to_float(row.get("trend"))  # pct change; bad direction depends on direction
-        bad_trend_pct = _to_float(t.get("min_bad_trend_pct"))
-        bad_trend = _is_bad_trend(trend=trend, direction=row.get("direction"), min_bad_trend_pct=bad_trend_pct)
-
-        if require_bad_trend and not bad_trend:
-            reasons.append("INSUFFICIENT_BAD_TREND")
-
-        if only_worsening and not bad_trend:
-            reasons.append("NOT_WORSENING")
-
-        passed = (len(reasons) == 0)
-        eligible_mask.append(passed)
-
-        if not passed:
-            excluded_rows.append(
-                {
-                    "agent_id": row.get("agent_id"),
-                    "period": row.get("period"),
-                    "call_type": row.get("call_type"),
-                    "metric": metric,
-                    "category": category,
-                    "value": val,
-                    "gap": gap,
-                    "z_bad": z_bad,
-                    "trend": trend,
-                    "confidence": conf,
-                    "volatility": vol,
-                    "exclusion_reasons": reasons,
-                    "threshold_mode": mode,
-                }
-            )
-
-    eligible = sig[pd.Series(eligible_mask, index=sig.index)].copy()
-    excluded = pd.DataFrame(excluded_rows)
-
-    # cleanup internal columns
-    eligible = eligible.drop(columns=[c for c in ["_z_raw", "_z_bad", "_category"] if c in eligible.columns], errors="ignore")
+    # ---- Excluded frame: build reason lists only for the excluded subset ----
+    cols = list(rdf.columns)
+    arr = rdf.loc[excluded_mask, cols].to_numpy()
+    reasons_lists = [[cols[j] for j in np.nonzero(arr[i])[0]] for i in range(arr.shape[0])]
+    em = excluded_mask.to_numpy()
+    excluded = pd.DataFrame(
+        {
+            "agent_id": sig.loc[excluded_mask, "agent_id"].to_numpy(),
+            "period": sig.loc[excluded_mask, "period"].to_numpy(),
+            "call_type": sig.loc[excluded_mask, "call_type"].to_numpy(),
+            "metric": sig.loc[excluded_mask, "metric"].to_numpy(),
+            "category": sig.loc[excluded_mask, "_category"].to_numpy(),
+            "value": val[em].to_numpy(),
+            "gap": gap[em].to_numpy(),
+            "z_bad": z_bad[em].to_numpy(),
+            "trend": trend[em].to_numpy(),
+            "confidence": conf[em].to_numpy(),
+            "volatility": vol[em].to_numpy(),
+            "exclusion_reasons": reasons_lists,
+            "threshold_mode": [mode] * int(em.sum()),
+        }
+    )
 
     return ThresholdResult(eligible_signals=eligible, excluded_signals=excluded)
 

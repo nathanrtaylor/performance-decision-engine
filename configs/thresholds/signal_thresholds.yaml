@@ -5,7 +5,7 @@ signal_thresholds:
   global:
     min_confidence: 0.0
     max_volatility: null
-    min_denominator_default: 0
+    min_denominator_default: 1
 
   by_category:
     business:

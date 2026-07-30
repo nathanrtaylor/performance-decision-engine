@@ -4,12 +4,14 @@ import argparse
 from pathlib import Path
 
 from cde.governance.audit import RunAuditor
-from cde.governance.versioning import resolve_active_config
+from cde.governance.versioning import resolve_active_config, resolve_raw_export_dir
 from cde.ingestion.extract import load_raw_exports
 from cde.ingestion.normalize import normalize_inputs
 from cde.ingestion.validate import validate_inputs
+from cde.ingestion.coaching_history import build_coaching_history
+from cde.prioritization.dampening import apply_recent_coaching_dampening
 from cde.signals.build_signals import build_signals
-from cde.scoring.assemble import assemble_scores
+from cde.scoring.assemble import assemble_scores, compute_windowed_scores
 from cde.prioritization.apply import build_topic_candidates
 from cde.engine.recommend import recommend_for_population
 from cde.engine.receipts import build_receipts
@@ -18,20 +20,51 @@ from cde.signals.thresholds import apply_signal_thresholds
 from cde.temporal.aggregate import aggregate_scores_window
 
 
+def _resolve_snapshot_id(raw_dir: Path) -> str:
+    """Best-effort snapshot id for provenance: the raw manifest's run_id, else the folder name."""
+    manifest = raw_dir / "manifest.json"
+    if manifest.exists():
+        try:
+            import json
+
+            data = json.loads(manifest.read_text(encoding="utf-8"))
+            run_id = data.get("run_id")
+            if run_id:
+                return str(run_id)
+        except Exception:
+            pass
+    return raw_dir.name
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end Coaching Decision Engine pipeline.")
-    parser.add_argument("--raw-dir", type=str, required=True, help="Path to a raw export folder (e.g., data/raw/weekly/2026-02-16)")
+    parser.add_argument(
+        "--raw-dir",
+        type=str,
+        default=None,
+        help="Raw export folder (e.g. data/raw/weekly/2026-02-16). "
+        "If omitted, resolved from data_snapshot in configs/active.yaml.",
+    )
     parser.add_argument("--out-dir", type=str, required=True, help="Path to outputs/runs/<timestamp> folder to write artifacts")
     parser.add_argument("--configs-dir", type=str, default="configs", help="Path to configs directory")
     parser.add_argument("--run-id", type=str, default=None, help="Optional run id (otherwise derived by auditor)")
+    parser.add_argument(
+        "--write-point-in-time-scores",
+        action="store_true",
+        help="Write scores.csv (per-period point-in-time scores). Recommendations use scores_windowed.csv only.",
+    )
     args = parser.parse_args()
 
-    raw_dir = Path(args.raw_dir)
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     configs_dir = Path(args.configs_dir)
 
     config = resolve_active_config(configs_dir)
+    raw_dir = Path(args.raw_dir) if args.raw_dir else resolve_raw_export_dir(configs_dir, config)
+
+    # Stamp provenance from the *resolved* snapshot so receipts + manifest reflect the real data
+    # used (not a hand-edited meta value). Must happen before auditor.record_inputs copies meta.
+    config["meta"] = {**(config.get("meta") or {}), "data_snapshot": _resolve_snapshot_id(raw_dir)}
 
     auditor = RunAuditor(out_dir=out_dir, run_id=args.run_id)
     auditor.start_run()
@@ -71,49 +104,55 @@ def main() -> None:
         # force a well-formed empty df with expected columns so downstream writes don't break
         excluded_signals = pd.DataFrame(columns=["agent_id", "period", "call_type", "metric", "reason"])
 
-    scores = assemble_scores(eligible_signals, config)
-    scores.to_csv(out_dir / "scores.csv", index=False)
+    # --- Optional per-period diagnostic scores (point-in-time, before windowing) ---
+    if args.write_point_in_time_scores:
+        assemble_scores(eligible_signals, config).to_csv(out_dir / "scores.csv", index=False)
 
-    print("eligible_signals rows:", len(eligible_signals))
-    print("scores rows:", 0 if scores is None else len(scores))
-    print("scores cols:", None if scores is None else list(scores.columns))
-
-    if scores is None or (hasattr(scores, "empty") and scores.empty):
-        raise RuntimeError("Scoring layer returned None or empty DataFrame. Check src/cde/scoring/assemble.py and individual score modules.")
-    
-    # --- NEW: 8-week windowed aggregation for "next coaching" decision grain ---
+    # --- 8-week windowed aggregation: the decision grain for "next coaching" ---
     windowed = aggregate_scores_window(eligible_signals=eligible_signals, config=config)
     windowed.to_csv(out_dir / "scores_windowed_raw.csv", index=False)
 
-    # Build a "scores-like" table for downstream modules (candidate builder / receipts)
-    # - keep join keys aligned
-    # - provide score_* columns the engine expects
-    scores_windowed = windowed.rename(columns={
-        "level_8w": "score_level",
-        "trend_8w": "score_trend",
-        "confidence_8w": "score_confidence",
-        # proxy: treat volatility as a risk signal for now (good enough for a first pass)
-        "volatility_8w": "score_risk",
-    }).copy()
+    # --- Single direction-aware, weighted scoring pass (priority_model weights) ---
+    scores_windowed = compute_windowed_scores(windowed, config)
 
-    # Many downstream joins expect a 'period' column; set it to the window_end (latest week in the window)
-    scores_windowed["period"] = scores_windowed["window_end"]
+    print("eligible_signals rows:", len(eligible_signals))
+    print("scores_windowed rows:", 0 if scores_windowed is None else len(scores_windowed))
 
-    # If downstream expects score_total, compute a deterministic placeholder
-    # (You can replace this later with a more principled composition.)
-    scores_windowed["score_total"] = (
-        scores_windowed["score_level"].fillna(0.0)
-        + scores_windowed["score_trend"].fillna(0.0)
-        + scores_windowed["score_risk"].fillna(0.0)
-    ) * scores_windowed["score_confidence"].fillna(0.0)
+    if scores_windowed is None or scores_windowed.empty:
+        raise RuntimeError(
+            "Windowed scoring returned empty. Check src/cde/temporal/aggregate.py and that "
+            "benchmark/direction flow through from build_signals into eligible_signals."
+        )
 
     scores_windowed.to_csv(out_dir / "scores_windowed.csv", index=False)
 
     candidates = build_topic_candidates(eligible_signals, scores_windowed, config)
+
+    # --- Recency dampening: soft-suppress recently-coached topics (no-op if no history) ---
+    coaching_history = build_coaching_history(normalized, config)
+    candidates = apply_recent_coaching_dampening(candidates, config, history=coaching_history)
+    candidates.to_csv(out_dir / "topic_candidates.csv", index=False)
+
     recs = recommend_for_population(candidates, config)
 
     receipts = build_receipts(recs, candidates, eligible_signals, scores_windowed, config, excluded_signals=excluded_signals)
     export_run_artifacts(out_dir, auditor, recs, receipts, config, excluded_signals=excluded_signals)
+
+    # HTML summary dashboard (standard output package). Non-fatal: a dashboard error must not fail the run.
+    try:
+        from cde.reporting.dashboard import write_dashboard
+
+        write_dashboard(
+            out_dir / "dashboard.html",
+            recommendations=recs,
+            signals=signals,  # full built signals: carries benchmark, gap, direction
+            config=config,
+            excluded_signals=excluded_signals,
+            candidates=candidates,
+            agents=normalized.get("agents"),  # primary source for icp_client / mascot splits
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"WARNING: dashboard generation failed: {e!r}")
 
     auditor.finish_run()
     print(f"Done. Wrote outputs to: {out_dir}")

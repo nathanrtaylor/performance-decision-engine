@@ -76,7 +76,10 @@ source_catalog:
         value: calc
 
       computation:
-        prefer_value_column_if_present: false
+        # Behavior metrics are AI-scored PASS-RATES: value = calc (0-1), not the raw score sum.
+        # (prefer_value=false + score->numerator previously valued them on the numerator scale,
+        # in the thousands, which mismatched the 0-1 benchmarks and garbled scoring.)
+        prefer_value_column_if_present: true
         default_calculation: score
         calculation_handlers:
           score: { formula: numerator }

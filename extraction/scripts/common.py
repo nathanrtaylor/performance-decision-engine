@@ -66,6 +66,40 @@ class RunPaths:
         return RunPaths(repo_root=root, compiled_dir=compiled_dir, outputs_dir=outputs_dir)
 
 
+def apply_agent_metrics_from_catalog(cfg: Dict[str, Any], repo_root: Path) -> None:
+    """
+    If outputs.agent_metrics.params.metrics_from_catalog is set, load metric_catalog
+    and fill params.metrics with source_metric_key for every metric with source==agent_metrics.
+    Removes metrics_from_catalog from params after merging (Jinja uses metrics only).
+    """
+    out = (cfg.get("outputs") or {}).get("agent_metrics")
+    if not out:
+        return
+    params = out.setdefault("params", {})
+    rel = params.get("metrics_from_catalog")
+    if not rel:
+        return
+    cat_path = (repo_root / rel).resolve()
+    if not cat_path.exists():
+        raise FileNotFoundError(f"metrics_from_catalog not found: {cat_path}")
+    raw = load_yaml(cat_path)
+    mc = raw.get("metric_catalog") if isinstance(raw, dict) else {}
+    metrics_block = (mc.get("metrics") if isinstance(mc, dict) else None) or {}
+    keys: list[str] = []
+    for _name, spec in metrics_block.items():
+        if not isinstance(spec, dict):
+            continue
+        if spec.get("source") != "agent_metrics":
+            continue
+        k = spec.get("source_metric_key")
+        if k:
+            keys.append(str(k))
+    if not keys:
+        raise ValueError("metrics_from_catalog produced no agent_metrics source_metric_key entries")
+    params["metrics"] = keys
+    params.pop("metrics_from_catalog", None)
+
+
 def deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
     """Return merged dict: values from b override/extend a."""
     out = dict(a)

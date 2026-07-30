@@ -22,27 +22,50 @@ topic_map:
     nsp100: "Improve NSP100"
     crt: "Reduce CRT"
 
+
     # ===== Tool usage
     guided_flow_adoption: "Increase Guided Flow Adoption"
     expert_assist_usage: "Increase Expert Assist Usage"
     smart_offer_adoption: "Improve Smart Offer Adoption"
 
-    # ===== Behaviors (default mapped, but typically ineligible until approved)
-    empathy_statement: "Strengthen Empathy Statements"
+    # ===== Behaviors (CANONICAL metric name -> topic; must match metric_catalog metric names,
+    #       like the business metrics above). Eligible behaviors now drive recommendations.
     transition_statement: "Use Clear Transition Statements"
+    demonstrate_professionalism_and_courtesy: "Demonstrate Professionalism and Courtesy"
+    appropriate_product_positioning_language: "Appropriate Product Positioning Language"
+    positive_and_helpful_tone: "Positive and Helpful Tone"
+    manage_call_efficiently: "Manage Call Efficiently"
+    actively_listen: "Actively Listen"
+    confirm_caller_and_account_information: "Confirm Caller and Account Information"
+    provide_assurance: "Provide Assurance"
+    consistent_closing: "Consistent Closing"
+    complete_product_scope_expectations: "Complete Product Scope Expectations"
+    ask_effective_questions: "Ask Effective Questions"
+    clarify_product_misunderstanding: "Clarify product misunderstanding"
+    recap_resolution: "Recap Resolution"
+    make_an_offer: "Make an Offer"
+    test_resolution: "Test resolution"
+    protect_customer_information: "Protect customer information"
+    build_confidence_through_language: "Build Confidence through Language"
+    act_as_representative_of_our_brand: "Act as a Representative of Our Brand"
+    tailor_products_based_on_customer_responses: "Tailor Products based on Customer Responses"
+    # held (ineligible until opportunity-gated; mapped for completeness):
+    enroll_with_consent: "Enroll with Consent"
+    provide_self_service_options: "Provide Self-Service Options"
+    read_t_and_c_s: "Read T&C's"
+    #Offer Survey: not a coaching topic, suppressed
 
   # ---------------------------------------------------
   # Optional: topic -> default conversation type
   # (Engine can override based on severity later; start deterministic)
   # ---------------------------------------------------
   topic_to_conversation_type:
-    "Reduce Transfer Rate": "Performance Correction"
     "Improve Resolution Rate": "Performance Coaching"
     "Reduce Cancel Rate": "Performance Correction"
     "Reduce Client Transfer Rate": "Performance Correction"
     "Improve One Call Resolution": "Performance Coaching"
     "Reduce Hold Time": "Performance Correction"
-    "Reduce Talk TIme": "Performance Coaching"
+    "Reduce Talk Time": "Performance Coaching"
     "Improve ERP": "Performance Coaching"
     "Improve Expert 5star": "Performance Coaching"
     "Improve NSP100": "Performance Coaching"
@@ -55,6 +78,29 @@ topic_map:
     "Strengthen Empathy Statements": "Quality Coaching"
     "Use Clear Transition Statements": "Quality Coaching"
 
+    "Demonstrate Professionalism and Courtesy": "Quality Coaching"
+    "Appropriate Product Positioning Language": "Quality Coaching"
+    "Positive and Helpful Tone": "Quality Coaching"
+    "Manage Call Efficiently": "Quality Coaching"
+    "Show Compassion": "Quality Coaching"
+    "Actively Listen": "Quality Coaching"
+    "Confirm Caller and Account Information": "Quality Coaching"
+    "Provide Assurance": "Quality Coaching"
+    "Consistent Closing": "Quality Coaching"
+    "Complete Product Scope Expectations": "Quality Coaching"
+    "Ask Effective Questions": "Quality Coaching"
+    "Provide Self-Service Options": "Quality Coaching"
+    "Clarify product misunderstanding": "Quality Coaching"
+    "Recap Resolution": "Quality Coaching"
+    "Make an Offer": "Quality Coaching"
+    "Read T&C's": "Quality Coaching"
+    "Enroll with Consent": "Quality Coaching"
+    "Test resolution": "Quality Coaching"
+    "Protect customer information": "Quality Coaching"
+    "Build Confidence through Language": "Quality Coaching"
+    "Act as a Representative of Our Brand": "Quality Coaching"
+    "Tailor Products based on Customer Responses": "Quality Coaching"
+
   # ---------------------------------------------------
   # Optional: call-type specific topic constraints
   # (Hard eligibility still belongs in eligibility config, but this is a good
@@ -63,11 +109,11 @@ topic_map:
   allowed_topics_by_call_type:
     claims:
       - "Improve Resolution Rate"
-      - "Reduce Transfer Rate"
+      - "Reduce Client Transfer Rate"
       - "Increase Expert Assist Usage"
 
     tech_support:
-      - "Reduce Transfer Rate"
+      - "Reduce Client Transfer Rate"
       - "Increase Expert Assist Usage"
       - "Increase Guided Flow Adoption"
 

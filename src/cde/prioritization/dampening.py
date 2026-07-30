@@ -4,51 +4,93 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from cde.utils.ids import normalize_agent_id
+from cde.utils.logging import get_logger
 
-def apply_recent_coaching_dampening(candidates: pd.DataFrame, config: Dict[str, Any], history: Optional[pd.DataFrame] = None) -> pd.DataFrame:
+log = get_logger(__name__)
+
+
+def apply_recent_coaching_dampening(
+    candidates: pd.DataFrame,
+    config: Dict[str, Any],
+    history: Optional[pd.DataFrame] = None,
+) -> pd.DataFrame:
     """
-    Dampens topics recently coached to prevent whiplash.
-    Deterministic: either suppress or apply multiplier.
+    Dampen topics coached recently to prevent coaching whiplash. Deterministic.
 
-    Expected history schema (optional):
-      agent_id, topic, last_coached_period
+    A candidate topic is "recently coached" when the same (agent_id, topic) was coached within
+    the last ``dampening.periods`` weeks of the candidate's decision period (window_end):
 
-    Config example:
-      dampening:
-        mode: "suppress"  # or "multiply"
-        periods: 2
-        multiplier: 0.5
+        0 <= (period - last_coached_period) in weeks <= periods
+
+    Modes:
+      - "multiply" (default): scale priority_score by ``dampening.multiplier`` (topic stays in
+        contention, so a severe gap can still win).
+      - "suppress": drop the recently-coached candidate rows entirely.
+
+    Always adds a boolean ``dampened`` column. No-ops (returns candidates unchanged, with
+    ``dampened=False``) when ``history`` is None/empty or required columns are missing.
+
+    Expected ``history`` schema: agent_id, topic, last_coached_period.
     """
     df = candidates.copy()
-    damp = config.get("dampening") or {}
-    mode = damp.get("mode", "suppress")
-    periods = int(damp.get("periods", 2))
-    mult = float(damp.get("multiplier", 0.5))
+    df["dampened"] = False
 
-    if history is None or history.empty:
-        df["dampened"] = False
+    damp = config.get("dampening") or {}
+    mode = str(damp.get("mode", "multiply")).lower()
+    periods = int(damp.get("periods", 2))
+    multiplier = float(damp.get("multiplier", 0.5))
+
+    if history is None or getattr(history, "empty", True):
         return df
 
-    # naive period difference: assumes period is comparable sortable value; for real use, convert to dates/ints
+    required = {"agent_id", "topic", "period"}
+    if not required.issubset(df.columns):
+        log.warning("dampening: candidates missing one of %s; skipping.", required)
+        return df
+    if not {"agent_id", "topic", "last_coached_period"}.issubset(history.columns):
+        log.warning("dampening: history missing required columns; skipping.")
+        return df
+
     hist = history.copy()
-    hist = hist.rename(columns={"last_coached_period": "history_period"})
 
-    joined = df.merge(hist[["agent_id", "topic", "history_period"]], on=["agent_id", "topic"], how="left")
-    joined["dampened"] = False
+    # Normalize join keys on both sides so id-format drift doesn't silently prevent matches.
+    df["_aid"] = normalize_agent_id(df["agent_id"])
+    hist["_aid"] = normalize_agent_id(hist["agent_id"])
+    hist = hist.rename(columns={"topic": "_topic"})
+    hist["last_coached_period"] = pd.to_datetime(hist["last_coached_period"], errors="coerce")
+    # keep the most recent coaching per (agent, topic) in case history isn't pre-reduced
+    hist = (
+        hist.sort_values("last_coached_period")
+        .drop_duplicates(subset=["_aid", "_topic"], keep="last")
+    )
 
-    if "period" in joined.columns:
-        # compute if history is within last N periods for the agent/topic
-        # NOTE: for PoC we treat periods as sortable; replace with dates in utils.dates for production.
-        recent = joined["history_period"].notna() & (joined["history_period"] >= joined["period"])
-        # If periods are week starts, ">= period" isn't right—so we instead just dampen when history_period exists.
-        # Prefer to upgrade to date diff when you wire real history.
-        recent = joined["history_period"].notna()
+    joined = df.merge(
+        hist[["_aid", "_topic", "last_coached_period"]],
+        left_on=["_aid", "topic"],
+        right_on=["_aid", "_topic"],
+        how="left",
+    )
 
-        if mode == "suppress":
-            joined = joined[~recent].copy()
-        else:
-            if "priority_score" in joined.columns:
-                joined.loc[recent, "priority_score"] = joined.loc[recent, "priority_score"] * mult
-            joined.loc[recent, "dampened"] = True
+    period = pd.to_datetime(joined["period"], errors="coerce")
+    last = pd.to_datetime(joined["last_coached_period"], errors="coerce")
+    weeks_since = (period - last).dt.days / 7.0
+    recent = last.notna() & (weeks_since >= 0) & (weeks_since <= periods)
+    recent = recent.fillna(False)
 
-    return joined.drop(columns=["history_period"], errors="ignore")
+    joined["dampened"] = recent
+
+    if mode == "suppress":
+        result = joined[~recent].copy()
+    else:  # multiply (soft)
+        if "priority_score" in joined.columns:
+            joined.loc[recent, "priority_score"] = (
+                pd.to_numeric(joined.loc[recent, "priority_score"], errors="coerce") * multiplier
+            )
+        result = joined
+
+    n_dampened = int(recent.sum())
+    if n_dampened:
+        log.info("dampening: %s candidate(s) dampened (mode=%s, periods=%s).", n_dampened, mode, periods)
+
+    return result.drop(columns=["_aid", "_topic", "last_coached_period"], errors="ignore")

@@ -4,8 +4,8 @@ priorities:
   # Default weighting stance: business metrics dominate
   by_category:
     business: 1.0
-    tool_usage: 0.6
-    quality_behavior: 0.3
+    tool_usage: 0.9
+    quality_behavior: 0.8
 
   # Optional: explicit overrides (leave empty if you’re not ready)
   by_metric: {}

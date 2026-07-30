@@ -98,12 +98,15 @@ Each configuration file has a single responsibility.
 | Source ingestion | source_catalog.yaml | Dataset schemas + signal computation rules |
 | Metric registry | metric_catalog.yaml | Canonical metric definitions |
 | Topic semantics | topic_map.yaml | Metric → coaching topic mapping |
+| Coaching history | coaching_history_map.yaml | Coaching behavior → topic crosswalk (for dampening) |
 | Benchmarks | benchmarks.yaml | Target/reference values |
 | Signal gating | signal_thresholds.yaml | Eligibility rules |
 | Business emphasis | priorities/*.yaml | Versioned weight configurations |
-| Active pointer | active.yaml | Selects current config set |
+| Active pointer | active.yaml | Selects current config set; may include `data_snapshot` (raw path resolution and default `required_tables` from `expected_sources`) |
 
 Only `priorities/` and `active.yaml` should change frequently.
+
+`conversation_types.by_topic` in `active.yaml` overrides `topic_map.topic_to_conversation_type` for matching topic strings; otherwise the topic map supplies defaults.
 
 ---
 
@@ -169,6 +172,8 @@ This will:
 - Write CSVs into `data/raw/weekly/<run_id>/`
 - Update `data/raw/weekly/latest/`
 
+For `agent_metrics`, the metric list in SQL is filled from `configs/mappings/metric_catalog.yaml` when `metrics_from_catalog` is set in the extraction YAML (so extraction stays aligned with the decision catalog).
+
 Optional: compile only (for debugging):
 
 ```bash
@@ -184,20 +189,52 @@ After extraction completes:
 
 ```bash
 python -m cde.cli.run_pipeline `
-  --raw-dir data/raw/weekly/latest `
   --out-dir outputs/runs/2026-03-03_TEST `
   --configs-dir configs
 ```
+
+`--raw-dir` is optional when `data_snapshot` is set in `configs/active.yaml`: with `mode: latest` the engine reads `<root>/latest`; with `mode: explicit` it uses `<root>/<snapshot_id>`. You can still pass `--raw-dir` to override.
 
 ## Outputs
 
 - recommendations.csv
 - decision_receipts.jsonl
 - excluded_signals.csv
-- scores.csv
+- scores_windowed.csv (primary score table used for topic candidates)
+- scores_windowed_raw.csv (raw 8-week aggregates before scoring; diagnostic)
 - eligible_signals.csv
+- signals.csv (all built signals before gating; diagnostic)
+- topic_candidates.csv (per-agent topic candidates after weighting + dampening; diagnostic)
+- dashboard.html (self-contained run summary: recs by topic, splits by icp_client/mascot, metric warning signs)
 - manifest.json
 - config_snapshot/
+
+Optional: add `--write-point-in-time-scores` to also write `scores.csv` (per-period scores before windowing; useful for diagnostics).
+
+## Scoring Model (how a topic is chosen)
+
+Scoring is a single, direction-aware, deterministic composition (in `src/cde/scoring/assemble.py`):
+
+- **Deficit, not distance.** Each metric's `direction` (from `metric_catalog.yaml`) decides which way
+  is "bad". Only underperformance vs benchmark scores; a strength scores ~0, so the engine never
+  recommends coaching something an agent is already good at. Deficits are normalized by the benchmark
+  so metrics on different scales are comparable.
+- **Axes:** `score_level` (deficit magnitude), `score_trend` (worsening over the window),
+  `score_confidence` (window coverage), `score_risk = level x (1 - confidence)`.
+- **Composition:** `score_total = w_level*level + w_trend*trend + w_risk*risk` using `priority_model`
+  weights in `active.yaml`. Prioritization then scales this by the **versioned** business weight for the
+  metric's category (`priorities/*.yaml`). Only metrics flagged `eligible_for_prioritization` can drive
+  a recommendation.
+
+## Recency Dampening
+
+To prevent coaching whiplash, a topic coached recently is dampened. Coaching history is extracted from
+`l2_asurion_coachdb_coachdb_helixcoaching` into `coaching_history.csv` (optional input) and mapped to
+engine topics via the governed crosswalk `configs/mappings/coaching_history_map.yaml`
+(`behavior_selected -> topic`). A candidate is dampened when the same agent+topic was coached within
+`dampening.periods` weeks of the decision period. With `dampening.mode: multiply` the topic's
+`priority_score` is scaled by `dampening.multiplier` (kept in contention); with `suppress` it is removed.
+If no `coaching_history.csv` is present, dampening is a no-op.
 
 ---
 
@@ -252,7 +289,7 @@ If benchmark is null everywhere → benchmark mapping failure.
 ## 3. Verify Scores Are Not All Zero
 
 ```bash
-python -c "import pandas as pd; df=pd.read_csv('outputs/runs/2026-03-03_TEST/scores.csv'); print(df['score_total'].describe()); print('nonzero:', (df['score_total']!=0).sum())"
+python -c "import pandas as pd; df=pd.read_csv('outputs/runs/2026-03-03_TEST/scores_windowed.csv'); print(df['score_total'].describe()); print('nonzero:', (df['score_total']!=0).sum())"
 ```
 
 If nonzero == 0:
@@ -264,7 +301,7 @@ If nonzero == 0:
 ## 4. Check Topic Mapping Coverage
 
 ```bash
-python -c "import pandas as pd, yaml; scores=pd.read_csv('outputs/runs/2026-03-03_TEST/scores.csv'); cfg=yaml.safe_load(open('configs/active.yaml',encoding='utf-8')); tm=(cfg.get('topic_map') or {}); tm=tm.get('topic_map', tm); m2t=tm.get('metric_to_topic') or {}; print('unmapped metrics:', [m for m in scores['metric'].unique() if m not in m2t])"
+python -c "import pandas as pd, yaml; scores=pd.read_csv('outputs/runs/2026-03-03_TEST/scores_windowed.csv'); cfg=yaml.safe_load(open('configs/active.yaml',encoding='utf-8')); tm=(cfg.get('topic_map') or {}); tm=tm.get('topic_map', tm); m2t=tm.get('metric_to_topic') or {}; print('unmapped metrics:', [m for m in scores['metric'].unique() if m not in m2t])"
 ```
 
 If many metrics are unmapped → recommendations will be blank.

@@ -18,18 +18,30 @@ class Recommendation:
     priority_score: float
 
 
+def _unwrap_topic_map_block(config: Dict[str, Any]) -> Dict[str, Any]:
+    tm = config.get("topic_map") or {}
+    if not isinstance(tm, dict):
+        return {}
+    inner = tm.get("topic_map")
+    return inner if isinstance(inner, dict) else tm
+
+
 def _conversation_type_for(topic: str, config: Dict[str, Any]) -> str:
     """
-    Deterministic mapping from topic -> conversation type.
-    Config example:
-      conversation_types:
-        default: "Performance Coaching"
-        by_topic:
-          "Reduce Transfer Rate": "Performance Correction"
+    Deterministic mapping: active conversation_types.by_topic overrides topic_map defaults,
+    then topic_map.topic_to_conversation_type, then conversation_types.default.
     """
     ct = config.get("conversation_types") or {}
-    by_topic = ct.get("by_topic") or {}
-    return by_topic.get(topic, ct.get("default", "Performance Coaching"))
+    by_topic_active = ct.get("by_topic") or {}
+    if topic in by_topic_active:
+        return by_topic_active[topic]
+
+    tm = _unwrap_topic_map_block(config)
+    tmap = tm.get("topic_to_conversation_type") or {}
+    if isinstance(tmap, dict) and topic in tmap:
+        return tmap[topic]
+
+    return ct.get("default", "Performance Coaching")
 
 
 def recommend_for_population(topic_candidates: pd.DataFrame, config: Dict[str, Any]) -> pd.DataFrame:

@@ -69,6 +69,9 @@ def _compute_value_row(
         return raw_value  # last resort
 
     calc = str(calc).strip().lower()
+    # normalize calc-name drift: metric_catalog uses "average", source handlers use "avg"
+    if calc == "average":
+        calc = "avg"
     handler = handlers.get(calc) or {}
 
     # supported patterns: rate/avg = numerator/denominator; sum/count/score = numerator
@@ -175,7 +178,7 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
             out["period"] = df["week_start"]
         else:
             raise KeyError(
-                f"build_signals: period column not found for source '{name}'. "
+                f"build_signals: period column not found for source '{source_name}'. "
                 f"Looked for 'period', '{period_col}', 'week_ending', 'week_start'. "
                 f"Available columns: {list(df.columns)}"
         )
@@ -197,6 +200,10 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
 
         out["calculation"] = df[calc_col] if calc_col and calc_col in df.columns else None
         out["value_raw"] = pd.to_numeric(df[val_col], errors="coerce") if val_col and val_col in df.columns else np.nan
+
+        # Carry cohort (icp_client) from the source when present (agent_metrics has it per row);
+        # this gives full coverage for per-cohort benchmark lookup (the agents-table join is sparse).
+        out["icp_client"] = df["icp_client"] if "icp_client" in df.columns else np.nan
 
         frames.append(out)
 
@@ -227,8 +234,13 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
         base = base.merge(
             agents[["agent_id", "period", "mascot", "icp_client", "coach", "coach_id"]],
             on=["agent_id", "period"],
-            how="left"
+            how="left",
+            suffixes=("", "_agt"),
         )
+        # Prefer the source icp_client (full coverage); fall back to the agents table where missing.
+        if "icp_client_agt" in base.columns:
+            base["icp_client"] = base["icp_client"].fillna(base["icp_client_agt"])
+            base = base.drop(columns=["icp_client_agt"])
 
 
     # Map to canonical metric names
@@ -249,53 +261,75 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
         lambda m: ((metric_meta.get(m) or {}).get("benchmark") or {}).get("key", m)
     )
 
-    # Compute value deterministically per source computation rules (with per-metric overrides)
-    computed_vals = []
-    for _, row in base.iterrows():
-        src = row["source"]
-        metric = row["metric"]
+    # Compute value deterministically per source computation rules (VECTORIZED; equivalent to the
+    # former per-row _compute_value_row). value = the raw calc column when prefer_value is set and
+    # present; otherwise derived from numerator/denominator per the effective calculation.
+    def _norm_calc(x: Any) -> Optional[str]:
+        if x is None or (isinstance(x, float) and pd.isna(x)):
+            return None
+        s = str(x).strip().lower()
+        if not s:
+            return None
+        return "avg" if s == "average" else s
 
-        s_cfg = sources_cfg.get(src) or {}
-        comp = (s_cfg.get("computation") or {})
+    src_prefer = {s: bool((c.get("computation") or {}).get("prefer_value_column_if_present", True))
+                  for s, c in sources_cfg.items()}
+    src_default_calc = {s: _norm_calc((c.get("computation") or {}).get("default_calculation"))
+                        for s, c in sources_cfg.items()}
+    src_handlers = {s: ((c.get("computation") or {}).get("calculation_handlers") or {})
+                    for s, c in sources_cfg.items()}
+    metric_expected = {m: _norm_calc((meta.get("computation_override") or {}).get("expected_calculation"))
+                       for m, meta in metric_meta.items()}
 
-        prefer_value = bool(comp.get("prefer_value_column_if_present", True))
-        default_calc = comp.get("default_calculation")
-        handlers = comp.get("calculation_handlers") or {}
+    num = pd.to_numeric(base["numerator"], errors="coerce")
+    den = pd.to_numeric(base["denominator"], errors="coerce")
+    raw = pd.to_numeric(base["value_raw"], errors="coerce")
 
-        # allow per-metric expected_calculation override to set default_calc if source calc missing
-        m_over = (metric_meta.get(metric) or {}).get("computation_override") or {}
-        expected_calc = m_over.get("expected_calculation")
-        calculation = row.get("calculation")
-        calculation = None if (isinstance(calculation, float) and pd.isna(calculation)) else calculation
-        if expected_calc and (calculation is None or str(calculation).strip() == ""):
-            default_calc = expected_calc
+    # effective calc per row: row calculation -> metric expected_calculation -> source default
+    rowcalc = base["calculation"].map(_norm_calc)
+    eff = rowcalc.where(rowcalc.notna(), base["metric"].map(metric_expected))
+    eff = eff.where(eff.notna(), base["source"].map(src_default_calc))
+    prefer = base["source"].map(src_prefer).fillna(True).astype(bool)
 
-        numerator = _to_float(row.get("numerator"))
-        denominator = _to_float(row.get("denominator"))
-        raw_value = _to_float(row.get("value_raw"))
+    # per-row denominator floor for rate/avg (from source handler; falsy -> 1.0)
+    def _handler_denom_min(source: str, calc: str) -> float:
+        h = (src_handlers.get(source) or {}).get(calc) or {}
+        try:
+            dm = float(h.get("denominator_min"))
+        except (TypeError, ValueError):
+            dm = None
+        return dm or 1.0
 
-        v = _compute_value_row(
-            numerator=numerator,
-            denominator=denominator,
-            calculation=str(calculation).strip().lower() if calculation is not None else None,
-            raw_value=raw_value,
-            prefer_value=prefer_value,
-            default_calculation=str(default_calc).strip().lower() if default_calc is not None else None,
-            handlers=handlers,
-        )
-        computed_vals.append(v)
+    dmin = pd.Series(1.0, index=base.index)
+    rate_all = eff.isin(["rate", "avg"])
+    if rate_all.any():
+        rk = list(zip(base.loc[rate_all, "source"], eff[rate_all]))
+        rk_map = {k: _handler_denom_min(k[0], k[1]) for k in set(rk)}
+        dmin.loc[rate_all] = [rk_map[k] for k in rk]
 
-    base["value"] = computed_vals
+    value = pd.Series(np.nan, index=base.index, dtype="float64")
+    use_raw = prefer & raw.notna()
+    value[use_raw] = raw[use_raw]
+
+    rem = ~use_raw
+    is_rate = rem & rate_all
+    is_sum = rem & eff.isin(["sum", "count", "score"])
+    other = rem & ~is_rate & ~is_sum        # eff None/unknown -> fall back to raw value
+    rate_ok = is_rate & num.notna() & den.notna() & (den >= dmin) & (den != 0)
+
+    value[is_sum] = num[is_sum]
+    value[rate_ok] = (num / den)[rate_ok]   # invalid rate rows stay NaN (matches returning None)
+    value[other] = raw[other]
+
+    base["value"] = value
 
     # Sort for time-based calculations
     base = base.sort_values(["agent_id", "call_type", "metric", "period"]).reset_index(drop=True)
 
-    # Previous value and trend
+    # Previous value and trend (vectorized pct change; None when prev is missing or zero)
     base["prev_value"] = base.groupby(["agent_id", "call_type", "metric"])["value"].shift(1)
-    base["trend"] = [
-        _safe_pct_change(c, p)
-        for c, p in zip(base["value"].tolist(), base["prev_value"].tolist())
-    ]
+    _v, _p = base["value"], base["prev_value"]
+    base["trend"] = ((_v - _p) / _p.abs()).where(_v.notna() & _p.notna() & (_p != 0))
 
     # Volatility: rolling std over last N periods (per agent+call_type+metric)
     window = int((config.get("signal_window") or {}).get("volatility_periods", 4))
@@ -306,15 +340,29 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
         .reset_index(level=[0, 1, 2], drop=True)
     )
 
-    # Benchmark + gap (benchmarks are looked up by benchmark_key; call_type is collapsed if disabled)
-    base["benchmark"] = [
-        get_benchmark_value(bkey, ct, config)
-        for bkey, ct in zip(base["benchmark_key"].tolist(), base["call_type"].tolist())
-    ]
-    base["gap"] = [
-        benchmark_gap(v, b) if v is not None and (b is not None) else None
-        for v, b in zip(base["value"].tolist(), base["benchmark"].tolist())
-    ]
+    # Normalize cohort casing (source uses 'MOB-AT&T', agents table 'mob-at&t') so per-cohort
+    # benchmark keys, signals, and the dashboard all align on one lowercase form.
+    if "icp_client" not in base.columns:
+        base["icp_client"] = np.nan
+    base["icp_client"] = (
+        base["icp_client"].astype("string").str.strip().str.lower().replace({"": pd.NA})
+    )
+
+    # Benchmark + gap: resolve per DISTINCT (benchmark_key, call_type, icp_client) combo (a few
+    # dozen), then map onto rows - avoids ~1M get_benchmark_value calls. (NA icp -> None so the
+    # cache keys hash/compare correctly; get_benchmark_value treats both as "no cohort".)
+    bk_list = base["benchmark_key"].tolist()
+    ct_list = base["call_type"].tolist()
+    icp_list = [None if pd.isna(x) else x for x in base["icp_client"].tolist()]
+    bench_cache = {
+        k: get_benchmark_value(k[0], k[1], config, icp_client=k[2])
+        for k in set(zip(bk_list, ct_list, icp_list))
+    }
+    base["benchmark"] = [bench_cache[(b, c, i)] for b, c, i in zip(bk_list, ct_list, icp_list)]
+
+    _val = pd.to_numeric(base["value"], errors="coerce")
+    _bench = pd.to_numeric(base["benchmark"], errors="coerce")
+    base["gap"] = (_val - _bench).where(_val.notna() & _bench.notna())
 
     # Confidence (deterministic, explainable):
     # - present factor (value exists)
@@ -341,10 +389,10 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
             per_metric_den_min[m] = float(over["denominator_min"])
 
     denom_vals = pd.to_numeric(base["denominator"], errors="coerce")
-    denom_min_vals = []
-    for src, m in zip(base["source"].tolist(), base["metric"].tolist()):
-        denom_min_vals.append(per_metric_den_min.get(m, src_default_den.get(src, global_den_min)))
-    denom_min_vals = pd.Series(denom_min_vals, index=base.index)
+    # per-metric override -> source default -> global (vectorized)
+    _pm = base["metric"].map(per_metric_den_min)
+    _sd = base["source"].map(src_default_den)
+    denom_min_vals = _pm.where(_pm.notna(), _sd).fillna(global_den_min)
 
     denom_factor = pd.Series(1.0, index=base.index)
     has_denom = denom_vals.notna()

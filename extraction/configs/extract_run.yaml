@@ -3,7 +3,7 @@
 # ============================================================
 
 run:
-  run_id: "2026-03-03_weekly_wk8"
+  run_id: "2026-07-31_weekly_wk6"
   compiled_sql_dir: "extraction/compiled_sql"
   output_dir: "data/raw/weekly"
   flatten_sql: true
@@ -12,8 +12,8 @@ run:
 globals:
   source_schema: "hive.care"
 
-  start_date: "2026-01-06"
-  end_date:   "2026-03-03"
+  start_date: "2026-06-20"
+  end_date:   "2026-07-31"
   grain: "week"
 
   # Always define optional flags globally to avoid StrictUndefined failures
@@ -41,18 +41,8 @@ outputs:
       - calc
     params:
       source_table: "expert_performance_metrics"
-      metrics:
-        - "nsp100"
-        - "crt"
-        - "client transfers"
-        - "erp"
-        - "expert 5star"
-        - "cancellation rate"
-        - "hold time"
-        - "talk time"
-        - "callback_rate"
-        - "ocr"
-        - "resolution rate"  
+      # Populated at compile/run time from metric_catalog (source: agent_metrics).
+      metrics_from_catalog: configs/mappings/metric_catalog.yaml
 
       # keep overrides here only if you ever turn it on
       # calendar_schema: "hive.care"
@@ -94,3 +84,25 @@ outputs:
       observe_scorecards:
         - "HEROES Auto Scorecard"
         - "HEROES Auto QA Reporting - VZW"
+
+  # Coaching history feeds recency dampening (soft-suppress recently-coached topics).
+  coaching_history:
+    sql_file: "extraction/sql/coaching_history.sql.j2"
+    output_file: "coaching_history.csv"
+    require_rows: false          # tolerate weeks with no logged coaching
+    expected_columns:
+      - agent_id
+      - coaching_date
+      - period
+      - coaching_status
+      - coaching_type
+      - coaching_topic
+      - behavior
+      - behavior_selected
+      - expert_acknowledged
+    params:
+      coaching_table: "l2_asurion_coachdb_coachdb_helixcoaching"
+      # events that count as "coached" for dampening (locked decision)
+      coaching_status_in:
+        - "Submitted"
+        - "Excused"

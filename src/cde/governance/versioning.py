@@ -22,6 +22,31 @@ def _unwrap_root(obj: Any, root_key: str) -> Dict[str, Any]:
     return obj
 
 
+def resolve_raw_export_dir(configs_dir: Path, config: Dict[str, Any]) -> Path:
+    """
+    Resolve raw snapshot directory from config['data_snapshot'].
+    Relative ``data_snapshot.root`` paths are resolved against the repo root (parent of ``configs_dir``).
+    """
+    repo_root = configs_dir.resolve().parent
+    ds = config.get("data_snapshot") or {}
+    if not ds:
+        raise ValueError(
+            "No raw directory configured: pass --raw-dir or define data_snapshot in configs/active.yaml."
+        )
+    mode = str(ds.get("mode", "latest")).lower()
+    root = Path(ds.get("root", "data/raw/weekly"))
+    if not root.is_absolute():
+        root = (repo_root / root).resolve()
+    if mode == "latest":
+        return root / "latest"
+    if mode == "explicit":
+        sid = ds.get("snapshot_id")
+        if not sid:
+            raise ValueError("data_snapshot.mode is 'explicit' but snapshot_id is missing.")
+        return (root / str(sid)).resolve()
+    raise ValueError(f"Unknown data_snapshot.mode: {mode!r} (expected 'latest' or 'explicit').")
+
+
 def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
     """
     Loads configs/active.yaml and all referenced config files into a single runtime config.
@@ -91,14 +116,23 @@ def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
         "tie_breakers",
         "conversation_types",
         "call_type_column",
+        "call_type_mode",
+        "default_call_type",
         "signal_window",
         "explainability",
         "normalization",
         "topic_map_options",
+        "data_snapshot",
     ]
     for k in passthrough_keys:
         if k in active:
             cfg[k] = active[k]
+
+    if "required_tables" not in cfg:
+        ds = cfg.get("data_snapshot") or {}
+        exp = ds.get("expected_sources") or []
+        if exp:
+            cfg["required_tables"] = list(exp)
 
     # ---- safe defaults
     cfg.setdefault("entity_keys", {"agent_id": "agent_id", "period": "week_start"})

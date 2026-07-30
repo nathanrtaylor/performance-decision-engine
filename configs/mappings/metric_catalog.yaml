@@ -201,11 +201,11 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of transition statement in use."
       required: false
-      eligible_for_prioritization: false
+      eligible_for_prioritization: true
       computation_override:
         expected_calculation: score
       benchmark:
-        type: distribution
+        type: config
         key: transition_statement
 
     make_an_offer:
@@ -216,13 +216,312 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of offer made."
       required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: make_an_offer
+
+    demonstrate_professionalism_and_courtesy:
+      source: behavior_scores
+      source_metric_key: "Demonstrate Professionalism and Courtesy"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert demonstrating professionalism and courtesy."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: demonstrate_professionalism_and_courtesy
+
+    appropriate_product_positioning_language:
+      source: behavior_scores
+      source_metric_key: "Appropriate Product Positioning Language"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert using appropriate product positioning language."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: appropriate_product_positioning_language
+
+    positive_and_helpful_tone:
+      source: behavior_scores
+      source_metric_key: "Positive and Helpful Tone"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert using positive and helpful tone."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: positive_and_helpful_tone
+
+    manage_call_efficiently:
+      source: behavior_scores
+      source_metric_key: "Manage Call Efficiently"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert managing call efficiently."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: manage_call_efficiently
+
+    actively_listen:
+      source: behavior_scores
+      source_metric_key: "Actively Listen"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert actively listening."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: actively_listen
+
+    confirm_caller_and_account_information:
+      source: behavior_scores
+      source_metric_key: "Confirm Caller and Account"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert confirming caller and account information."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: confirm_caller_and_account_information
+
+    provide_assurance:
+      source: behavior_scores
+      source_metric_key: "Provide Assurance"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert providing assurance."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: provide_assurance 
+
+    consistent_closing:
+      source: behavior_scores
+      source_metric_key: "Consistent Closing"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert providing consistent closing."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: consistent_closing  
+
+    complete_product_scope_expectations:
+      source: behavior_scores
+      source_metric_key: "Complete Product Scope Expectations"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert providing complete product scope expectations."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: complete_product_scope_expectations
+
+    ask_effective_questions:
+      source: behavior_scores
+      source_metric_key: "Ask Effective Questions"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert asking effective questions."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: ask_effective_questions 
+
+    provide_self_service_options:
+      source: behavior_scores
+      source_metric_key: "Provide Self-Service Options"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert providing self-service options."
+      required: false
       eligible_for_prioritization: false
       computation_override:
         expected_calculation: score
       benchmark:
         type: distribution
-        key: make_an_offer
+        key: provide_self_service_options 
 
+    clarify_product_misunderstanding:
+      source: behavior_scores
+      source_metric_key: "Clarify product misunderstanding"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert clarifying product misunderstanding."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: clarify_product_misunderstanding 
+
+    recap_resolution:
+      source: behavior_scores
+      source_metric_key: "Recap Resolution"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert recapting resolution."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: recap_resolution
+
+    read_t_and_c_s:
+      source: behavior_scores
+      source_metric_key: "Read T&C's"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert reading T&C's."
+      required: false
+      eligible_for_prioritization: false
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: distribution
+        key: read_t_and_c_s 
+
+    enroll_with_consent:
+      source: behavior_scores
+      source_metric_key: "Enroll with Consent"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert enrolling with consent."
+      required: false
+      eligible_for_prioritization: false
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: distribution
+        key: enroll_with_consent
+
+    test_resolution:
+      source: behavior_scores
+      source_metric_key: "Test resolution"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert testing resolution."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: test_resolution
+
+    protect_customer_information:
+      source: behavior_scores
+      source_metric_key: "Protect customer information"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert protecting customer information."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: protect_customer_information
+
+    build_confidence_through_language:
+      source: behavior_scores
+      source_metric_key: "Build Confidence through Language"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert building confidence through language."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: build_confidence_through_language 
+
+    act_as_representative_of_our_brand:
+      source: behavior_scores
+      source_metric_key: "Act as a Representative of Our Brand"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert acting as a representative of our brand."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: act_as_representative_of_our_brand 
+
+    tailor_products_based_on_customer_responses:
+      source: behavior_scores
+      source_metric_key: "Tailor Products based on Customer Responses"
+      category: quality_behavior
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of expert tailoring products based on customer responses."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+        key: tailor_products_based_on_customer_responses
 
   category_defaults:
     business:         { base_weight_class: high,   confidence_floor: 0.6 }

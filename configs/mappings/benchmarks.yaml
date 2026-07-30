@@ -1,62 +1,127 @@
-# Optional: benchmarks can live here or in a separate file.
-# If you prefer a separate file, add it under mappings and load it similarly.
+# Benchmarks (reference/target values) per metric.
+#
+# Resolution order in scoring (see signals/benchmarks.get_benchmark_value):
+#   by_icp_client[cohort]  ->  by_call_type[call_type]  ->  default
+# icp_client matching is CASE-INSENSITIVE (source data uses 'MOB-AT&T', the agents table
+# 'mob-at&t'); keys here are lowercase. Values must be on the metric's own scale/unit.
+#
+# Cohorts differ materially on operational metrics (e.g. CRT median ~930s in ATT Mobility vs
+# ~1700s in Verizon Soluto), so those carry per-cohort benchmarks anchored at each cohort's
+# median of the latest snapshot ("meet the typical performer in your cohort"). Metrics whose
+# cohort medians are degenerate (at a scale boundary or a floor) or show no cohort variation are
+# kept as single absolute defaults and noted. A benchmark sitting at a distribution extreme is
+# flagged at runtime by scoring/assemble._warn_benchmark_outliers.
 
 benchmarks:
+
+  # ---- operational metrics: cohort-specific (per-cohort medians) ----
   transfer_rate:
-    default: 0.12
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14
-  cancel_rate:
-    default: 0.12
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14  
-  erp:
-    default: 0.8
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14  
-  one_call_resolution:
-    default: 0.2
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14 
-  hold_time:
-    default: 50
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14 
-  talk_time:
-    default: 50
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14 
-  callback_rate:
-    default: 0.1
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14 
-  expert_5star:
-    default: 0.8
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14
-  nsp100:
-    default: 1
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14 
+    default: 0.105
+    by_icp_client:
+      mob-at&t: 0.10
+      mob-verizon: 0.053
+      pss-at&t: 0.094
+      pss-verizon: 0.133
   crt:
-    default: 800
-    by_call_type:
-      claims: 0.10
-      tech_support: 0.14                                    
+    default: 1410       # seconds
+    by_icp_client:
+      mob-at&t: 930
+      mob-verizon: 980
+      pss-at&t: 1250
+      pss-verizon: 1700
+  talk_time:
+    default: 1150       # seconds
+    by_icp_client:
+      mob-at&t: 830
+      mob-verizon: 890
+      pss-at&t: 1020
+      pss-verizon: 1360
+  hold_time:
+    default: 80         # seconds
+    by_icp_client:
+      mob-at&t: 80
+      mob-verizon: 50
+      pss-at&t: 60
+      pss-verizon: 100
+  callback_rate:
+    default: 0.265
+    by_icp_client:      # only PSS cohorts have sufficient callback data
+      pss-at&t: 0.216
+      pss-verizon: 0.286
+  one_call_resolution:
+    default: 0.818
+    by_icp_client:
+      mob-at&t: 0.76
+      mob-verizon: 0.795
+      pss-at&t: 0.844
+      pss-verizon: 0.828
   resolution_rate:
-    default: 0.78
-    by_call_type:
-      claims: 0.80
-      tech_support: 0.75
+    default: 0.857
+    by_icp_client:      # MOB cohorts lack sufficient resolution-rate data -> default
+      pss-at&t: 0.808
+      pss-verizon: 0.875
+
+  # ---- sales: cohort-aware where a real distribution exists ----
+  nsp100:
+    default: 0.03       # net sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
+      mob-at&t: 0.02
+      mob-verizon: 0.014
+
+  # ---- absolute defaults: cohort medians degenerate (scale boundary/floor) or no cohort variation ----
+  cancel_rate:
+    default: 0.12       # median is 0 across all cohorts (floor); a relative bar isn't usable.
+  erp:
+    default: 90         # 0-100 scale; cohort median is 100 (ceiling) -> absolute sub-max target.
+  expert_5star:
+    default: 4.5        # 1-5 scale; uniform across cohorts at 5.0 (ceiling) -> absolute sub-max target.
+
+  # ---- quality behaviors (AI-scored pass-RATES, value = calc 0-1): bottom-quartile floor ----
+  # Anchored at each behavior's p25 of the WINDOWED-mean pass-rate (the grain the engine scores on),
+  # capped at a 0.95 floor for near-universal behaviors (flag only clear misses). No cohort split
+  # (behavior_scores has no icp_client). Three conditional/low-opportunity behaviors
+  # (enroll_with_consent, provide_self_service_options, read_t_and_c_s) remain benchmark.type:
+  # distribution pending opportunity-gating.
+  demonstrate_professionalism_and_courtesy:
+    default: 0.95
+  act_as_representative_of_our_brand:
+    default: 0.95
+  appropriate_product_positioning_language:
+    default: 0.95
+  build_confidence_through_language:
+    default: 0.95
+  clarify_product_misunderstanding:
+    default: 0.95
+  actively_listen:
+    default: 0.95
+  positive_and_helpful_tone:
+    default: 0.95
+  confirm_caller_and_account_information:
+    default: 0.95
+  manage_call_efficiently:
+    default: 0.94
+  ask_effective_questions:
+    default: 0.92
+  protect_customer_information:
+    default: 0.92
+  transition_statement:
+    default: 0.87
+  complete_product_scope_expectations:
+    default: 0.70
+  provide_assurance:
+    default: 0.61
+  make_an_offer:
+    default: 0.45
+  test_resolution:
+    default: 0.29
+  consistent_closing:
+    default: 0.21
+  tailor_products_based_on_customer_responses:
+    default: 0.28
+  recap_resolution:
+    default: 0.13
+
+  # ---- tool-usage metrics: sources currently disabled (no data to cohort-split) ----
   guided_flow_adoption:
     default: 0.65
   expert_assist_usage:
