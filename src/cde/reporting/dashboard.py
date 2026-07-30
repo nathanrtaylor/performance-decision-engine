@@ -251,7 +251,10 @@ def build_dashboard_html(
     # ============================ 4. METRIC HEALTH ============================
     parts.append(_metric_health_section(sig, recs, config))
 
-    # ============================ 5. DATA ISSUES ============================
+    # ============================ 5. RECENCY DAMPENING ============================
+    parts.append(_dampening_section(candidates, recs, config))
+
+    # ============================ 6. DATA ISSUES ============================
     parts.append(_data_issues_section(sig, recs, excluded_signals, candidates))
 
     parts.append(
@@ -401,6 +404,137 @@ def _metric_health_section(sig: pd.DataFrame, recs: pd.DataFrame, config: Dict[s
     )
 
 
+def _dampening_section(
+    candidates: Optional[pd.DataFrame],
+    recs: pd.DataFrame,
+    config: Dict[str, Any],
+) -> str:
+    """
+    Recency-dampening visibility: the rule/config, WHICH topics were dampened (and how heavily),
+    and the IMPACT on recommendations.
+
+    Dampening (src/cde/prioritization/dampening.py) flags a candidate when the same agent+topic was
+    coached within ``dampening.periods`` weeks. In ``multiply`` mode the dampened rows stay in
+    ``candidates`` with a halved ``priority_score``, so we can reconstruct the pre-dampening winner
+    (score / multiplier) and count how many recommendations flipped. In ``suppress`` mode the rows are
+    dropped upstream, so only the config + count are shown.
+    """
+    if candidates is None or getattr(candidates, "empty", True):
+        return ""
+    if "dampened" not in getattr(candidates, "columns", []):
+        return ""
+
+    damp_cfg = (config or {}).get("dampening") or {}
+    mode = str(damp_cfg.get("mode", "multiply")).lower()
+    periods = damp_cfg.get("periods", 2)
+    mult = damp_cfg.get("multiplier", 0.5)
+    try:
+        mult = float(mult)
+    except (TypeError, ValueError):
+        mult = 0.5
+
+    cand = candidates.copy()
+    damp_mask = pd.to_numeric(cand["dampened"], errors="coerce").fillna(0).astype(bool)
+    n_damp = int(damp_mask.sum())
+    total_cand = len(cand)
+
+    mech = (
+        '<p class="note">Rule: a candidate is dampened when the same agent was coached on that topic '
+        f'within <b>{_esc(periods)}</b> week(s) of the decision period. Mode <b>{_esc(mode)}</b>'
+        + (f' (priority x {_fmt_num(mult, 2)}, kept in contention)' if mode == "multiply"
+           else " (candidate removed from contention)")
+        + ".</p>"
+    )
+
+    # --- suppress mode or nothing dampened: config + count only (detail not reconstructable) ---
+    if mode == "suppress" or n_damp == 0:
+        tiles = [_tile(_fmt_int(n_damp), "Dampened candidates")]
+        if mode == "suppress":
+            note = (
+                '<p class="note">Mode is <b>suppress</b>: dampened candidates are removed before '
+                "topic_candidates.csv is written, so per-topic and impact detail is not available "
+                "here. Run in <b>multiply</b> mode to retain them for analysis.</p>"
+            )
+        else:
+            note = '<p class="note">No candidates were dampened this run.</p>'
+        return "<h2>Recency dampening</h2>" + mech + f'<div class="tiles">{"".join(tiles)}</div>' + note
+
+    # --- multiply mode with dampened rows present ---
+    dd = cand[damp_mask]
+    n_agents = dd["agent_id"].nunique() if "agent_id" in dd.columns else 0
+
+    # Impact: reconstruct pre-dampening winner per (agent, period) and count flips.
+    flips = still_top = n_reco = None
+    have_impact = (
+        mult > 0
+        and {"priority_score", "agent_id", "period", "topic"}.issubset(cand.columns)
+    )
+    if have_impact:
+        c = cand.copy()
+        c["_post"] = pd.to_numeric(c["priority_score"], errors="coerce")
+        c = c[c["_post"].notna()]
+        if len(c):
+            dm = damp_mask.loc[c.index]
+            c["_pre"] = c["_post"].where(~dm, c["_post"] / mult)
+            grp = ["agent_id", "period"]
+            post_idx = c.groupby(grp)["_post"].idxmax()
+            pre_idx = c.groupby(grp)["_pre"].idxmax()
+            post_win = c.loc[post_idx, grp + ["topic"]].set_index(grp)["topic"]
+            pre_win = c.loc[pre_idx, grp + ["topic"]].set_index(grp)["topic"]
+            j = pd.concat([post_win.rename("post"), pre_win.rename("pre")], axis=1)
+            n_reco = int(len(j))
+            flips = int((j["post"] != j["pre"]).sum())
+            still_top = int(dm.loc[post_idx].sum())
+        else:
+            have_impact = False
+
+    tiles = [
+        _tile(_fmt_int(n_damp), f"Dampened ({_fmt_pct(n_damp / total_cand, 1)} of candidates)"),
+        _tile(_fmt_int(n_agents), "Agents affected"),
+    ]
+    if have_impact:
+        tiles.append(_tile(_fmt_int(flips), "Recommendations changed"))
+        tiles.append(_tile(_fmt_int(still_top), "Still #1 despite dampening"))
+
+    impact = ""
+    if have_impact and n_reco:
+        impact = (
+            f'<p class="note">Impact: dampening changed <b>{_fmt_int(flips)}</b> of '
+            f"{_fmt_int(n_reco)} recommendations ({_fmt_pct(flips / n_reco, 1)}). "
+            f"<b>{_fmt_int(still_top)}</b> dampened topic(s) were severe enough to remain the #1 pick "
+            f"despite the x{_fmt_num(mult, 2)} penalty; the rest were pushed below another topic.</p>"
+        )
+
+    # Reasons: by-topic count + dampening rate (share of that topic's candidates).
+    tot_by_topic = cand.groupby("topic").size()
+    damp_by_topic = dd.groupby("topic").size()
+    tbl = pd.DataFrame({"total": tot_by_topic, "damp": damp_by_topic}).fillna(0)
+    tbl = tbl[tbl["damp"] > 0].sort_values("damp", ascending=False)
+    max_d = int(tbl["damp"].max()) if len(tbl) else 0
+    trows = []
+    for topic, r in tbl.iterrows():
+        dn, tn = int(r["damp"]), int(r["total"])
+        trows.append(
+            f'<tr class="barrow"><td>{_esc(topic)}</td>'
+            f'<td class="num">{_fmt_int(dn)}</td>'
+            f'<td class="num">{_fmt_pct(dn / tn if tn else 0, 1)}</td>'
+            f'<td style="width:40%">{_bar(dn, max_d)}</td></tr>'
+        )
+    table = (
+        '<div class="card"><table><thead><tr>'
+        '<th>Topic</th><th class="num">Dampened</th><th class="num">Rate</th><th>Distribution</th>'
+        f'</tr></thead><tbody>{"".join(trows)}</tbody></table></div>'
+        '<p class="note">Rate = dampened share of that topic\'s candidates; a high rate means coaches '
+        "recently worked that topic for many of those agents.</p>"
+    )
+
+    return (
+        "<h2>Recency dampening</h2>" + mech
+        + f'<div class="tiles">{"".join(tiles)}</div>'
+        + impact + table
+    )
+
+
 def _data_issues_section(
     sig: pd.DataFrame, recs: pd.DataFrame,
     excluded: Optional[pd.DataFrame], candidates: Optional[pd.DataFrame],
@@ -423,19 +557,7 @@ def _data_issues_section(
     else:
         items.append('<p class="note">No signals were excluded by gating this run.</p>')
 
-    # dampening summary
-    if candidates is not None and "dampened" in getattr(candidates, "columns", []):
-        d = candidates[pd.to_numeric(candidates["dampened"], errors="coerce").fillna(0).astype(bool)]
-        if len(d) and "topic" in d.columns:
-            vc = d["topic"].value_counts()
-            rows = "".join(
-                f'<tr><td>{_esc(k)}</td><td class="num">{_fmt_int(v)}</td></tr>' for k, v in vc.items()
-            )
-            items.append(
-                '<div class="card"><table><thead><tr>'
-                '<th>Dampened candidates by topic (recently coached)</th><th class="num">Count</th>'
-                f'</tr></thead><tbody>{rows}</tbody></table></div>'
-            )
+    # (dampening detail now lives in its own "Recency dampening" section)
 
     # coverage note
     if sig is not None and not sig.empty and "agent_id" in sig.columns:
