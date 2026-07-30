@@ -84,6 +84,52 @@ def test_empty_recommendations_is_safe():
     assert h.startswith("<!doctype html")
 
 
+DAMP_CFG = {**CFG, "dampening": {"mode": "multiply", "periods": 2, "multiplier": 0.5}}
+
+
+def _candidates_multiply():
+    # Agent A: dampened topic (post .4 -> pre .8) loses to a .5 topic  => recommendation FLIPS
+    # Agent B: dampened topic (post .9 -> pre 1.8) still wins           => STILL #1 despite dampening
+    return pd.DataFrame([
+        {"agent_id": "A", "period": "2026-06-19", "call_type": "all",
+         "topic": "Reduce Talk Time", "priority_score": 0.4, "dampened": True},
+        {"agent_id": "A", "period": "2026-06-19", "call_type": "all",
+         "topic": "Improve Resolution Rate", "priority_score": 0.5, "dampened": False},
+        {"agent_id": "B", "period": "2026-06-19", "call_type": "all",
+         "topic": "Reduce Talk Time", "priority_score": 0.9, "dampened": True},
+        {"agent_id": "B", "period": "2026-06-19", "call_type": "all",
+         "topic": "Reduce Hold Time", "priority_score": 0.3, "dampened": False},
+    ])
+
+
+def test_dampening_section_impact_and_rate():
+    h = build_dashboard_html(_recs(), _signals(), DAMP_CFG,
+                             candidates=_candidates_multiply(), agents=_agents())
+    assert "Recency dampening" in h
+    assert "multiply" in h and "<b>2</b> week" in h          # mechanism line
+    assert "changed <b>1</b> of 2" in h                       # 1 of 2 recommendations flipped
+    assert "Recommendations changed" in h                     # impact tile
+    assert "Still #1 despite dampening" in h                  # severe-enough tile
+    damp_block = h.split("Recency dampening")[1]
+    assert "Reduce Talk Time" in damp_block
+    assert "100" in damp_block                                # rate = 100% of that topic's candidates
+
+
+def test_dampening_suppress_mode_shows_note_and_omits_impact():
+    cfg = {**CFG, "dampening": {"mode": "suppress", "periods": 2}}
+    cand = _candidates_multiply().assign(dampened=False)  # suppressed rows aren't retained
+    h = build_dashboard_html(_recs(), _signals(), cfg, candidates=cand, agents=_agents())
+    assert "Recency dampening" in h
+    assert "suppress" in h
+    assert "Recommendations changed" not in h            # impact not reconstructable in suppress mode
+
+
+def test_dampening_section_omitted_without_dampened_column():
+    cand = _candidates_multiply().drop(columns=["dampened"])
+    h = build_dashboard_html(_recs(), _signals(), DAMP_CFG, candidates=cand, agents=_agents())
+    assert "Recency dampening" not in h
+
+
 def test_write_dashboard_file(tmp_path):
     p = write_dashboard(tmp_path / "d.html", recommendations=_recs(),
                         signals=_signals(), config=CFG, agents=_agents())
