@@ -209,6 +209,17 @@ def build_dashboard_html(
         parts.append('<p class="note">No recommendations were produced for this run.</p>')
         return _page("".join(parts))
 
+    # ============================ 1b. BY TIER ============================
+    # Surfaces the three-tier selection model: break-glass override / theme / single.
+    if "tier" in recs.columns:
+        _tier_label = {"break_glass": "Break-glass override", "theme": "Coaching theme", "single": "Single behavior"}
+        tc = recs["tier"].value_counts()
+        chips = " ".join(
+            f'<span class="chip"><b>{_fmt_int(v)}</b>&nbsp;{_esc(_tier_label.get(k, str(k)))}</span>'
+            for k, v in tc.items()
+        )
+        parts.append(f'<h2>Recommendations by tier</h2><p class="note">{chips}</p>')
+
     # ============================ 2. BY TOPIC ============================
     by_topic = (
         recs.groupby("topic")

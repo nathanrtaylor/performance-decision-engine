@@ -72,12 +72,23 @@ def _coerce_datetime(s: pd.Series) -> pd.Series:
     return pd.to_datetime(s, errors="coerce")
 
 
-def _get_last_n_periods(df: pd.DataFrame, period_col: str, n: int) -> List[pd.Timestamp]:
+def latest_n_periods(df: pd.DataFrame, period_col: str, n: int) -> List[pd.Timestamp]:
+    """
+    Return the latest ``n`` unique periods (ascending) present in ``df[period_col]``.
+
+    Public helper so other stages (e.g. Tier-1 break-glass, which needs the latest
+    X weeks) share the exact "latest completed weeks" semantics used by the 8-week
+    window here.
+    """
     periods = _coerce_datetime(df[period_col]).dropna().unique()
     if len(periods) == 0:
         return []
     periods = np.sort(periods)  # ascending
     return list(periods[-n:])
+
+
+# Backwards-compatible private alias (kept so existing internal references don't break).
+_get_last_n_periods = latest_n_periods
 
 
 def _safe_numeric(series: pd.Series) -> pd.Series:

@@ -13,7 +13,7 @@ from cde.prioritization.dampening import apply_recent_coaching_dampening
 from cde.signals.build_signals import build_signals
 from cde.scoring.assemble import assemble_scores, compute_windowed_scores
 from cde.prioritization.apply import build_topic_candidates
-from cde.engine.recommend import recommend_for_population
+from cde.engine.select import select_recommendations
 from cde.engine.receipts import build_receipts
 from cde.simulation.exports import export_run_artifacts
 from cde.signals.thresholds import apply_signal_thresholds
@@ -133,9 +133,16 @@ def main() -> None:
     candidates = apply_recent_coaching_dampening(candidates, config, history=coaching_history)
     candidates.to_csv(out_dir / "topic_candidates.csv", index=False)
 
-    recs = recommend_for_population(candidates, config)
+    # Three-tier selection: break-glass override -> theme -> single (fallback).
+    # Identical to the prior single-argmax when no themes/break_glass are configured.
+    recs, selection_detail = select_recommendations(
+        candidates, eligible_signals, scores_windowed, config
+    )
 
-    receipts = build_receipts(recs, candidates, eligible_signals, scores_windowed, config, excluded_signals=excluded_signals)
+    receipts = build_receipts(
+        recs, candidates, eligible_signals, scores_windowed, config,
+        excluded_signals=excluded_signals, selection_detail=selection_detail,
+    )
     export_run_artifacts(out_dir, auditor, recs, receipts, config, excluded_signals=excluded_signals)
 
     # HTML summary dashboard (standard output package). Non-fatal: a dashboard error must not fail the run.

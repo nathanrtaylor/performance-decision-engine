@@ -20,3 +20,14 @@ python -m cde.cli.recalc_benchmarks --configs-dir configs --out-dir outputs/benc
 # value-only edits to existing keys, preserves comments, appends configs/governance/changelog.md
 python -m cde.cli.recalc_benchmarks --configs-dir configs --out-dir outputs/benchmark_recalc/2026-03-03_recal --apply --approver "Your Name"
 
+## discover candidate coaching themes from population co-movement (propose-only)
+# correlates metrics on a direction-adjusted "bad" axis per ICP_Client cohort and clusters
+# the ones that move together into candidate themes; writes a dashboard + proposed_themes.yaml
+# does NOT modify configs/mappings/themes.yaml (themes are added by a human SME only)
+python -m cde.cli.discover_themes --configs-dir configs --out-dir outputs/theme_discovery/2026-03-03_themes
+# then open outputs/theme_discovery/2026-03-03_themes/dashboard.html (candidate themes + verdict)
+# a human SME renames + merges the wanted proposals from proposed_themes.yaml into configs/mappings/themes.yaml
+
+## --apply for discovery only records a governance review note (still no auto-edit to themes.yaml)
+python -m cde.cli.discover_themes --configs-dir configs --out-dir outputs/theme_discovery/2026-03-03_themes --apply --approver "Your Name"
+

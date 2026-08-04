@@ -12,6 +12,7 @@ mappings:
   topic_map: mappings/topic_map.yaml
   benchmarks: mappings/benchmarks.yaml
   coaching_history_map: mappings/coaching_history_map.yaml
+  themes: mappings/themes.yaml   # human-curated coaching themes (auto-loads to cfg["themes"])
 
 # ---------------------------------------------------
 # Signal Gating
@@ -75,6 +76,27 @@ dampening:
   mode: multiply        # multiply | suppress. multiply keeps recently-coached topics in
   periods: 2            # contention at reduced weight so a severe gap can still win.
   multiplier: 0.5
+
+# ---------------------------------------------------
+# Theme Layer (selection above single-metric coaching)
+# ---------------------------------------------------
+# Tier 2: a theme (configs/mappings/themes.yaml) is delivered when a coherent
+# group of behaviors is deficient together; otherwise the engine falls back to
+# the single best behavior (Tier 3, unchanged). With no themes.yaml configured
+# this block is inert and behavior is identical to the pre-theme engine.
+theme_selection:
+  count_fraction: 0.5     # >= this fraction of a theme's members must be deficient to qualify
+  score_level_floor: 0.15 # single low global floor for "deficient" (looser than the solo bar)
+  aggregate: mean         # mean | sum: how member score_total combine into the theme score
+
+# Tier 1: break-glass override. Only metrics carrying a per-metric break_glass
+# block in metric_catalog.yaml are eligible. Over the latest `recency_weeks`
+# weeks, an agent in the worst `worst_pct`% of its ICP_Client x metric cohort
+# AND below benchmark overrides any theme. Defaults here apply when a metric's
+# break_glass block omits a value.
+break_glass:
+  recency_weeks: 2        # X: latest weeks slice (short recency window, NOT the 8-week window)
+  worst_pct: 10           # default P: worst P% of the ICP_Client x metric cohort
 
 # ---------------------------------------------------
 # Explainability

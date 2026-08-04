@@ -1,0 +1,53 @@
+themes:
+
+  # ---------------------------------------------------
+  # Coaching THEMES: groups of related metrics that, when several are
+  # deficient together, point at a single coaching theme instead of a
+  # single behavior. This is a HUMAN-CURATED, SME-owned artifact.
+  #
+  # A theme is ONLY added here by a human SME. The propose-only
+  # discovery tool (src/cde/themes_discovery, `python -m cde.cli.discover_themes`)
+  # can SUGGEST candidate themes from population co-movement, but never
+  # writes to this file without explicit --apply authorization.
+  #
+  # Selection semantics (see src/cde/engine/select.py):
+  #   * A theme QUALIFIES for an agent when >= theme_selection.count_fraction
+  #     of its members are "deficient" (evidence-gated + score_level above the
+  #     loose theme_selection.score_level_floor). This is looser than the
+  #     solo-coaching bar on purpose: a metric not worth coaching alone can
+  #     still count toward a pattern.
+  #   * Among qualifying themes, the highest combined score wins.
+  #   * A break-glass single (metric_catalog break_glass flag) can still
+  #     override a theme; an ordinary single is the fallback when no theme
+  #     qualifies.
+  #
+  # `members` must be CANONICAL metric names that exist in
+  # metric_catalog.metrics.* (same discipline as topic_map.metric_to_topic).
+  # `conversation_type` mirrors topic_map.topic_to_conversation_type.
+  #
+  # Shape mirrors topic_map.yaml: a single `themes:` root (== the mapping name
+  # registered in active.yaml) whose keys are the theme names.
+  # ---------------------------------------------------
+
+  "Call Control":
+    members:
+      - talk_time
+      - hold_time
+      - crt
+      - callback_rate
+    conversation_type: "Performance Coaching"
+
+  "Resolution Effectiveness":
+    members:
+      - resolution_rate
+      - one_call_resolution
+      - transfer_rate
+    conversation_type: "Performance Correction"
+
+  "Customer Sentiment":
+    members:
+      - customer_frustration_sentiment
+      - customer_escalation_sentiment
+      - customer_retention_risk_sentiment
+      - expert_listening_sentiment
+    conversation_type: "Quality Coaching"
