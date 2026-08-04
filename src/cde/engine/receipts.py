@@ -11,6 +11,7 @@ from cde.explainability.evidence import build_competitors
 from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
     narrative_theme_why_this, narrative_theme_why_now, narrative_break_glass,
+    narrative_abstention,
 )
 from cde.utils.io import _json_default
 
@@ -25,6 +26,7 @@ def build_receipts(
     config: Dict[str, Any],
     excluded_signals: Optional[pd.DataFrame] = None,
     selection_detail: Optional[pd.DataFrame] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> pd.DataFrame:
     """
     Build structured "decision receipts" for each recommendation.
@@ -42,10 +44,12 @@ def build_receipts(
       - ``break_glass`` : a critical single override (single driver + override flag).
     Rows with no ``tier`` are treated as ``single`` (backward compatible).
     """
-    if recommendations.empty:
+    has_recs = recommendations is not None and not recommendations.empty
+    has_abstentions = abstentions is not None and not abstentions.empty
+    if not has_recs and not has_abstentions:
         return pd.DataFrame([])
 
-    recs = recommendations.copy()
+    recs = recommendations.copy() if has_recs else pd.DataFrame(columns=["agent_id", "period", "call_type", "topic", "tier"])
     if "tier" not in recs.columns:
         recs["tier"] = "single"
 
@@ -87,6 +91,11 @@ def build_receipts(
             receipts.append(_break_glass_receipt(base, r, selection_detail))
         else:
             receipts.append(_single_receipt(base, r, comps))
+
+    # Abstention receipts (explicit, explained non-recommendations)
+    if has_abstentions:
+        for _, a in abstentions.iterrows():
+            receipts.append(_abstention_receipt(a, provenance))
 
     return pd.DataFrame(receipts)
 
@@ -177,6 +186,35 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
             "why_now": narrative_theme_why_now(drivers),
             "why_not_others": "A coaching theme was preferred over any single-behavior alternative.",
         },
+    }
+
+
+def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any]) -> Dict[str, Any]:
+    reason = a.get("reason")
+    best_topic = a.get("best_topic")
+    best_ps = _float_or_none(a.get("best_priority_score"))
+    best_lvl = _float_or_none(a.get("best_level_score"))
+    drivers = []
+    if best_topic is not None and not (isinstance(best_topic, float) and pd.isna(best_topic)):
+        drivers = [{"topic": best_topic, "priority_score": best_ps, "level_score": best_lvl}]
+    return {
+        "agent_id": a.get("agent_id"),
+        "period": a.get("period"),
+        "call_type": a.get("call_type"),
+        "recommended_topic": None,
+        "conversation_type": None,
+        "priority_score": None,
+        "tier": "abstained",
+        "reason": reason,
+        "drivers": drivers,
+        "competing_topics": [],
+        "excluded_signals": [],
+        "narrative": {
+            "why_this": narrative_abstention(reason, best_topic, best_ps),
+            "why_now": "Withheld this cycle; re-evaluated each run as data updates.",
+            "why_not_others": "No topic cleared the coaching floor / evidence gates.",
+        },
+        "provenance": provenance,
     }
 
 

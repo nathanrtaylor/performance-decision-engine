@@ -125,6 +125,7 @@ def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
         "data_snapshot",
         "theme_selection",
         "break_glass",
+        "abstention",
     ]
     for k in passthrough_keys:
         if k in active:

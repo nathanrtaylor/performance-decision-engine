@@ -14,6 +14,7 @@ from cde.signals.build_signals import build_signals
 from cde.scoring.assemble import assemble_scores, compute_windowed_scores
 from cde.prioritization.apply import build_topic_candidates
 from cde.engine.select import select_recommendations
+from cde.engine.abstain import apply_abstention
 from cde.engine.receipts import build_receipts
 from cde.simulation.exports import export_run_artifacts
 from cde.signals.thresholds import apply_signal_thresholds
@@ -139,11 +140,20 @@ def main() -> None:
         candidates, eligible_signals, scores_windowed, config
     )
 
+    # Abstention: withhold non-material single recs + surface universe agents with no rec.
+    recs, abstentions = apply_abstention(recs, normalized.get("agents"), candidates, config)
+    if abstentions is not None and not abstentions.empty:
+        print(f"abstentions: {len(abstentions)} agent(s) received no recommendation")
+
     receipts = build_receipts(
         recs, candidates, eligible_signals, scores_windowed, config,
         excluded_signals=excluded_signals, selection_detail=selection_detail,
+        abstentions=abstentions,
     )
-    export_run_artifacts(out_dir, auditor, recs, receipts, config, excluded_signals=excluded_signals)
+    export_run_artifacts(
+        out_dir, auditor, recs, receipts, config,
+        excluded_signals=excluded_signals, abstentions=abstentions,
+    )
 
     # HTML summary dashboard (standard output package). Non-fatal: a dashboard error must not fail the run.
     try:
@@ -157,6 +167,7 @@ def main() -> None:
             excluded_signals=excluded_signals,
             candidates=candidates,
             agents=normalized.get("agents"),  # primary source for icp_client / mascot splits
+            abstentions=abstentions,
         )
     except Exception as e:  # noqa: BLE001
         print(f"WARNING: dashboard generation failed: {e!r}")

@@ -19,17 +19,19 @@ def export_run_artifacts(
     receipts: pd.DataFrame,
     config: Dict[str, Any],
     excluded_signals: Optional[pd.DataFrame] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> None:
     """
     Write all run artifacts to outputs/runs/<run_id>/...
 
     Always writes:
       - config_snapshot/config_runtime.json
-      - recommendations.csv
-      - decision_receipts.jsonl
+      - recommendations.csv (actionable recommendations only)
+      - decision_receipts.jsonl (recommendations + abstentions)
 
     Optionally writes:
       - excluded_signals.csv (signal-level gating failures with reason codes)
+      - abstentions.csv (agents with no recommendation + reason)
     """
     ensure_dir(out_dir)
 
@@ -48,3 +50,7 @@ def export_run_artifacts(
     if excluded_signals is not None and not excluded_signals.empty:
         excluded_path = out_dir / "excluded_signals.csv"
         excluded_signals.to_csv(excluded_path, index=False)
+
+    # Abstentions (agents with an explicit non-recommendation + reason)
+    if abstentions is not None and not abstentions.empty:
+        abstentions.to_csv(out_dir / "abstentions.csv", index=False)

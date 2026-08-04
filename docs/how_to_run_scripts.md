@@ -10,6 +10,11 @@ python .\extraction\scripts\run_extract.py --config .\extraction\configs\extract
 
 ## python command to run the pipeline and turn raw data into signals
 python -m cde.cli.run_pipeline --raw-dir data/raw/weekly/latest --out-dir outputs/runs/2026-03-03_TEST --configs-dir configs 
+# signal gating runs in production mode (configs/thresholds/signal_thresholds.yaml: mode: production).
+# outputs: recommendations.csv (actionable only) + abstentions.csv (agents withheld, with a reason) +
+# decision_receipts.jsonl (recommendations + abstentions). To debug gating, temporarily set mode: development.
+# When changing gating thresholds or the abstention floor (active.yaml: abstention.min_priority_score),
+# re-run and compare eligible_signals / scores_windowed / recommendation + abstention counts before committing.
 
 ## recalculate benchmarks from the latest extract (propose-only; writes a dashboard + proposed change-set)
 # does NOT modify configs/mappings/benchmarks.yaml

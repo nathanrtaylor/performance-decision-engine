@@ -98,3 +98,26 @@ def test_receipts_cover_all_tiers_with_provenance():
     # serializes cleanly to JSONL
     text = receipts_to_jsonl(receipts)
     assert text.count("\n") == len(receipts)
+
+
+def test_abstention_receipts_appended():
+    cands, es, sw, recs, detail = _setup()
+    abstentions = pd.DataFrame([
+        {"agent_id": "Z1", "period": P2, "call_type": "all", "reason": "below_coaching_floor",
+         "best_topic": "Reduce Talk Time", "best_priority_score": 0.02, "best_level_score": 0.1},
+        {"agent_id": "Z2", "period": P2, "call_type": "all", "reason": "no_qualified_signal",
+         "best_topic": None, "best_priority_score": None, "best_level_score": None},
+    ])
+    receipts = build_receipts(recs, cands, es, sw, CFG, selection_detail=detail, abstentions=abstentions)
+    by_agent = {r["agent_id"]: r for _, r in receipts.iterrows()}
+
+    z1 = by_agent["Z1"]
+    assert z1["tier"] == "abstained"
+    assert z1["reason"] == "below_coaching_floor"
+    assert pd.isna(z1["recommended_topic"])  # None coerces to NaN in the frame; JSONL emits null
+    assert z1["drivers"][0]["topic"] == "Reduce Talk Time"
+    assert z1["provenance"]["config_version"] == "vTEST"
+
+    z2 = by_agent["Z2"]
+    assert z2["tier"] == "abstained" and z2["reason"] == "no_qualified_signal"
+    assert z2["drivers"] == []  # no best-available topic

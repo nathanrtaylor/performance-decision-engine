@@ -209,15 +209,16 @@ python -m cde.cli.run_pipeline `
 
 ## Outputs
 
-- recommendations.csv (one row per agent; `tier` column = break_glass | theme | single)
-- decision_receipts.jsonl
+- recommendations.csv (actionable recs only; `tier` column = break_glass | theme | single)
+- abstentions.csv (agents with an explicit non-recommendation + reason)
+- decision_receipts.jsonl (recommendations + abstention receipts)
 - excluded_signals.csv
 - scores_windowed.csv (primary score table used for topic candidates)
 - scores_windowed_raw.csv (raw 8-week aggregates before scoring; diagnostic)
 - eligible_signals.csv
 - signals.csv (all built signals before gating; diagnostic)
 - topic_candidates.csv (per-agent topic candidates after weighting + dampening; diagnostic)
-- dashboard.html (self-contained run summary: recs by tier, recs by topic, splits by icp_client/mascot, metric warning signs)
+- dashboard.html (self-contained run summary: recs by tier, no-recommendation/abstention coverage, recs by topic, splits by icp_client/mascot, metric warning signs)
 - manifest.json
 - config_snapshot/
 
@@ -303,6 +304,54 @@ cancel_rate:
 
 Themes are **human-curated**: a theme is added to `themes.yaml` only by an SME. The discovery tool
 below can *propose* candidate themes, but never writes them.
+
+---
+
+# Signal Gating & Abstention
+
+Two mechanisms keep recommendations trustworthy and actionable: **evidence gating** at the front and
+an **abstention floor** at the end.
+
+## Production evidence gating
+
+`configs/thresholds/signal_thresholds.yaml` runs in `mode: production` — fail-closed gating on
+**evidence quality** (implemented in `src/cde/signals/thresholds.py`):
+
+- `require_reference_point: true` — a signal must have a benchmark gap or a distribution z
+  (`NO_REFERENCE_POINT`).
+- `min_confidence` / `min_denominator_default` per category — drops thin, low-confidence weekly
+  signals (`LOW_CONFIDENCE` / `LOW_DENOMINATOR`). Low-volume metrics can override the denominator
+  floor via `by_metric` (e.g. `cancel_rate`).
+
+Deliberately, `require_bad_magnitude` stays **off**: "is the deficit big enough to coach" is decided
+once, downstream, by the abstention floor — not by fragile per-metric magnitude thresholds. (`mode:
+development` relaxes all gates and is for debugging only.)
+
+## Abstention (explicit non-recommendation)
+
+Scoring is deficit-only, so a well-performing agent would otherwise still receive their least-bad
+topic. After selection, `src/cde/engine/abstain.py` withholds a recommendation when it isn't
+warranted and **records why**, so a withheld rec is a visible, explained decision — never a silent
+gap. Every coachable agent ends in exactly one of *recommended* or *abstained*.
+
+Two abstention reasons:
+
+- `below_coaching_floor` — a single-behavior rec whose `priority_score` is below
+  `abstention.min_priority_score` (the agent is performing adequately). Break-glass and theme recs are
+  material by construction and are **never** abstained.
+- `no_qualified_signal` — an agent in the coachable universe that produced no rec at all (every signal
+  gated out / none had a trustworthy reference).
+
+```yaml
+# configs/active.yaml
+abstention:
+  enabled: true
+  min_priority_score: 0.10   # calibrate from the priority_score distribution of a real run
+```
+
+Abstentions are surfaced in **`abstentions.csv`**, as `tier: "abstained"` entries in
+**`decision_receipts.jsonl`** (with reason + best-available driver), and in a dashboard
+**"No recommendation"** section with a coverage line.
 
 ---
 
@@ -426,6 +475,8 @@ The receipt shape adapts to the selection `tier`:
   (`n_deficient` / `n_members` / deficient metrics).
 - **break_glass** — the tripped metric with `override: true`, `reason: "break_glass"`, and the
   agent's cohort percentile.
+- **abstained** — no recommendation: `recommended_topic: null`, `reason`
+  (`below_coaching_floor` | `no_qualified_signal`), and the best-available driver.
 
 Receipts are stored as JSONL for auditability and downstream ingestion.
 
@@ -523,7 +574,8 @@ if scores["score_total"].max() == 0:
 - Versioned SQL extraction
 - Immutable raw snapshots
 - Deterministic signal computation
-- Configurable gating
+- Production evidence gating (reference point + confidence + denominator)
+- Abstention floor with explicit, explained non-recommendations
 - Versioned priority weighting
 - Deterministic topic selection
 - Three-tier selection: break-glass override → coaching theme → single behavior

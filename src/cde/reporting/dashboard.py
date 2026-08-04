@@ -142,6 +142,33 @@ def _recent_nonnull(df: Optional[pd.DataFrame], period_col: str, col: str) -> Op
     return d.drop_duplicates("agent_id", keep="last").set_index("agent_id")[col]
 
 
+_ABSTENTION_LABEL = {
+    "below_coaching_floor": "Performing adequately (below coaching floor)",
+    "no_qualified_signal": "No trustworthy signal (evidence gate)",
+}
+
+
+def _abstention_section(abst: pd.DataFrame, n_reco: int) -> str:
+    """Explicit 'no recommendation' section: coverage line + counts by reason."""
+    if abst is None or abst.empty:
+        return ""
+    n_abst = int(len(abst))
+    universe = n_reco + n_abst
+    coverage = (n_reco / universe) if universe else 0.0
+    reason_counts = abst["reason"].value_counts() if "reason" in abst.columns else {}
+    chips = " ".join(
+        f'<span class="chip"><b>{_fmt_int(int(v))}</b>&nbsp;{_esc(_ABSTENTION_LABEL.get(k, str(k)))}</span>'
+        for k, v in reason_counts.items()
+    )
+    return (
+        "<h2>No recommendation (abstentions)</h2>"
+        f'<p class="note"><b>{_fmt_int(n_reco)}</b> of <b>{_fmt_int(universe)}</b> coachable agents '
+        f"received a recommendation ({_fmt_pct(coverage, 1)}); <b>{_fmt_int(n_abst)}</b> were withheld "
+        "with an explicit reason (see abstentions.csv and decision_receipts).</p>"
+        f'<p class="note">{chips}</p>'
+    )
+
+
 def build_dashboard_html(
     recommendations: pd.DataFrame,
     signals: Optional[pd.DataFrame],
@@ -150,9 +177,11 @@ def build_dashboard_html(
     candidates: Optional[pd.DataFrame] = None,
     agents: Optional[pd.DataFrame] = None,
     generated_at: Optional[str] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> str:
     meta = (config or {}).get("meta") or {}
     generated_at = generated_at or datetime.now().strftime("%Y-%m-%d %H:%M")
+    abst = abstentions.copy() if abstentions is not None and not abstentions.empty else pd.DataFrame()
 
     recs = recommendations.copy() if recommendations is not None else pd.DataFrame()
     for c in ("agent_id", "topic"):
@@ -190,11 +219,15 @@ def build_dashboard_html(
     if candidates is not None and "dampened" in getattr(candidates, "columns", []):
         n_dampened = int(pd.to_numeric(candidates["dampened"], errors="coerce").fillna(0).astype(bool).sum())
 
+    n_abstained = int(len(abst))
+    thr_mode = (((config or {}).get("thresholds") or {}).get("signal_thresholds") or {}).get("mode", "-")
     tiles = [
         _tile(_fmt_int(total), "Recommendations"),
         _tile(_fmt_int(n_agents), "Agents coached"),
+        _tile(_fmt_int(n_abstained), "No recommendation"),
         _tile(_fmt_int(n_topics), "Distinct topics"),
         _tile(_fmt_int(n_dampened), "Dampened candidates"),
+        _tile(_esc(thr_mode), "Gating mode"),
         _tile(_esc(meta.get("data_snapshot", "-")), "Data snapshot"),
         _tile(_esc(meta.get("version", "-")), "Config version"),
     ]
@@ -207,7 +240,11 @@ def build_dashboard_html(
 
     if total == 0:
         parts.append('<p class="note">No recommendations were produced for this run.</p>')
+        parts.append(_abstention_section(abst, total))
         return _page("".join(parts))
+
+    # ============================ 1a. ABSTENTIONS ============================
+    parts.append(_abstention_section(abst, total))
 
     # ============================ 1b. BY TIER ============================
     # Surfaces the three-tier selection model: break-glass override / theme / single.
@@ -604,6 +641,7 @@ def write_dashboard(
     candidates: Optional[pd.DataFrame] = None,
     agents: Optional[pd.DataFrame] = None,
     generated_at: Optional[str] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> Path:
     """Build and write dashboard.html. Never raises on content edge cases."""
     html_str = build_dashboard_html(
@@ -614,6 +652,7 @@ def write_dashboard(
         candidates=candidates,
         agents=agents,
         generated_at=generated_at,
+        abstentions=abstentions,
     )
     path = Path(path)
     path.write_text(html_str, encoding="utf-8")
