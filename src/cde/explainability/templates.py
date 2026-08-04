@@ -42,6 +42,22 @@ def narrative_theme_why_now(drivers: List[Dict[str, Any]]) -> str:
     )
 
 
+def narrative_abstention(reason: str, best_topic: Any = None, best_priority_score: Any = None) -> str:
+    if reason == "below_coaching_floor":
+        topic = best_topic or "the strongest available topic"
+        return (
+            f"No coaching recommended this cycle: the best opportunity ({topic}, "
+            f"priority_score={_fmt(best_priority_score)}) is below the coaching floor — the agent is "
+            f"performing adequately relative to benchmarks."
+        )
+    if reason == "no_qualified_signal":
+        return (
+            "No coaching recommended this cycle: no metric produced a trustworthy, benchmarked signal "
+            "(insufficient volume, confidence, or reference point under production gating)."
+        )
+    return "No coaching recommended this cycle."
+
+
 def narrative_break_glass(row: Any) -> str:
     metric = row.get("metric")
     cohort_pct = row.get("cohort_pct")

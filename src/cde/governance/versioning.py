@@ -2,24 +2,31 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any, Dict
 
+from cde.utils.config import unwrap_root as _unwrap_root
 from cde.utils.io import load_yaml
 
+# Keys under cfg["meta"] that vary per run (not config content) and must be excluded
+# from the content hash so the same governed config set always hashes the same.
+_VOLATILE_META_KEYS = {"data_snapshot", "config_hash"}
 
-def _unwrap_root(obj: Any, root_key: str) -> Dict[str, Any]:
+
+def config_content_hash(config: Dict[str, Any]) -> str:
+    """Deterministic short hash of the resolved config's *content*.
+
+    Excludes volatile per-run provenance (``meta.data_snapshot`` and any prior
+    ``config_hash``) so two runs on the same governed configs hash identically,
+    while changing any config value changes the hash -- provenance that tracks
+    content even when a hand-edited ``meta.version`` isn't bumped.
     """
-    Supports either YAML shape:
-      1) {root_key: {...}}   (recommended)
-      2) {...}               (already unwrapped)
-    Returns the inner dict.
-    """
-    if not isinstance(obj, dict):
-        return {}
-    if root_key in obj and isinstance(obj[root_key], dict):
-        return obj[root_key]
-    return obj
+    meta = {k: v for k, v in (config.get("meta") or {}).items() if k not in _VOLATILE_META_KEYS}
+    hashable = {**config, "meta": meta}
+    payload = json.dumps(hashable, sort_keys=True, default=str, ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()[:12]
 
 
 def resolve_raw_export_dir(configs_dir: Path, config: Dict[str, Any]) -> Path:
@@ -125,6 +132,9 @@ def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
         "data_snapshot",
         "theme_selection",
         "break_glass",
+        "abstention",
+        "benchmark_recalc",
+        "theme_discovery",
     ]
     for k in passthrough_keys:
         if k in active:

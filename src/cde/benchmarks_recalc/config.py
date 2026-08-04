@@ -7,7 +7,9 @@ plus the explicit sets below, matching the hand-curated conventions documented i
 """
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 # 8-week decision window (matches cde.temporal.aggregate window_weeks default).
 WINDOW_WEEKS = 8
@@ -89,3 +91,17 @@ class RecalcThresholds:
 
     # Shared cap for behavior p25 anchors.
     quality_cap: float = QUALITY_CAP
+
+    @classmethod
+    def from_config(cls, config: Optional[Dict[str, Any]] = None) -> "RecalcThresholds":
+        """Build from the optional ``benchmark_recalc`` block in active.yaml.
+
+        Only recognized fields override the curated defaults; an absent/empty block
+        reproduces ``RecalcThresholds()`` exactly (so today's proposals are unchanged).
+        This is what the module docstring means by "governance can tune the bar
+        without touching logic."
+        """
+        block = (config or {}).get("benchmark_recalc") or {}
+        known = {f.name for f in dataclasses.fields(cls)}
+        overrides = {k: v for k, v in block.items() if k in known}
+        return dataclasses.replace(cls(), **overrides)

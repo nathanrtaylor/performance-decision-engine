@@ -2,13 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional
 
-
-def _unwrap_root(obj: Any, root_key: str) -> Dict[str, Any]:
-    """Support either {root_key: {...}} or an already-unwrapped {...}."""
-    if not isinstance(obj, dict):
-        return {}
-    inner = obj.get(root_key)
-    return inner if isinstance(inner, dict) else obj
+from cde.utils.config import unwrap_root as _unwrap_root
 
 
 def _metric_category(metric: str, config: Dict[str, Any]) -> Optional[str]:

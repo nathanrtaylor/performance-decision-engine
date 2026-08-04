@@ -1,14 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Optional
 
 import pandas as pd
 
-
-def _require_cols(df: pd.DataFrame, cols: Iterable[str], table_name: str) -> None:
-    missing = [c for c in cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"Missing required columns in '{table_name}': {missing}")
+from cde.utils.frames import require_cols as _require_cols
 
 
 def validate_inputs(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -> None:

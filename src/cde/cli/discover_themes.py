@@ -41,7 +41,7 @@ def main() -> None:
     out_dir.mkdir(parents=True, exist_ok=True)
 
     config = resolve_active_config(configs_dir)
-    thr = DiscoveryThresholds()
+    thr = DiscoveryThresholds.from_config(config)
 
     raw = load_latest_extract(configs_dir, config, Path(args.raw_dir) if args.raw_dir else None)
     prepped = prep_frames(raw, config)

@@ -1,31 +1,42 @@
 signal_thresholds:
 
-  mode: development   # development | production
+  # production = fail-closed evidence gating (this is the trusted mode).
+  # development = minimal gating (value present + IDs); use only for debugging.
+  mode: production
 
+  # Evidence-quality gates only. Materiality ("is the deficit big enough to coach")
+  # is decided once, downstream, by the abstention floor (active.yaml: abstention.min_priority_score) --
+  # NOT here. That is why require_bad_magnitude / only_worsening stay off below.
+  # NOTE: min_confidence / min_denominator_default are provisional starting values; calibrate against a
+  # dev-vs-production run (see docs/how_to_run_scripts.md) before treating them as final.
   global:
-    min_confidence: 0.0
+    min_confidence: 0.30
     max_volatility: null
-    min_denominator_default: 1
+    min_denominator_default: 10
 
   by_category:
     business:
-      min_confidence: 0.0
-      min_abs_gap_from_benchmark: 0.0
-      min_bad_trend_pct: 0.0
+      min_confidence: 0.30
+      min_denominator_default: 10
 
     tool_usage:
-      min_confidence: 0.0
-      min_abs_gap_from_benchmark: 0.0
-      min_bad_trend_pct: 0.0
+      min_confidence: 0.30
+      min_denominator_default: 5
 
     quality_behavior:
-      min_confidence: 0.0
-      min_bad_z: 0.0
-      min_bad_trend_pct: 0.0
+      min_confidence: 0.30
+      min_denominator_default: 5
+
+  by_metric:
+    # cancel_rate is a low-volume metric (its catalog denominator_min is 5). The business default of
+    # 10 gates out ~94% of its weekly rows, which starves the break-glass override that reads
+    # eligible_signals. Gate it at its own catalog floor so break-glass stays meaningful.
+    cancel_rate:
+      min_denominator_default: 5
 
   candidate_rules:
-    require_bad_magnitude: false
-    require_bad_trend: false
+    require_reference_point: true    # must have a benchmark gap or distribution z (NO_REFERENCE_POINT)
+    require_bad_magnitude: false     # materiality deferred to the abstention floor
+    require_bad_trend: false         # a stable large deficit is still coachable
     only_worsening: false
-    require_reference_point: false
     max_candidates_per_agent: 10

@@ -18,7 +18,6 @@ Sections:
 """
 from __future__ import annotations
 
-import html
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Optional
@@ -26,101 +25,35 @@ from typing import Any, Dict, Optional
 import numpy as np
 import pandas as pd
 
+from cde.utils.config import unwrap_root as _unwrap
 from cde.utils.logging import get_logger
+from cde.reporting.dashboard_kit import (
+    esc as _esc,
+    fmt_int as _fmt_int,
+    fmt_pct as _fmt_pct,
+    fmt_num as _fmt_num,
+    chip as _chip,
+    tile as _tile,
+    page as _kit_page,
+)
 
 log = get_logger(__name__)
 
-# --- validated design tokens (dataviz reference palette) -----------------------------------------
-_CSS = """
-:root{
-  --surface-1:#fcfcfb; --page:#f9f9f7; --text-1:#0b0b0b; --text-2:#52514e; --muted:#898781;
-  --grid:#e1e0d9; --baseline:#c3c2b7; --border:rgba(11,11,11,.10);
-  --series:#2a78d6; --track:#eef1f5;
-  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
-}
-@media (prefers-color-scheme:dark){:root{
-  --surface-1:#1a1a19; --page:#0d0d0d; --text-1:#fff; --text-2:#c3c2b7; --muted:#898781;
-  --grid:#2c2c2a; --baseline:#383835; --border:rgba(255,255,255,.10);
-  --series:#3987e5; --track:#26262400;
-}}
-@media (prefers-color-scheme:dark){:root{--track:#242422;}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--page);color:var(--text-1);
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.45}
-.wrap{max-width:1120px;margin:0 auto;padding:28px 22px 64px}
-h1{font-size:22px;margin:0 0 2px} h2{font-size:15px;margin:34px 0 10px;letter-spacing:.01em}
-.sub{color:var(--text-2);font-size:12.5px;margin:0 0 4px}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-top:16px}
-.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.tile .v{font-size:26px;font-weight:650} .tile .k{color:var(--text-2);font-size:12px;margin-top:2px}
-.card{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:6px 4px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--grid);vertical-align:middle}
-th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
-td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
-tr:last-child td{border-bottom:none}
+# Run-dashboard-only styling (ranked bars + small text). Shared palette/typography/tiles/
+# table/chip live in dashboard_kit.BASE_CSS; this is appended after it via kit.page.
+_EXTRA_CSS = """
+:root{--baseline:#c3c2b7; --series:#2a78d6; --track:#eef1f5;}
+@media (prefers-color-scheme:dark){:root{--baseline:#383835; --series:#3987e5; --track:#242422;}}
 .barrow td{border-bottom:none;padding:5px 12px}
 .bar-track{background:var(--track);border-radius:5px;height:16px;width:100%;min-width:80px}
 .bar-fill{background:var(--series);height:16px;border-radius:0 4px 4px 0;min-width:2px}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
-  padding:2px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
-.chip .ico{font-size:11px;line-height:1}
-.chip.good{color:var(--good)} .chip.warning{color:#8a6100} .chip.serious{color:#a2432a} .chip.critical{color:var(--critical)}
-@media (prefers-color-scheme:dark){.chip.warning{color:var(--warning)} .chip.serious{color:var(--serious)}}
-.chip.good .ico{color:var(--good)} .chip.warning .ico{color:var(--warning)}
-.chip.serious .ico{color:var(--serious)} .chip.critical .ico{color:var(--critical)}
-.foot{color:var(--muted);font-size:11.5px;margin-top:8px}
 .small{color:var(--text-2);font-size:12px}
-.note{color:var(--muted);font-size:12px;margin:6px 2px 0}
 """
-
-_ICONS = {"good": "✓", "warning": "⚠", "serious": "▲", "critical": "✕"}
-
-
-def _esc(x: Any) -> str:
-    return html.escape("" if x is None else str(x))
-
-
-def _fmt_int(x: Any) -> str:
-    try:
-        return f"{int(round(float(x))):,}"
-    except (TypeError, ValueError):
-        return "-"
-
-
-def _fmt_pct(x: Any, digits: int = 0) -> str:
-    try:
-        return f"{float(x) * 100:.{digits}f}%"
-    except (TypeError, ValueError):
-        return "-"
-
-
-def _fmt_num(x: Any, digits: int = 3) -> str:
-    try:
-        v = float(x)
-        return "-" if pd.isna(v) else f"{v:.{digits}g}"
-    except (TypeError, ValueError):
-        return "-"
-
-
-def _chip(level: str, label: str) -> str:
-    ico = _ICONS.get(level, "")
-    return f'<span class="chip {level}"><span class="ico">{ico}</span>{_esc(label)}</span>'
-
-
-def _tile(value: str, key: str) -> str:
-    return f'<div class="tile"><div class="v">{value}</div><div class="k">{_esc(key)}</div></div>'
 
 
 def _bar(count: int, max_count: int) -> str:
     pct = 0.0 if max_count <= 0 else 100.0 * count / max_count
     return f'<div class="bar-track"><div class="bar-fill" style="width:{pct:.1f}%"></div></div>'
-
-
-def _unwrap(obj: Any, root: str) -> Dict[str, Any]:
-    if isinstance(obj, dict) and isinstance(obj.get(root), dict):
-        return obj[root]
-    return obj if isinstance(obj, dict) else {}
 
 
 # -------------------------------------------------------------------------------------------------
@@ -142,6 +75,33 @@ def _recent_nonnull(df: Optional[pd.DataFrame], period_col: str, col: str) -> Op
     return d.drop_duplicates("agent_id", keep="last").set_index("agent_id")[col]
 
 
+_ABSTENTION_LABEL = {
+    "below_coaching_floor": "Performing adequately (below coaching floor)",
+    "no_qualified_signal": "No trustworthy signal (evidence gate)",
+}
+
+
+def _abstention_section(abst: pd.DataFrame, n_reco: int) -> str:
+    """Explicit 'no recommendation' section: coverage line + counts by reason."""
+    if abst is None or abst.empty:
+        return ""
+    n_abst = int(len(abst))
+    universe = n_reco + n_abst
+    coverage = (n_reco / universe) if universe else 0.0
+    reason_counts = abst["reason"].value_counts() if "reason" in abst.columns else {}
+    chips = " ".join(
+        f'<span class="chip"><b>{_fmt_int(int(v))}</b>&nbsp;{_esc(_ABSTENTION_LABEL.get(k, str(k)))}</span>'
+        for k, v in reason_counts.items()
+    )
+    return (
+        "<h2>No recommendation (abstentions)</h2>"
+        f'<p class="note"><b>{_fmt_int(n_reco)}</b> of <b>{_fmt_int(universe)}</b> coachable agents '
+        f"received a recommendation ({_fmt_pct(coverage, 1)}); <b>{_fmt_int(n_abst)}</b> were withheld "
+        "with an explicit reason (see abstentions.csv and decision_receipts).</p>"
+        f'<p class="note">{chips}</p>'
+    )
+
+
 def build_dashboard_html(
     recommendations: pd.DataFrame,
     signals: Optional[pd.DataFrame],
@@ -150,9 +110,11 @@ def build_dashboard_html(
     candidates: Optional[pd.DataFrame] = None,
     agents: Optional[pd.DataFrame] = None,
     generated_at: Optional[str] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> str:
     meta = (config or {}).get("meta") or {}
     generated_at = generated_at or datetime.now().strftime("%Y-%m-%d %H:%M")
+    abst = abstentions.copy() if abstentions is not None and not abstentions.empty else pd.DataFrame()
 
     recs = recommendations.copy() if recommendations is not None else pd.DataFrame()
     for c in ("agent_id", "topic"):
@@ -190,11 +152,15 @@ def build_dashboard_html(
     if candidates is not None and "dampened" in getattr(candidates, "columns", []):
         n_dampened = int(pd.to_numeric(candidates["dampened"], errors="coerce").fillna(0).astype(bool).sum())
 
+    n_abstained = int(len(abst))
+    thr_mode = (((config or {}).get("thresholds") or {}).get("signal_thresholds") or {}).get("mode", "-")
     tiles = [
         _tile(_fmt_int(total), "Recommendations"),
         _tile(_fmt_int(n_agents), "Agents coached"),
+        _tile(_fmt_int(n_abstained), "No recommendation"),
         _tile(_fmt_int(n_topics), "Distinct topics"),
         _tile(_fmt_int(n_dampened), "Dampened candidates"),
+        _tile(_esc(thr_mode), "Gating mode"),
         _tile(_esc(meta.get("data_snapshot", "-")), "Data snapshot"),
         _tile(_esc(meta.get("version", "-")), "Config version"),
     ]
@@ -207,7 +173,11 @@ def build_dashboard_html(
 
     if total == 0:
         parts.append('<p class="note">No recommendations were produced for this run.</p>')
+        parts.append(_abstention_section(abst, total))
         return _page("".join(parts))
+
+    # ============================ 1a. ABSTENTIONS ============================
+    parts.append(_abstention_section(abst, total))
 
     # ============================ 1b. BY TIER ============================
     # Surfaces the three-tier selection model: break-glass override / theme / single.
@@ -587,12 +557,7 @@ def _data_issues_section(
 
 
 def _page(body: str) -> str:
-    return (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Coaching Decision Engine — Run Dashboard</title>"
-        f"<style>{_CSS}</style></head><body><div class='wrap'>{body}</div></body></html>"
-    )
+    return _kit_page(body, title="Coaching Decision Engine — Run Dashboard", css_extra=_EXTRA_CSS)
 
 
 def write_dashboard(
@@ -604,6 +569,7 @@ def write_dashboard(
     candidates: Optional[pd.DataFrame] = None,
     agents: Optional[pd.DataFrame] = None,
     generated_at: Optional[str] = None,
+    abstentions: Optional[pd.DataFrame] = None,
 ) -> Path:
     """Build and write dashboard.html. Never raises on content edge cases."""
     html_str = build_dashboard_html(
@@ -614,6 +580,7 @@ def write_dashboard(
         candidates=candidates,
         agents=agents,
         generated_at=generated_at,
+        abstentions=abstentions,
     )
     path = Path(path)
     path.write_text(html_str, encoding="utf-8")

@@ -6,6 +6,7 @@ from typing import Any, Dict
 import pandas as pd
 
 from cde.engine.tie_breakers import deterministic_sort
+from cde.utils.config import unwrap_root
 
 
 @dataclass(frozen=True)
@@ -18,14 +19,6 @@ class Recommendation:
     priority_score: float
 
 
-def _unwrap_topic_map_block(config: Dict[str, Any]) -> Dict[str, Any]:
-    tm = config.get("topic_map") or {}
-    if not isinstance(tm, dict):
-        return {}
-    inner = tm.get("topic_map")
-    return inner if isinstance(inner, dict) else tm
-
-
 def _conversation_type_for(topic: str, config: Dict[str, Any]) -> str:
     """
     Deterministic mapping: active conversation_types.by_topic overrides topic_map defaults,
@@ -36,7 +29,7 @@ def _conversation_type_for(topic: str, config: Dict[str, Any]) -> str:
     if topic in by_topic_active:
         return by_topic_active[topic]
 
-    tm = _unwrap_topic_map_block(config)
+    tm = unwrap_root(config.get("topic_map"), "topic_map")
     tmap = tm.get("topic_to_conversation_type") or {}
     if isinstance(tmap, dict) and topic in tmap:
         return tmap[topic]
