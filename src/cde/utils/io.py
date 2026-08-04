@@ -37,13 +37,21 @@ def read_parquet_or_csv(path: Union[str, Path]) -> pd.DataFrame:
 def load_yaml(path: Union[str, Path]) -> Dict[str, Any]:
     """
     Load YAML file into a dict.
+
+    Encoding-tolerant: config files edited on Windows may carry a UTF-8 BOM or be
+    saved as cp1252. Try utf-8, then utf-8-sig, then cp1252 before giving up.
     """
     import yaml
 
     p = Path(path)
     if not p.exists():
         raise FileNotFoundError(str(p))
-    return yaml.safe_load(p.read_text(encoding="utf-8"))
+    for enc in ("utf-8", "utf-8-sig"):
+        try:
+            return yaml.safe_load(p.read_text(encoding=enc))
+        except UnicodeDecodeError:
+            continue
+    return yaml.safe_load(p.read_text(encoding="cp1252"))
 
 
 def _json_default(x: Any) -> Any:

@@ -4,16 +4,11 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from cde.utils.config import unwrap_root as _unwrap
 from cde.utils.ids import normalize_agent_id
 from cde.utils.logging import get_logger
 
 log = get_logger(__name__)
-
-
-def _unwrap(obj: Any, root: str) -> Dict[str, Any]:
-    if isinstance(obj, dict) and isinstance(obj.get(root), dict):
-        return obj[root]
-    return obj if isinstance(obj, dict) else {}
 
 
 def build_coaching_history(

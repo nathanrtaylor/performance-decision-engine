@@ -24,19 +24,13 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from cde.utils.config import unwrap_root as _unwrap_root
 from cde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
 _KEYS = ["agent_id", "period", "call_type", "metric"]
 _SCORE_COLS = ["score_level", "score_trend", "score_risk", "score_confidence", "score_total"]
-
-
-def _unwrap_root(obj: Any, root_key: str) -> Dict[str, Any]:
-    if not isinstance(obj, dict):
-        return {}
-    inner = obj.get(root_key)
-    return inner if isinstance(inner, dict) else obj
 
 
 def _priority_model(config: Dict[str, Any]) -> tuple[float, float, float]:

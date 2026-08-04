@@ -7,7 +7,9 @@ surfaced as PROPOSE vs HOLD, but a human SME still makes the final call in theme
 """
 from __future__ import annotations
 
+import dataclasses
 from dataclasses import dataclass
+from typing import Any, Dict, Optional
 
 # 8-week decision window (matches cde.temporal.aggregate window_weeks default).
 WINDOW_WEEKS = 8
@@ -43,3 +45,15 @@ class DiscoveryThresholds:
     max_theme_size: int = 6
 
     window_weeks: int = WINDOW_WEEKS
+
+    @classmethod
+    def from_config(cls, config: Optional[Dict[str, Any]] = None) -> "DiscoveryThresholds":
+        """Build from the optional ``theme_discovery`` block in active.yaml.
+
+        Only recognized fields override defaults; an absent/empty block reproduces
+        ``DiscoveryThresholds()`` exactly (so today's proposals are unchanged).
+        """
+        block = (config or {}).get("theme_discovery") or {}
+        known = {f.name for f in dataclasses.fields(cls)}
+        overrides = {k: v for k, v in block.items() if k in known}
+        return dataclasses.replace(cls(), **overrides)

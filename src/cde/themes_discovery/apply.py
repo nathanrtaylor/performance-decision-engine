@@ -58,5 +58,5 @@ def _append_changelog(path: Path, report: ApplyReport, *, approver: Optional[str
         "from proposed_themes.yaml:",
         *[f"  - {d}" for d in report.deferred],
     ]
-    existing = path.read_text(encoding="utf-8") if path.exists() else "# Benchmark changelog\n"
+    existing = path.read_text(encoding="utf-8") if path.exists() else "# Governance changelog\n"
     path.write_text(existing + "\n".join(block) + "\n", encoding="utf-8")

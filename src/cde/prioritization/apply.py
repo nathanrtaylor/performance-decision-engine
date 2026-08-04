@@ -8,6 +8,7 @@ import pandas as pd
 
 from cde.prioritization.weights import get_metric_weight, get_topic_weight, _unwrap_root
 from cde.prioritization.eligibility import apply_eligibility
+from cde.utils.frames import require_cols as _require_cols
 
 
 def _prioritization_flags(config: Dict[str, Any]) -> tuple[bool, Dict[str, bool]]:
@@ -41,12 +42,6 @@ def _load_topic_map(config: Dict[str, Any]) -> Dict[str, Any]:
     # 1) {"topic_map": {...}} (recommended)
     # 2) {...} (if you load inner dict directly)
     return tm.get("topic_map", tm) if isinstance(tm, dict) else {}
-
-
-def _require_cols(df: pd.DataFrame, cols: list[str], name: str) -> None:
-    missing = [c for c in cols if c not in df.columns]
-    if missing:
-        raise ValueError(f"{name} missing required columns {missing}. cols={df.columns.tolist()}")
 
 
 def _canonicalize_key_cols(df: pd.DataFrame) -> pd.DataFrame:

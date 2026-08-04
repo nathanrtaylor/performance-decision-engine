@@ -8,24 +8,12 @@ import numpy as np
 import pandas as pd
 
 from cde.signals.benchmarks import get_benchmark_value, benchmark_gap
+from cde.utils.config import unwrap_root
 from cde.utils.logging import get_logger
 from typing import Any, Optional
 from cde.signals.load_inputs import load_normalized_for_signals
 
 log = get_logger(__name__)
-
-
-def _unwrap_root(cfg: Dict[str, Any], root_key: str) -> Dict[str, Any]:
-    """
-    Supports either shape:
-      - cfg[root_key] == {root_key: {...}}  (recommended)
-      - cfg[root_key] == {...}              (already unwrapped)
-    Returns the inner dict.
-    """
-    block = cfg.get(root_key) or {}
-    if isinstance(block, dict) and root_key in block and isinstance(block[root_key], dict):
-        return block[root_key]
-    return block if isinstance(block, dict) else {}
 
 
 def _to_float(x: Any) -> Optional[float]:
@@ -107,8 +95,8 @@ def build_signals(normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]) -
       prev_value, trend, volatility, confidence,
       benchmark, gap
     """
-    source_catalog = _unwrap_root(config, "source_catalog")
-    metric_catalog = _unwrap_root(config, "metric_catalog")
+    source_catalog = unwrap_root(config.get("source_catalog"), "source_catalog")
+    metric_catalog = unwrap_root(config.get("metric_catalog"), "metric_catalog")
 
     sources_cfg = (source_catalog.get("sources") or {})
     metrics_cfg = (metric_catalog.get("metrics") or {})

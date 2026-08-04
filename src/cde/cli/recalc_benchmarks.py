@@ -26,21 +26,21 @@ from cde.benchmarks_recalc.recompute import recompute_all
 log = get_logger(__name__)
 
 
-def main() -> None:
+def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description="Recalculate benchmarks from the latest extract (propose-only).")
     ap.add_argument("--configs-dir", type=str, default="configs", help="Path to configs directory")
     ap.add_argument("--out-dir", type=str, default=None, help="Output folder (default outputs/benchmark_recalc/<ts>)")
     ap.add_argument("--raw-dir", type=str, default=None, help="Raw extract dir; else resolved from active.yaml data_snapshot")
     ap.add_argument("--apply", action="store_true", help="AUTHORIZED: write value updates into benchmarks.yaml")
     ap.add_argument("--approver", type=str, default=None, help="Name recorded in the changelog when --apply is used")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     configs_dir = Path(args.configs_dir)
     out_dir = Path(args.out_dir) if args.out_dir else Path("outputs/benchmark_recalc") / datetime.now().strftime("%Y-%m-%d_%H%M%S")
     out_dir.mkdir(parents=True, exist_ok=True)
 
     config = resolve_active_config(configs_dir)
-    thr = RecalcThresholds()
+    thr = RecalcThresholds.from_config(config)
 
     raw = load_latest_extract(configs_dir, config, Path(args.raw_dir) if args.raw_dir else None)
     prepped = prep_frames(raw, config)
