@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import argparse
+from datetime import datetime
 from pathlib import Path
 
 from cde.governance.audit import RunAuditor
-from cde.governance.versioning import resolve_active_config, resolve_raw_export_dir
+from cde.governance.versioning import config_content_hash, resolve_active_config, resolve_raw_export_dir
 from cde.ingestion.extract import load_raw_exports
 from cde.ingestion.normalize import normalize_inputs
 from cde.ingestion.validate import validate_inputs
@@ -16,7 +17,7 @@ from cde.prioritization.apply import build_topic_candidates
 from cde.engine.select import select_recommendations
 from cde.engine.abstain import apply_abstention
 from cde.engine.receipts import build_receipts
-from cde.simulation.exports import export_run_artifacts
+from cde.reporting.artifacts import export_run_artifacts
 from cde.signals.thresholds import apply_signal_thresholds
 from cde.temporal.aggregate import aggregate_scores_window
 
@@ -37,7 +38,7 @@ def _resolve_snapshot_id(raw_dir: Path) -> str:
     return raw_dir.name
 
 
-def main() -> None:
+def main(argv=None) -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end Coaching Decision Engine pipeline.")
     parser.add_argument(
         "--raw-dir",
@@ -46,28 +47,67 @@ def main() -> None:
         help="Raw export folder (e.g. data/raw/weekly/2026-02-16). "
         "If omitted, resolved from data_snapshot in configs/active.yaml.",
     )
-    parser.add_argument("--out-dir", type=str, required=True, help="Path to outputs/runs/<timestamp> folder to write artifacts")
+    parser.add_argument("--out-dir", type=str, default=None, help="Output folder for artifacts. Default: outputs/runs/<run-id> (auto-timestamped, matching recalc/discover).")
     parser.add_argument("--configs-dir", type=str, default="configs", help="Path to configs directory")
-    parser.add_argument("--run-id", type=str, default=None, help="Optional run id (otherwise derived by auditor)")
+    parser.add_argument("--run-id", type=str, default=None, help="Run id. Default: local timestamp; also names the auto out-dir so run-id and folder always match.")
     parser.add_argument(
         "--write-point-in-time-scores",
         action="store_true",
         help="Write scores.csv (per-period point-in-time scores). Recommendations use scores_windowed.csv only.",
     )
-    args = parser.parse_args()
+    parser.add_argument(
+        "--no-preflight",
+        action="store_true",
+        help="Skip the config/snapshot preflight (config integrity + raw-data checks) before running.",
+    )
+    parser.add_argument(
+        "--strict-preflight",
+        action="store_true",
+        help="Treat preflight warnings as fatal (abort the run).",
+    )
+    args = parser.parse_args(argv)
 
-    out_dir = Path(args.out_dir)
+    # Unified run-id / out-dir: one timestamp names both, so the folder always matches the
+    # audited run_id. An explicit --out-dir is honored as-is (run_id still derived if omitted).
+    run_id = args.run_id
+    if args.out_dir:
+        out_dir = Path(args.out_dir)
+    else:
+        if run_id is None:
+            run_id = datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        out_dir = Path("outputs/runs") / run_id
     out_dir.mkdir(parents=True, exist_ok=True)
     configs_dir = Path(args.configs_dir)
 
     config = resolve_active_config(configs_dir)
     raw_dir = Path(args.raw_dir) if args.raw_dir else resolve_raw_export_dir(configs_dir, config)
 
+    # Preflight: validate config cross-references + raw snapshot before the ~10 min run.
+    # Additive by design -- the current, valid config passes, so a normal run is unaffected;
+    # only a genuinely broken config (bad direction, unregistered metric, missing table) aborts.
+    if not args.no_preflight:
+        from cde.governance.config_lint import lint_config, preflight_snapshot
+
+        report = lint_config(config)
+        report.merge(preflight_snapshot(raw_dir, config))
+        print("Preflight:")
+        print(report.render(strict=args.strict_preflight))
+        if report.errors or (args.strict_preflight and report.warnings):
+            raise SystemExit(
+                "Preflight failed. Fix the errors above, or re-run with --no-preflight to bypass."
+            )
+
     # Stamp provenance from the *resolved* snapshot so receipts + manifest reflect the real data
     # used (not a hand-edited meta value). Must happen before auditor.record_inputs copies meta.
-    config["meta"] = {**(config.get("meta") or {}), "data_snapshot": _resolve_snapshot_id(raw_dir)}
+    # config_hash is computed from config *content* (excludes data_snapshot) so provenance tracks
+    # the actual governed configs even if meta.version wasn't hand-bumped.
+    config["meta"] = {
+        **(config.get("meta") or {}),
+        "data_snapshot": _resolve_snapshot_id(raw_dir),
+        "config_hash": config_content_hash(config),
+    }
 
-    auditor = RunAuditor(out_dir=out_dir, run_id=args.run_id)
+    auditor = RunAuditor(out_dir=out_dir, run_id=run_id)
     auditor.start_run()
 
     raw = load_raw_exports(raw_dir)

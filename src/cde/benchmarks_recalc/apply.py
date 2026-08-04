@@ -130,5 +130,5 @@ def _append_changelog(path: Path, report: ApplyReport, *, approver: Optional[str
     if report.skipped_structural:
         block.append("- deferred (manual merge from proposed_benchmarks.yaml):")
         block.extend(f"  - {s}" for s in report.skipped_structural)
-    existing = path.read_text(encoding="utf-8") if path.exists() else "# Benchmark changelog\n"
+    existing = path.read_text(encoding="utf-8") if path.exists() else "# Governance changelog\n"
     path.write_text(existing + "\n".join(block) + "\n", encoding="utf-8")

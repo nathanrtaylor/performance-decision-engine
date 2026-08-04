@@ -5,47 +5,24 @@ benchmarks_recalc.dashboard) so it stays self-contained.
 """
 from __future__ import annotations
 
-import html
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Optional
 
+from cde.reporting.dashboard_kit import esc as _esc, fmt_pct, chip, tile as _tile, page as _kit_page
+
 from . import config as C
 from .compare import CompareResult
 
-_CSS = """
-:root{
-  --surface-1:#fcfcfb; --page:#f9f9f7; --text-1:#0b0b0b; --text-2:#52514e; --muted:#898781;
-  --grid:#e1e0d9; --border:rgba(11,11,11,.10);
-  --good:#0ca30c; --warning:#fab219; --serious:#ec835a; --critical:#d03b3b;
-}
-@media (prefers-color-scheme:dark){:root{
-  --surface-1:#1a1a19; --page:#0d0d0d; --text-1:#fff; --text-2:#c3c2b7; --muted:#898781;
-  --grid:#2c2c2a; --border:rgba(255,255,255,.10);
-}}
-*{box-sizing:border-box}
-body{margin:0;background:var(--page);color:var(--text-1);
-  font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:14px;line-height:1.45}
-.wrap{max-width:1180px;margin:0 auto;padding:28px 22px 64px}
-h1{font-size:22px;margin:0 0 2px} h2{font-size:15px;margin:34px 0 10px}
-.sub{color:var(--text-2);font-size:12.5px;margin:0 0 4px}
-.note{color:var(--muted);font-size:12px;margin:6px 2px 0}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-top:16px}
-.tile{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
-.tile .v{font-size:26px;font-weight:650} .tile .k{color:var(--text-2);font-size:12px;margin-top:2px}
-.card{background:var(--surface-1);border:1px solid var(--border);border-radius:10px;padding:2px 2px;margin-top:8px}
-table{border-collapse:collapse;width:100%;font-size:13px}
-th,td{text-align:left;padding:8px 12px;border-bottom:1px solid var(--grid);vertical-align:top}
-th{color:var(--muted);font-weight:600;font-size:11.5px;text-transform:uppercase;letter-spacing:.03em}
-td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
-tr:last-child td{border-bottom:none}
-.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;
-  padding:2px 9px;border-radius:999px;border:1px solid var(--border);white-space:nowrap}
-.chip.good{color:var(--good)} .chip.warning{color:#8a6100} .chip.serious{color:#a2432a}
-.chip.muted{color:var(--muted)}
-@media (prefers-color-scheme:dark){.chip.warning{color:var(--warning)} .chip.serious{color:var(--serious)}}
+# Discovery-only styling; shared tokens/typography/chip (incl. .chip .ico) live in
+# dashboard_kit.BASE_CSS -- which also gives this dashboard the icon styling it previously lacked.
+_EXTRA_CSS = """
+.wrap{max-width:1180px}
+h2{letter-spacing:0}
+td{vertical-align:top} td.num,th.num{white-space:nowrap}
+.card{padding:2px 2px;margin-top:8px}
 .just{color:var(--text-2);font-size:12px} .mcell{font-weight:600}
-.foot{color:var(--muted);font-size:11.5px;margin-top:10px}
+.foot{margin-top:10px}
 """
 
 _VERDICT_STYLE = {
@@ -53,10 +30,6 @@ _VERDICT_STYLE = {
     C.HOLD: ("serious", "▲"),
     C.SKIPPED: ("muted", "–"),
 }
-
-
-def _esc(x: Any) -> str:
-    return html.escape("" if x is None else str(x))
 
 
 def _fmt_corr(x: Any) -> str:
@@ -67,28 +40,16 @@ def _fmt_corr(x: Any) -> str:
 
 
 def _fmt_pct(x: Any) -> str:
-    try:
-        return f"{float(x) * 100:.0f}%"
-    except (TypeError, ValueError):
-        return "—"
+    return fmt_pct(x, digits=0)
 
 
 def _chip(verdict: str) -> str:
     level, ico = _VERDICT_STYLE.get(verdict, ("muted", "•"))
-    return f'<span class="chip {level}"><span class="ico">{ico}</span>{_esc(verdict)}</span>'
-
-
-def _tile(value: str, key: str) -> str:
-    return f'<div class="tile"><div class="v">{value}</div><div class="k">{_esc(key)}</div></div>'
+    return chip(level, verdict, ico)
 
 
 def _page(body: str) -> str:
-    return (
-        "<!doctype html><html lang='en'><head><meta charset='utf-8'>"
-        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-        "<title>Theme Discovery</title>"
-        f"<style>{_CSS}</style></head><body><div class='wrap'>{body}</div></body></html>"
-    )
+    return _kit_page(body, title="Theme Discovery", css_extra=_EXTRA_CSS)
 
 
 def build_discovery_dashboard_html(

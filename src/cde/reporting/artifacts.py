@@ -1,4 +1,4 @@
-# src/cde/simulation/exports.py
+# src/cde/reporting/artifacts.py
 
 from __future__ import annotations
 

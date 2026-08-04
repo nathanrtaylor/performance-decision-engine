@@ -130,16 +130,13 @@ tie_breakers:
     - "Strengthen Empathy Statements"
     - "Use Clear Transition Statements"
 
-# conversation_types.by_topic overrides topic_map.topic_to_conversation_type for those keys;
-# other topics use the topic map, then conversation_types.default.
+# Conversation type per topic is defined once, in topic_map.yaml
+# (topic_to_conversation_type); topics not listed there fall back to the default
+# below. An optional conversation_types.by_topic block may still be added here to
+# override the topic map for specific topics, but is intentionally empty because
+# every override previously listed was identical to the topic map.
 conversation_types:
   default: "Performance Coaching"
-  by_topic:
-    "Reduce Client Transfer Rate": "Performance Correction"
-    "Reduce Cancel Rate": "Performance Correction"
-    "Increase Guided Flow Adoption": "Tool Enablement"
-    "Increase Expert Assist Usage": "Tool Enablement"
-    "Improve Smart Offer Adoption": "Tool Enablement"
 
 # ---------------------------------------------------
 # Metadata (Provenance)

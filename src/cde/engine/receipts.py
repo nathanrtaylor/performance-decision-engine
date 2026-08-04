@@ -63,6 +63,8 @@ def build_receipts(
         "data_snapshot": meta.get("data_snapshot"),
         "engine_version": meta.get("engine_version", "0.1.0"),
     }
+    # Content hash of the resolved config, stamped top-level for per-decision traceability.
+    config_hash = meta.get("config_hash")
 
     receipts = []
     for _, r in recs.iterrows():
@@ -83,6 +85,7 @@ def build_receipts(
             "tier": tier,
             "excluded_signals": excluded_for_agent,
             "provenance": provenance,
+            "config_hash": config_hash,
         }
 
         if tier == "theme":
@@ -95,7 +98,7 @@ def build_receipts(
     # Abstention receipts (explicit, explained non-recommendations)
     if has_abstentions:
         for _, a in abstentions.iterrows():
-            receipts.append(_abstention_receipt(a, provenance))
+            receipts.append(_abstention_receipt(a, provenance, config_hash))
 
     return pd.DataFrame(receipts)
 
@@ -189,7 +192,7 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
     }
 
 
-def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any]) -> Dict[str, Any]:
+def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any], config_hash: Optional[str] = None) -> Dict[str, Any]:
     reason = a.get("reason")
     best_topic = a.get("best_topic")
     best_ps = _float_or_none(a.get("best_priority_score"))
@@ -215,6 +218,7 @@ def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any]) -> Dict[str, A
             "why_not_others": "No topic cleared the coaching floor / evidence gates.",
         },
         "provenance": provenance,
+        "config_hash": config_hash,
     }
 
 

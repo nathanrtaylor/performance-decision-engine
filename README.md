@@ -498,6 +498,23 @@ Receipts are stored as JSONL for auditability and downstream ingestion.
 
 # Appendix A — Troubleshooting & Diagnostics
 
+> **Automated preflight.** Most of the checks below now run in one command:
+>
+> ```bash
+> python -m cde.cli.check_config            # config integrity + raw-snapshot preflight
+> python -m cde.cli.check_config --strict   # also fail on warnings (CI)
+> ```
+>
+> It validates config cross-references (metric_catalog ⇄ topic_map ⇄ benchmarks ⇄
+> themes ⇄ signal_thresholds ⇄ coaching_history_map, plus every `direction` value)
+> and folds the raw-snapshot diagnostics #1 (calc/denominator health), #4 (topic
+> coverage), and #5 (period alignment) below. The same preflight runs automatically
+> at the start of `run_pipeline` (disable with `--no-preflight`, escalate warnings
+> with `--strict-preflight`). Errors abort before the ~10 min run; a currently-valid
+> config passes unchanged. The manual recipes below remain for post-run debugging of
+> a *specific* output dir (#2, #3, #6 inspect computed artifacts the preflight can't
+> see ahead of time).
+
 ## 1. Verify Raw Snapshot Health
 
 ```bash
@@ -541,7 +558,7 @@ If many metrics are unmapped → recommendations will be blank.
 ## 5. Validate Period Alignment
 
 ```bash
-python -c "import pandas as pd; df=pd.read_csv('data/raw/weekly/latest/agent_metrics.csv'); s=pd.to_datetime(df['period']); print(s.dt.day_name().value_counts())"
+python -c "import pandas as pd; df=pd.read_csv('data/raw/weekly/latest/agent_metrics.csv'); s=pd.to_datetime(df['week_ending']); print(s.dt.day_name().value_counts())"
 ```
 
 All weekly periods must align to the same weekday.
