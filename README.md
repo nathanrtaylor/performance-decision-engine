@@ -35,6 +35,8 @@ Prioritization (Versioned Weights)
         ↓  
 Deterministic Topic Selection  
         ↓  
+Theme / Break-Glass Selection (three-tier)  
+        ↓  
 Decision Receipts  
 
 ## Core Design Principles
@@ -58,6 +60,7 @@ configs/
     metric_catalog.yaml
     topic_map.yaml
     benchmarks.yaml
+    themes.yaml
   thresholds/
     signal_thresholds.yaml
   priorities/
@@ -82,12 +85,18 @@ src/cde/
   simulation/
   governance/
   benchmarks_recalc/          # guardrail-gated benchmark recalculation (propose-only)
+  themes_discovery/           # guardrail-gated theme discovery (propose-only)
   cli/
 
 outputs/
   runs/<timestamp>/
   benchmark_recalc/<id>/      # recalc dashboard + proposed change-set (not a pipeline run)
+  theme_discovery/<id>/       # discovery dashboard + proposed themes (not a pipeline run)
 ```
+
+The `engine/` package holds the three-tier selection layer: `select.py` (orchestrator),
+`break_glass.py` (Tier 1 override), `themes.py` (Tier 2 themes), and `recommend.py` (Tier 3
+single-behavior argmax, unchanged).
 
 ---
 
@@ -102,6 +111,7 @@ Each configuration file has a single responsibility.
 | Topic semantics | topic_map.yaml | Metric → coaching topic mapping |
 | Coaching history | coaching_history_map.yaml | Coaching behavior → topic crosswalk (for dampening) |
 | Benchmarks | benchmarks.yaml | Target/reference values |
+| Coaching themes | themes.yaml | Theme name → member metrics + conversation type (SME-curated) |
 | Signal gating | signal_thresholds.yaml | Eligibility rules |
 | Business emphasis | priorities/*.yaml | Versioned weight configurations |
 | Active pointer | active.yaml | Selects current config set; may include `data_snapshot` (raw path resolution and default `required_tables` from `expected_sources`) |
@@ -199,7 +209,7 @@ python -m cde.cli.run_pipeline `
 
 ## Outputs
 
-- recommendations.csv
+- recommendations.csv (one row per agent; `tier` column = break_glass | theme | single)
 - decision_receipts.jsonl
 - excluded_signals.csv
 - scores_windowed.csv (primary score table used for topic candidates)
@@ -207,7 +217,7 @@ python -m cde.cli.run_pipeline `
 - eligible_signals.csv
 - signals.csv (all built signals before gating; diagnostic)
 - topic_candidates.csv (per-agent topic candidates after weighting + dampening; diagnostic)
-- dashboard.html (self-contained run summary: recs by topic, splits by icp_client/mascot, metric warning signs)
+- dashboard.html (self-contained run summary: recs by tier, recs by topic, splits by icp_client/mascot, metric warning signs)
 - manifest.json
 - config_snapshot/
 
@@ -237,6 +247,106 @@ engine topics via the governed crosswalk `configs/mappings/coaching_history_map.
 `dampening.periods` weeks of the decision period. With `dampening.mode: multiply` the topic's
 `priority_score` is scaled by `dampening.multiplier` (kept in contention); with `suppress` it is removed.
 If no `coaching_history.csv` is present, dampening is a no-op.
+
+---
+
+# Coaching Themes & Break-Glass Selection
+
+Above single-metric selection sits a **three-tier** selection layer (`src/cde/engine/select.py`).
+It still emits **exactly one recommendation per agent**, but that recommendation can now be a
+*theme* (a pattern across several behaviors) or a *break-glass* single (a critical override), not
+only the single best behavior. The tier is recorded on each recommendation (`tier` column) and in
+the receipt.
+
+Precedence, per agent (period, call_type):
+
+1. **Break-glass single (override)** — Only metrics carrying a `break_glass` block in
+   `metric_catalog.yaml` are eligible. Over the **latest `break_glass.recency_weeks` weeks** (a short
+   recency window — not the 8-week decision window), an agent trips break-glass when it is in the
+   **worst `worst_pct`% of its ICP_Client × metric cohort** (raw cohort percentile on the
+   direction-adjusted "bad" axis) **and** is below benchmark. A tripped metric overrides any theme.
+   This guarantees the worst performers on a truly critical metric get coached on it specifically,
+   only when the deficiency is both deep and recent. Computed from `eligible_signals` (the only frame
+   carrying the ICP_Client cohort).
+2. **Theme** — `configs/mappings/themes.yaml` maps a theme name to its member metrics and a
+   `conversation_type`. A theme **qualifies** for an agent when at least `theme_selection.count_fraction`
+   (default 0.5, i.e. ≥50%) of its members are *deficient*, where deficient = evidence-gated (already
+   enforced upstream) **and** `score_level ≥ theme_selection.score_level_floor`. That floor is
+   deliberately looser than the solo-coaching bar: a metric not worth coaching on its own can still
+   count toward a pattern. Among qualifying themes, the highest combined score
+   (`theme_selection.aggregate` = mean|sum of member scores) wins.
+3. **Single (fallback)** — today's deterministic single-behavior argmax
+   (`recommend_for_population`), used when no theme qualifies and no break-glass trips. Unchanged.
+
+**Backward compatible:** with no `themes.yaml` and no `break_glass` flags configured, tiers 1 and 2
+are inert and every agent falls through to the single-behavior result — identical to the pre-theme
+engine (plus an additive `tier` column).
+
+Configuration:
+
+```yaml
+# configs/active.yaml
+theme_selection:
+  count_fraction: 0.5      # >= this fraction of a theme's members must be deficient to qualify
+  score_level_floor: 0.15  # single low global "deficient" floor (looser than the solo bar)
+  aggregate: mean          # mean | sum: how member scores combine into the theme score
+break_glass:
+  recency_weeks: 2         # latest-weeks slice for the override (short recency window)
+  worst_pct: 10            # default worst-percent cohort tail; per-metric block can override
+```
+
+```yaml
+# configs/mappings/metric_catalog.yaml — per-metric override flag (curated few only)
+cancel_rate:
+  break_glass: { enabled: true, worst_pct: 5 }
+```
+
+Themes are **human-curated**: a theme is added to `themes.yaml` only by an SME. The discovery tool
+below can *propose* candidate themes, but never writes them.
+
+---
+
+# Discovering Themes
+
+`themes.yaml` is a curated artifact. The **theme discovery** module (`src/cde/themes_discovery/`)
+looks for metrics that **move together** across the population and **proposes** candidate themes for
+an SME to review. It runs independently of the decision pipeline (it only *reads* the same config +
+extract) and is **propose-only**: it never edits `themes.yaml`.
+
+Trigger it by running:
+
+```bash
+python -m cde.cli.discover_themes `
+  --configs-dir configs `
+  --out-dir outputs/theme_discovery/2026-03-03_themes
+```
+
+`--raw-dir` is optional (resolved from `data_snapshot` in `active.yaml`, like the pipeline).
+
+## How a theme is proposed
+
+For each ICP_Client cohort, every metric's 8-week windowed mean per agent is placed on a common
+**direction-adjusted "bad" axis** (`bad = gap if lower_is_better else -gap`) so a low-is-better and a
+high-is-better metric that reflect the same underlying problem show up as *positively* correlated.
+Metrics are Pearson-correlated across agents within the cohort; pairs that clear the correlation and
+cohort-coverage guardrails are clustered (connected components) into candidate themes. Guardrails:
+sample sufficiency (`min_sample`), correlation strength (`min_correlation`), cohort coverage
+(`min_cohort_coverage`), and theme-size sanity. Thresholds live in
+`src/cde/themes_discovery/config.py` (`DiscoveryThresholds`). Per-candidate verdict is `PROPOSE`,
+`HOLD` (weak/inconsistent), or `SKIPPED` (insufficient sample).
+
+## Outputs (in `--out-dir`)
+
+- `dashboard.html` — candidate themes with per-theme verdict, mean correlation, cohort coverage.
+- `proposed_themes.yaml` — the PROPOSE candidates in `themes.yaml` shape (a suggestion to merge).
+- `theme_diff.json`, `summary.txt` — full detail.
+
+## Applying
+
+There is no automatic apply: a theme enters the engine **only when a human SME merges it** into
+`configs/mappings/themes.yaml` (renaming the candidate and confirming its `conversation_type`). Even
+`--apply --approver "<name>"` does **not** edit `themes.yaml`; it only records a governance review
+entry in `configs/governance/changelog.md` and defers every proposal for manual merge.
 
 ---
 
@@ -309,6 +419,14 @@ Every recommendation includes:
 - Data snapshot ID
 - Engine version
 
+The receipt shape adapts to the selection `tier`:
+
+- **single** — one driver metric + competing topics (as before).
+- **theme** — the member metrics that drove it (multiple drivers) plus a `theme_membership` block
+  (`n_deficient` / `n_members` / deficient metrics).
+- **break_glass** — the tripped metric with `override: true`, `reason: "break_glass"`, and the
+  agent's cohort percentile.
+
 Receipts are stored as JSONL for auditability and downstream ingestion.
 
 ---
@@ -321,6 +439,8 @@ Receipts are stored as JSONL for auditability and downstream ingestion.
 - Configuration changes are versioned and auditable.
 - Benchmark changes are *proposed* by the recalculation module and applied only with explicit
   authorization (`--apply --approver`), which records a `configs/governance/changelog.md` entry.
+- Coaching themes are *proposed* by the discovery module but added to `themes.yaml` only by a human
+  SME; discovery never writes themes automatically.
 - Ungoverned overrides are considered system failure.
 
 ---
@@ -406,9 +526,11 @@ if scores["score_total"].max() == 0:
 - Configurable gating
 - Versioned priority weighting
 - Deterministic topic selection
-- Explainable receipts
+- Three-tier selection: break-glass override → coaching theme → single behavior
+- Explainable receipts (single / theme / break-glass variants)
 - Snapshot reproducibility
 - Guardrail-gated benchmark recalculation (propose-only, authorized apply)
+- Guardrail-gated theme discovery (propose-only; themes are human-added)
 
 ---
 

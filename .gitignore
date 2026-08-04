@@ -32,6 +32,7 @@ Thumbs.db
 # ---- generated artifacts ----
 outputs/runs/**
 outputs/benchmark_recalc/**
+outputs/theme_discovery/**
 
 # ---- data (generated or external drops) ----
 data/raw/**
