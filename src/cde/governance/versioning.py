@@ -123,6 +123,8 @@ def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
         "normalization",
         "topic_map_options",
         "data_snapshot",
+        "theme_selection",
+        "break_glass",
     ]
     for k in passthrough_keys:
         if k in active:

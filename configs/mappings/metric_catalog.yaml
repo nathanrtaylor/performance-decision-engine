@@ -122,6 +122,13 @@ metric_catalog:
       benchmark:
         type: config
         key: cancel_rate
+      # break_glass: a Tier-1 override metric. Over the latest break_glass.recency_weeks
+      # weeks, an agent in the worst `worst_pct`% of its ICP_Client cohort AND below
+      # benchmark is coached on this metric directly, overriding any theme. Only metrics
+      # carrying this block are override-eligible; recency_weeks inherits active.yaml.
+      break_glass:
+        enabled: true
+        worst_pct: 5
 
     erp:
       source: agent_metrics
