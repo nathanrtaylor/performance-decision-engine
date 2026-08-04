@@ -122,6 +122,157 @@ Only `priorities/` and `active.yaml` should change frequently.
 
 ---
 
+# Adding a New Coachable Metric
+
+A metric has to be registered consistently across several config files before the pipeline will
+score it, recommend it, and explain it. The config-integrity linter (run automatically in the
+[preflight](#signal-gating--abstention), or on demand with `python -m cde.cli.check_config`) will
+flag any missing cross-reference — but it reports them one broken edge at a time. This section is
+the **happy path**: do all of the steps below in one pass and the metric passes the linter and
+becomes coachable on the first run.
+
+**Assumption:** the metric already comes from a query/source the pipeline ingests — i.e. a row for
+it already lands in an existing tall source table (e.g. `agent_metrics`), keyed by some metric-name
+string. If that is true, **no extraction or `source_catalog.yaml` change is needed**: `build_signals`
+selects metrics by matching `(source, source_metric_key)` from `metric_catalog` against the rows
+that source already emits. (If the metric is *not* yet in any query, extract it first — that is a
+separate, upstream task.)
+
+### The five surfaces (2 optional)
+
+Edit these in order. Steps 1–3 are **required** for a metric that should be recommended (the linter
+errors without them); steps 4–5 are optional refinements.
+
+| # | File | What you add | Required? |
+|---|------|--------------|-----------|
+| 1 | `mappings/metric_catalog.yaml` | The metric definition (identity, direction, category, benchmark source) | **Required** |
+| 2 | `mappings/topic_map.yaml` | Metric → coaching topic, and topic → conversation type | **Required** (eligible metric with no topic can never be recommended) |
+| 3 | `mappings/benchmarks.yaml` | The reference/target value(s) | **Required** when `benchmark.type: config` (the standard case) |
+| 4 | `thresholds/signal_thresholds.yaml` | Per-metric evidence-gating override | Optional — inherits `by_category` |
+| 5 | `priorities/<active>.yaml` | Per-metric weight override | Optional — inherits `by_category` |
+| (+) | `mappings/coaching_history_map.yaml` | Delivered-coaching behavior → this topic (so it dampens) | Optional — only for recency dampening |
+
+### Worked example
+
+Adding a new business metric `reopen_rate` (reopened tickets / resolved tickets; lower is better),
+already emitted by `agent_metrics` under the source key `"reopen rate"`.
+
+**1. `mappings/metric_catalog.yaml`** — under `metric_catalog.metrics:`, add:
+
+```yaml
+    reopen_rate:
+      source: agent_metrics
+      source_metric_key: "reopen rate"    # EXACT metric string as it appears in the source rows
+      category: business                  # MUST be a key in metric_catalog.category_defaults
+      direction: lower_is_better          # REQUIRED: higher_is_better | lower_is_better
+                                          #   (a blank/misspelled direction is a hard linter error —
+                                          #    it would otherwise silently coach the wrong tail)
+      unit: rate
+      description: "Reopened tickets / resolved tickets."
+      required: false
+      eligible_for_prioritization: true   # THIS is what makes the metric recommendable
+      computation_override:
+        expected_calculation: rate        # rate | average
+        denominator_min: 20               # min denominator for an evidence-valid weekly row
+      benchmark:
+        type: config                      # value is supplied by benchmarks.yaml (step 3)
+```
+
+**2. `mappings/topic_map.yaml`** — register the topic in **both** maps:
+
+```yaml
+  metric_to_topic:
+    reopen_rate: "Reduce Reopen Rate"           # topic names are durable, exec-recognizable strings
+
+  topic_to_conversation_type:
+    "Reduce Reopen Rate": "Performance Correction"   # else the recommendation falls back to the default type
+```
+
+**3. `mappings/benchmarks.yaml`** — because `benchmark.type: config`, add an entry (required, or the
+linter errors). `default` is mandatory; per-cohort overrides are optional and fall back to `default`:
+
+```yaml
+  reopen_rate:
+    default: 0.08
+    by_icp_client:            # optional; keys are lowercase, matched case-insensitively
+      mob-verizon: 0.06
+      pss-verizon: 0.09
+```
+
+**4. `thresholds/signal_thresholds.yaml`** *(optional)* — only if this metric needs different gating
+than its category default. Otherwise it inherits `by_category.business`:
+
+```yaml
+  by_metric:
+    reopen_rate:
+      min_denominator_default: 15
+```
+
+**5. `priorities/<active>.yaml`** *(optional)* — only to weight this metric differently from its
+category. Otherwise it inherits `by_category.business`:
+
+```yaml
+  by_metric:
+    reopen_rate: 1.0
+```
+
+**(+) `mappings/coaching_history_map.yaml`** *(optional)* — only if delivered coaching for this topic
+should soft-suppress future recommendations of it. Map the coaching-history `behavior_selected`
+string to the **same topic string** used in step 2:
+
+```yaml
+  behavior_to_topic:
+    "Reopen Rate": "Reduce Reopen Rate"
+```
+
+### Validate before the full run
+
+Run the linter first — it checks every cross-reference above in one pass, so you catch a typo in
+seconds instead of after a ~10-minute pipeline run:
+
+```
+python -m cde.cli.check_config --configs-dir configs
+```
+
+A clean metric produces `config-lint PASS`. The pipeline also runs this automatically as a preflight;
+use `--strict-preflight` to make warnings fatal. Then run the pipeline normally — the new metric now
+flows through signals → scoring → recommendations → receipts like any other.
+
+## Adding the metric to an existing theme
+
+Themes (`mappings/themes.yaml`) group related metrics so that when several are deficient together the
+engine coaches the *pattern* instead of a single behavior (see
+[Coaching Themes & Break-Glass Selection](#coaching-themes--break-glass-selection)). Adding a metric
+to a theme is a **one-line change** — but do it only *after* the metric is fully registered above,
+because a theme member **must** be a real metric in `metric_catalog` (the linter errors otherwise).
+
+Add the canonical metric name to the theme's `members:` list:
+
+```yaml
+  "Resolution Effectiveness":
+    members:
+      - resolution_rate
+      - one_call_resolution
+      - transfer_rate
+      - reopen_rate          # <-- new member
+    conversation_type: "Performance Correction"
+```
+
+Notes:
+
+- **Use the canonical metric name** (`reopen_rate`), not the topic string — theme members are metrics,
+  not topics.
+- **Qualification shifts with theme size.** A theme qualifies when at least
+  `theme_selection.count_fraction` of its *configured* members are deficient (`active.yaml`). Growing a
+  3-member theme to 4 raises the absolute count needed at the default `0.5` fraction (2-of-3 → 2-of-4),
+  so adding a member makes the theme slightly harder to trigger. Re-check `count_fraction` if that is
+  not what you want (see [Coaching Themes & Break-Glass Selection](#coaching-themes--break-glass-selection)).
+- A metric may belong to **more than one theme**; it simply counts toward each.
+- No theme change is required for a metric to be coachable — an unthemed metric is still recommended
+  as a single behavior. Themes only change *how* it can be delivered.
+
+---
+
 # Data Model
 
 All sources are tall-skinny tables at this grain:
