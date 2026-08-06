@@ -449,7 +449,7 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of expert protecting customer information."
       required: false
-      eligible_for_prioritization: true
+      eligible_for_prioritization: false #this metric never falls below 95% and is not a good candidate for prioritization
       computation_override:
         expected_calculation: score
       benchmark:
@@ -477,7 +477,7 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of expert acting as a representative of our brand."
       required: false
-      eligible_for_prioritization: true
+      eligible_for_prioritization: false #this metric never falls below 95% and is not a good candidate for prioritization
       computation_override:
         expected_calculation: score
       benchmark:
