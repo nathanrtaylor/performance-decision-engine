@@ -51,3 +51,10 @@ themes:
       - customer_retention_risk_sentiment
       - expert_listening_sentiment
     conversation_type: "Quality Coaching"
+
+  "Quality Sales":
+    members:
+      - nsp100
+      - cancel_rate
+      - transition_statement
+    conversation_type: "Quality Coaching"  

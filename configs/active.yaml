@@ -86,7 +86,7 @@ dampening:
 # this block is inert and behavior is identical to the pre-theme engine.
 theme_selection:
   count_fraction: 0.5     # >= this fraction of a theme's members must be deficient to qualify
-  score_level_floor: 0.15 # single low global floor for "deficient" (looser than the solo bar)
+  score_level_floor: 0.22 # single low global floor for "deficient" (looser than the solo bar)
   aggregate: mean         # mean | sum: how member score_total combine into the theme score
 
 # Tier 1: break-glass override. Only metrics carrying a per-metric break_glass
@@ -107,8 +107,8 @@ break_glass:
 # theme recommendations are material by construction and are never abstained. min_priority_score is
 # provisional; calibrate from the priority_score distribution of a real run.
 abstention:
-  enabled: true
-  min_priority_score: 0.10   # calibrated from the priority_score distribution (abstains the weak bottom ~10% of single recs)
+  enabled: false
+  min_priority_score: 0.05   # calibrated from the priority_score distribution (abstains the weak bottom ~5% of single recs)
 
 # ---------------------------------------------------
 # Explainability
