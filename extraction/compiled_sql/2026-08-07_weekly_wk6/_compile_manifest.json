@@ -1,0 +1,87 @@
+{
+  "compiled_at_utc": "2026-08-07T14:25:29+00:00",
+  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-07_weekly_wk6",
+  "items": [
+    {
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-07_weekly_wk6\\agent_metrics.sql",
+      "context_keys": [
+        "end_date",
+        "extraction_ts_utc",
+        "grain",
+        "icp_clients",
+        "metrics",
+        "run_id",
+        "source_schema",
+        "source_table",
+        "start_date",
+        "use_pay_calendar"
+      ],
+      "flattened": true,
+      "output": "agent_metrics",
+      "sql_file": "extraction/sql/agent_metrics.sql.j2",
+      "sql_sha256": "5dbd21a24cd9d2fc5d28671b8933b0cbf28a90f1e6460b15c8003ac3cf4a5ada",
+      "strip_trailing_semicolon": true
+    },
+    {
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-07_weekly_wk6\\agents.sql",
+      "context_keys": [
+        "end_date",
+        "extraction_ts_utc",
+        "grain",
+        "icp_clients",
+        "run_id",
+        "source_schema",
+        "source_table",
+        "start_date",
+        "use_pay_calendar"
+      ],
+      "flattened": true,
+      "output": "agents",
+      "sql_file": "extraction/sql/agents.sql.j2",
+      "sql_sha256": "2b887068a2a6589ad935d953bb22ebdc594fdc41779d745927324ce536f01fae",
+      "strip_trailing_semicolon": true
+    },
+    {
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-07_weekly_wk6\\behavior_scores.sql",
+      "context_keys": [
+        "end_date",
+        "epm_table",
+        "extraction_ts_utc",
+        "grain",
+        "icp_clients",
+        "observe_scorecards",
+        "observe_table",
+        "run_id",
+        "source_schema",
+        "start_date",
+        "use_pay_calendar"
+      ],
+      "flattened": true,
+      "output": "behavior_scores",
+      "sql_file": "extraction/sql/behavior_scores.sql.j2",
+      "sql_sha256": "5c9b660de8e9bd72c4bd735349127edf94bb4f17958f5750179dfac786332f06",
+      "strip_trailing_semicolon": true
+    },
+    {
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-07_weekly_wk6\\coaching_history.sql",
+      "context_keys": [
+        "coaching_status_in",
+        "coaching_table",
+        "end_date",
+        "extraction_ts_utc",
+        "grain",
+        "icp_clients",
+        "run_id",
+        "source_schema",
+        "start_date",
+        "use_pay_calendar"
+      ],
+      "flattened": true,
+      "output": "coaching_history",
+      "sql_file": "extraction/sql/coaching_history.sql.j2",
+      "sql_sha256": "212112eb5f57cafeda06fd0823c77410cedbaf9465880ab3882d4d21f81d4be0",
+      "strip_trailing_semicolon": true
+    }
+  ],
+  "run_id": "2026-08-07_weekly_wk6"
+}

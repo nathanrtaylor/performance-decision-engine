@@ -3,7 +3,7 @@
 # ============================================================
 
 run:
-  run_id: "2026-07-31_weekly_wk6"
+  run_id: "2026-08-07_weekly_wk6"
   compiled_sql_dir: "extraction/compiled_sql"
   output_dir: "data/raw/weekly"
   flatten_sql: true
@@ -12,8 +12,8 @@ run:
 globals:
   source_schema: "hive.care"
 
-  start_date: "2026-06-20"
-  end_date:   "2026-07-31"
+  start_date: "2026-06-27"
+  end_date:   "2026-08-07"
   grain: "week"
 
   # Always define optional flags globally to avoid StrictUndefined failures
