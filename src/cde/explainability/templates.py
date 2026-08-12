@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
@@ -55,6 +55,60 @@ def narrative_why_not(competitors: List[Dict[str, Any]]) -> str:
         f"The next-best alternative was '{top.get('topic')}'{drv}. It was not chosen "
         f"because {top.get('reason_not_selected')}."
     )
+
+
+# ---------------------------------------------------------------------------
+# reinforcement (expert is already at/above benchmark on the chosen behavior)
+# ---------------------------------------------------------------------------
+def narrative_reinforcement_why_this(rec_row: pd.Series) -> str:
+    metric = rec_row.get("metric")
+    value = rec_row.get("value")
+    benchmark = rec_row.get("benchmark")
+    return (
+        f"'{metric}' is the recommended focus, but this expert is already at or above benchmark "
+        f"on it ({_fmt(value)} vs {_fmt(benchmark)}), so there is no performance gap here; treat "
+        f"it as reinforcement of a strength rather than a correction."
+    )
+
+
+def narrative_reinforcement_why_now(
+    rec_row: pd.Series,
+    trend_8w: Any = None,
+    recency_shift: Any = None,
+    direction: Any = None,
+    n_excluded: int = 0,
+    sole_signal: bool = False,
+) -> str:
+    metric = rec_row.get("metric")
+    value = rec_row.get("value")
+    benchmark = rec_row.get("benchmark")
+    base = (
+        f"This is reinforcement rather than an urgent gap: {metric} averages {_fmt(value)} against a "
+        f"benchmark of {_fmt(benchmark)}, at or above the standard. "
+        f"{_reinforcement_trend_clause(trend_8w, recency_shift, direction)}"
+    )
+    if sole_signal:
+        n = f"{n_excluded} other behavior{'s' if n_excluded != 1 else ''}" if n_excluded else "other behaviors"
+        base += (
+            f" It surfaced as the focus only because {n} lacked sufficient volume or confidence this "
+            f"period, leaving it the sole reliable signal."
+        )
+    elif n_excluded:
+        base += f" ({n_excluded} other behavior{'s' if n_excluded != 1 else ''} were set aside this period for low volume or confidence.)"
+    return base
+
+
+def narrative_reinforcement_why_not(
+    competitors: List[Dict[str, Any]],
+    n_excluded: int = 0,
+    sole_signal: bool = False,
+) -> str:
+    if sole_signal:
+        n = f"{n_excluded} set aside for low volume or confidence" if n_excluded else "the rest lacked sufficient data"
+        return f"No other behavior had enough data to evaluate this period ({n})."
+    if not competitors:
+        return "No other behavior showed a material gap this period; none cleared the coaching thresholds."
+    return narrative_why_not(competitors)
 
 
 # ---------------------------------------------------------------------------
@@ -204,6 +258,37 @@ def _trend_phrase(trend_8w: Any, recency_shift: Any, direction: Any) -> str:
     if w is not None and w < -_EPS:
         return "The trend is improving, but the current level still warrants a nudge to lock in the gains."
     return "The level has held roughly steady over the window at a coachable gap."
+
+
+def _above_benchmark(gap: Any, direction: Any) -> Optional[bool]:
+    """Direction-aware: is the expert on the good side of (or at) the benchmark?
+
+    ``gap`` is value - benchmark. For higher_is_better, at/above means gap >= 0; for
+    lower_is_better, at/better means gap <= 0. Returns None when the gap is unknown.
+    """
+    g = _fmt_num(gap, default=None)
+    if g is None:
+        return None
+    if str(direction) == "lower_is_better":
+        return g <= 0.0
+    return g >= 0.0  # higher_is_better (and default)
+
+
+def _reinforcement_trend_clause(trend_8w: Any, recency_shift: Any, direction: Any) -> str:
+    """Trend clause framed for an already-adequate expert (holding vs softening)."""
+    lower = str(direction) == "lower_is_better"
+
+    def _adj(x: Any):
+        v = _fmt_num(x, default=None)
+        if v is None:
+            return None
+        return v if lower else -v  # >0 = drifting the wrong way (toward/below benchmark)
+
+    w = _adj(trend_8w)
+    r = _adj(recency_shift)
+    if (w is not None and w > _EPS) or (r is not None and r > _EPS):
+        return "The recent trend is softening, so it is worth reinforcing to hold the lead."
+    return "The trend is steady or improving."
 
 
 def _is_missing(x: Any) -> bool:

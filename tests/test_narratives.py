@@ -4,10 +4,14 @@ import pandas as pd
 from cde.explainability.templates import (
     _percentile_band,
     _trend_phrase,
+    _above_benchmark,
     narrative_why_now,
     narrative_why_not,
     narrative_theme_why_not,
     narrative_abstention,
+    narrative_reinforcement_why_this,
+    narrative_reinforcement_why_now,
+    narrative_reinforcement_why_not,
 )
 
 _INTERNAL_TOKENS = ("priority_score", "risk_score", "trend_score", "level_score", "confidence_score")
@@ -107,6 +111,53 @@ def test_theme_why_not_alt_nan():
     # NaN alt_topic (non-theme merge miss) falls back to the generic pattern sentence.
     txt = narrative_theme_why_not("Call Control", 3, 4, alt_topic=float("nan"))
     assert "several" in txt
+
+
+# --- _above_benchmark (direction-aware) ------------------------------------
+def test_above_benchmark_direction_aware():
+    # higher_is_better: at/above means gap >= 0
+    assert _above_benchmark(0.04, "higher_is_better") is True
+    assert _above_benchmark(-0.04, "higher_is_better") is False
+    # lower_is_better: at/better means gap <= 0
+    assert _above_benchmark(-0.04, "lower_is_better") is True
+    assert _above_benchmark(0.30, "lower_is_better") is False
+    # exactly at benchmark counts as at/above
+    assert _above_benchmark(0.0, "higher_is_better") is True
+    # unknown gap -> None
+    assert _above_benchmark(None, "higher_is_better") is None
+
+
+# --- reinforcement narratives ----------------------------------------------
+def test_reinforcement_why_this_states_above_benchmark():
+    row = pd.Series({"metric": "nsp100", "value": 0.059, "benchmark": 0.020})
+    txt = narrative_reinforcement_why_this(row)
+    assert "at or above benchmark" in txt
+    assert "0.059" in txt and "0.020" in txt
+    assert "reinforcement" in txt.lower()
+    assert _no_internal_scores(txt)
+
+
+def test_reinforcement_why_now_sole_signal_clause():
+    row = pd.Series({"metric": "nsp100", "value": 0.059, "benchmark": 0.020})
+    txt = narrative_reinforcement_why_now(row, trend_8w=0.017, recency_shift=0.068,
+                                          direction="higher_is_better", n_excluded=8, sole_signal=True)
+    assert "reinforcement" in txt.lower()
+    assert "8 other behaviors" in txt and "sole reliable signal" in txt
+    assert _no_internal_scores(txt)
+
+
+def test_reinforcement_why_now_without_sole_signal():
+    row = pd.Series({"metric": "fcr", "value": 0.9, "benchmark": 0.8})
+    txt = narrative_reinforcement_why_now(row, trend_8w=0.0, recency_shift=0.0,
+                                          direction="higher_is_better", n_excluded=0, sole_signal=False)
+    assert "reinforcement" in txt.lower()
+    assert "sole reliable signal" not in txt
+    assert _no_internal_scores(txt)
+
+
+def test_reinforcement_why_not_sole_signal():
+    txt = narrative_reinforcement_why_not([], n_excluded=8, sole_signal=True)
+    assert "No other behavior had enough data" in txt and "8 set aside" in txt
 
 
 # --- narrative_abstention ---------------------------------------------------

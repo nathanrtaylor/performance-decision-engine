@@ -12,7 +12,9 @@ from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
     narrative_theme_why_this, narrative_theme_why_now, narrative_theme_why_not,
     narrative_break_glass, narrative_break_glass_why_now,
-    narrative_abstention, _is_missing,
+    narrative_abstention, _is_missing, _above_benchmark,
+    narrative_reinforcement_why_this, narrative_reinforcement_why_now,
+    narrative_reinforcement_why_not,
 )
 from cde.utils.io import _json_default
 
@@ -64,6 +66,10 @@ def build_receipts(
     # ``scores``). Used to narrate the trend in "why now" without widening the rec keep-lists.
     trend_idx = _trend_index(scores)
 
+    # How many topic candidates each agent had this period (a count of 1 means the chosen
+    # behavior was the only one with enough data — used to explain "sole-signal" recs).
+    cand_counts = _candidate_counts(candidates)
+
     meta = config.get("meta") or {}
     provenance = {
         "config_version": meta.get("version"),
@@ -90,6 +96,7 @@ def build_receipts(
             "conversation_type": r.get("conversation_type"),
             "priority_score": _float_or_none(r.get("priority_score"), default=0.0),
             "tier": tier,
+            "advisory": False,  # set True for reinforcement (expert already at/above benchmark)
             "excluded_signals": excluded_for_agent,
             "provenance": provenance,
             "config_hash": config_hash,
@@ -100,7 +107,8 @@ def build_receipts(
         elif tier == "break_glass":
             receipts.append(_break_glass_receipt(base, r, trend_idx))
         else:
-            receipts.append(_single_receipt(base, r, comps, trend_idx))
+            n_candidates = cand_counts.get((agent_id, period, call_type), 1)
+            receipts.append(_single_receipt(base, r, comps, trend_idx, n_candidates))
 
     # Abstention receipts (explicit, explained non-recommendations)
     if has_abstentions:
@@ -128,6 +136,14 @@ def _trend_for(idx: Dict[Any, Dict[str, Any]], agent_id, period, call_type, metr
     return idx.get((agent_id, period, call_type, metric), {})
 
 
+def _candidate_counts(candidates: Optional[pd.DataFrame]) -> Dict[Any, int]:
+    """Number of topic candidates per (agent_id, period, call_type)."""
+    if candidates is None or candidates.empty or not set(_KEYS).issubset(candidates.columns):
+        return {}
+    g = candidates.groupby(_KEYS).size()
+    return {k: int(v) for k, v in g.items()}
+
+
 def _excluded_for(excluded_signals, agent_id, period, call_type):
     if excluded_signals is None or excluded_signals.empty:
         return []
@@ -139,7 +155,7 @@ def _excluded_for(excluded_signals, agent_id, period, call_type):
     return ex.to_dict(orient="records") if not ex.empty else []
 
 
-def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
+def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, trend_idx: Dict[Any, Dict[str, Any]], n_candidates: int = 1) -> Dict[str, Any]:
     if comps is not None and not comps.empty:
         comp_rows = comps[
             (comps["agent_id"] == base["agent_id"])
@@ -151,6 +167,7 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, tre
         competitors = []
 
     trend = _trend_for(trend_idx, base["agent_id"], base["period"], base["call_type"], r.get("metric"))
+    direction = trend.get("direction")
     driver = {
         "metric": r.get("metric"),
         "value": _float_or_none(r.get("value")),
@@ -164,21 +181,41 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, tre
         "topic_weight": _float_or_none(r.get("topic_weight"), default=0.0),
         "trend_8w": _float_or_none(trend.get("trend_8w")),
         "recency_shift": _float_or_none(trend.get("recency_shift")),
+        "direction": direction,
     }
-    return {
-        **base,
-        "drivers": [driver],
-        "competing_topics": competitors,
-        "narrative": {
+
+    # Reinforcement case: the expert is already at/above benchmark on the chosen behavior, so
+    # this is a strength to reinforce, not a gap to close. Detected direction-aware from the gap.
+    above = _above_benchmark(r.get("gap"), direction)
+    n_excluded = len(base.get("excluded_signals") or [])
+    sole_signal = int(n_candidates or 1) <= 1
+
+    if above:
+        narrative = {
+            "why_this": narrative_reinforcement_why_this(r),
+            "why_now": narrative_reinforcement_why_now(
+                r, trend_8w=trend.get("trend_8w"), recency_shift=trend.get("recency_shift"),
+                direction=direction, n_excluded=n_excluded, sole_signal=sole_signal,
+            ),
+            "why_not_others": narrative_reinforcement_why_not(competitors, n_excluded, sole_signal),
+        }
+    else:
+        narrative = {
             "why_this": narrative_why_this(r),
             "why_now": narrative_why_now(
-                r,
-                trend_8w=trend.get("trend_8w"),
-                recency_shift=trend.get("recency_shift"),
-                direction=trend.get("direction"),
+                r, trend_8w=trend.get("trend_8w"), recency_shift=trend.get("recency_shift"),
+                direction=direction,
             ),
             "why_not_others": narrative_why_not(competitors),
-        },
+        }
+
+    return {
+        **base,
+        "advisory": bool(above),
+        "kind": "reinforcement" if above else "deficit",
+        "drivers": [driver],
+        "competing_topics": competitors,
+        "narrative": narrative,
     }
 
 

@@ -85,6 +85,9 @@ def _driver(d: Dict[str, Any]) -> Dict[str, Any]:
         val = _num(d.get(src))
         if val is not None:
             out[dst] = val
+    direction = d.get("direction")
+    if direction is not None and not (isinstance(direction, float) and pd.isna(direction)):
+        out["dir"] = str(direction)
     return out
 
 
@@ -94,6 +97,29 @@ def _as_dict(x: Any) -> Optional[Dict[str, Any]]:
 
 def _as_list(x: Any) -> List[Any]:
     return x if isinstance(x, list) else []
+
+
+def _as_str_list(x: Any) -> List[str]:
+    """Coerce a reasons field to a list of strings.
+
+    In-pipeline it is already a list; when read back from excluded_signals.csv it arrives as a
+    string (a Python-list repr like "['LOW_DENOMINATOR']" or a bare/comma-joined value).
+    """
+    if isinstance(x, list):
+        return [str(v) for v in x]
+    if x is None or (isinstance(x, float) and pd.isna(x)):
+        return []
+    s = str(x).strip()
+    if not s:
+        return []
+    if s.startswith("[") and s.endswith("]"):
+        import ast
+        try:
+            v = ast.literal_eval(s)
+            return [str(i) for i in v] if isinstance(v, (list, tuple)) else [str(v)]
+        except Exception:
+            pass
+    return [p.strip() for p in s.split(",") if p.strip()]
 
 
 def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str, Any]:
@@ -113,7 +139,7 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
     for e in _as_list(r.get("excluded_signals")):
         excl.append({
             "m": e.get("metric"),
-            "reasons": e.get("exclusion_reasons") or [],
+            "reasons": _as_str_list(e.get("exclusion_reasons")),
             "v": _num(e.get("value")),
             "conf": _num(e.get("confidence")),
         })
@@ -125,6 +151,7 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
         "mascot": dim["mascot"],
         "coach": dim["coach"],
         "tier": r.get("tier"),
+        "adv": bool(r.get("advisory")) if r.get("advisory") is not None else False,
         "topic": r.get("recommended_topic"),
         "conv": r.get("conversation_type"),
         "why": {
@@ -314,6 +341,9 @@ input[type=search]{min-width:190px}
 .focusband .k{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
 .focusband .topic{font-size:19px;font-weight:650;margin:3px 0 4px}
 .focusband .conv{color:var(--text-2);font-size:13px}
+.advbanner{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:10px 12px;
+  border:1px solid color-mix(in srgb,var(--good) 35%,var(--border));border-radius:9px;
+  background:color-mix(in srgb,var(--good) 7%,var(--surface-2));font-size:12.5px;color:var(--text-2)}
 
 .sec{margin-top:20px}
 .sec > .h{display:flex;align-items:center;gap:8px;font-size:12px;text-transform:uppercase;
@@ -513,13 +543,15 @@ function render(){
   res.innerHTML = html;
   res.querySelectorAll(".card").forEach(c => c.onclick = () => openModal(c.dataset.id));
 }
+function advChip(){ return `<span class="chip good"><span class="ico">✓</span>above benchmark</span>`; }
 function card(e){
   const coach = e.coach ? ` · coach ${esc(e.coach)}` : "";
   const idtag = (e.name && e.name.trim()) ? `#${esc(e.id)} · ` : "";
+  const adv = e.adv ? ` ${advChip()}` : "";
   return `<button class="card" data-id="${esc(e.id)}">
     <div class="row1"><span class="aid">${esc(nameOf(e))}</span>${tierChip(e.tier)}</div>
     <div class="dim">${idtag}${esc(e.mascot)}${coach}</div>
-    <div class="focus"><b>${esc(e.topic)}</b></div>
+    <div class="focus"><b>${esc(e.topic)}</b>${adv}</div>
     <div class="conv">${esc(e.conv||"")}</div>
   </button>`;
 }
@@ -535,12 +567,19 @@ function meter(d){
          `<div class="bench" title="benchmark ${fmtNum(b)}" style="left:${bp}%"></div></div>`;
 }
 const SEV_WORD = {critical:"critical", serious:"elevated", warning:"minor"};
+function aboveBench(g, dir){
+  if(g===undefined || g===null) return false;
+  return dir==="lower_is_better" ? g<=0 : g>=0;  // higher_is_better / default
+}
 function sevChip(d){
   if(d.cp!==undefined){
     const pct = Math.round(d.cp*100);
     return `<span class="chip critical"><span class="ico">${SEV_ICON.critical}</span>${pct}th percentile in cohort</span>`;
   }
-  if(d.g===undefined || d.b===undefined || d.b===0) return "";
+  if(d.g===undefined || d.g===null) return "";
+  // On the good side of the benchmark: a strength, not a gap.
+  if(aboveBench(d.g, d.dir)) return `<span class="chip good"><span class="ico">${SEV_ICON.good}</span>at/above benchmark</span>`;
+  if(d.b===undefined || d.b===0) return "";
   const r = Math.abs(d.g)/Math.abs(d.b);
   const lvl = r>=0.25 ? "critical" : r>=0.10 ? "serious" : "warning";
   // icon + word + number: severity never depends on hue alone.
@@ -566,7 +605,7 @@ function openModal(id){
   const coach = e.coach ? `<span>coach ${esc(e.coach)}</span>` : "";
   const theme = e.theme ? `<div class="sec"><div class="h">Theme pattern</div>
       <p style="margin:0 0 8px;font-size:13px;color:var(--text-2)">${e.theme.nd} of ${e.theme.nm} related behaviors are deficient together:</p>
-      <div>${(e.theme.dm||[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
+      <div>${(Array.isArray(e.theme.dm)?e.theme.dm:[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
 
   const drivers = (e.drivers||[]).length
     ? `<div class="legend"><span><span class="sw"></span>current value</span><span><span class="bk"></span>benchmark</span></div>`
@@ -582,7 +621,7 @@ function openModal(id){
   const excl = (e.excl||[]).length
     ? e.excl.map(x=>`<div class="exrow"><div><span class="m">${esc(x.m)}</span>`+
         `<div class="r">value ${fmtNum(x.v)}${x.conf!==null&&x.conf!==undefined?` · confidence ${Math.round(x.conf*100)}%`:""}</div></div>`+
-        `<div class="r">${(x.reasons||[]).map(r=>`<span class="tag">${esc(r)}</span>`).join("")}</div></div>`).join("")
+        `<div class="r">${(Array.isArray(x.reasons)?x.reasons:[]).map(r=>`<span class="tag">${esc(r)}</span>`).join("")}</div></div>`).join("")
     : `<p class="empty">No signals were excluded for this expert.</p>`;
 
   const p = e.prov||{};
@@ -599,6 +638,7 @@ function openModal(id){
         <div class="topic">${esc(e.topic)}</div>
         <div class="conv">${esc(e.conv||"")}</div>
       </div>
+      ${e.adv ? `<div class="advbanner">${advChip()}<span>This expert is at or above benchmark on the recommended behavior: reinforcement of a strength, not a performance gap.</span></div>` : ""}
 
       <div class="sec"><div class="h">Why this</div>
         <div class="why this"><div class="lab">WHY THIS</div><p>${esc(e.why.this)}</p></div></div>
