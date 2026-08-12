@@ -1,7 +1,7 @@
 """
 Self-contained HTML dashboard summarizing a pipeline run's recommendations.
 
-Written as part of the standard output package (dashboard.html). No external/runtime
+Written as part of the standard output package (summary_dashboard.html). No external/runtime
 dependencies: a single HTML file with inline CSS (light + dark), so it opens anywhere.
 
 Design follows the dataviz method:
@@ -571,7 +571,7 @@ def write_dashboard(
     generated_at: Optional[str] = None,
     abstentions: Optional[pd.DataFrame] = None,
 ) -> Path:
-    """Build and write dashboard.html. Never raises on content edge cases."""
+    """Build and write the run summary dashboard (summary_dashboard.html). Never raises on content edge cases."""
     html_str = build_dashboard_html(
         recommendations=recommendations,
         signals=signals,

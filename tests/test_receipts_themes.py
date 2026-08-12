@@ -39,6 +39,7 @@ def _sw_rows(agent, pairs):
         "score_level": lvl, "score_trend": 0.1, "score_risk": 0.1,
         "score_confidence": 0.8, "score_total": lvl,
         "benchmark_8w": 1.0, "level_8w": -0.2, "direction": "higher_is_better",
+        "trend_8w": -0.03, "recency_shift": -0.02, "weeks_present": 8,
     } for metric, lvl in pairs]
 
 
@@ -94,6 +95,18 @@ def test_receipts_cover_all_tiers_with_provenance():
     # provenance present on every tier
     for r in (th, bg, sg):
         assert r["provenance"]["config_version"] == "vTEST"
+
+    # Theme "why not" is data-grounded: names the displaced single + the pattern rationale.
+    assert th["recommended_topic"] == "Theme A"
+    assert "Some Single Topic" in th["narrative"]["why_not_others"]
+    assert "together" in th["narrative"]["why_not_others"]
+    assert th["competing_topics"] and th["competing_topics"][0]["topic"] == "Some Single Topic"
+
+    # No internal score numbers leak into any narrative prose, on any tier.
+    _INTERNAL = ("priority_score", "risk_score", "trend_score", "level_score", "confidence_score")
+    for r in (th, bg, sg):
+        for v in r["narrative"].values():
+            assert not any(tok in v for tok in _INTERNAL), v
 
     # serializes cleanly to JSONL
     text = receipts_to_jsonl(receipts)

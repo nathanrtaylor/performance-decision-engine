@@ -369,7 +369,8 @@ python -m cde.cli.run_pipeline `
 - eligible_signals.csv
 - signals.csv (all built signals before gating; diagnostic)
 - topic_candidates.csv (per-agent topic candidates after weighting + dampening; diagnostic)
-- dashboard.html (self-contained run summary: recs by tier, no-recommendation/abstention coverage, recs by topic, splits by icp_client/mascot, metric warning signs)
+- summary_dashboard.html (self-contained run summary: recs by tier, no-recommendation/abstention coverage, recs by topic, splits by icp_client/mascot, metric warning signs)
+- expert_dashboard.html (interactive per-expert decision receipts: experts grouped by icp_client/mascot, modal per expert with coaching focus, "why" narratives, and explainability)
 - manifest.json
 - config_snapshot/
 

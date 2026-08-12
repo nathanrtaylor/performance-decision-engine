@@ -59,7 +59,7 @@ def _break_glass_to_recs(bg_top: pd.DataFrame) -> pd.DataFrame:
     return out
 
 
-def _theme_to_recs(theme_top: pd.DataFrame) -> pd.DataFrame:
+def _theme_to_recs(theme_top: pd.DataFrame, displaced: pd.DataFrame | None = None) -> pd.DataFrame:
     if theme_top is None or theme_top.empty:
         return pd.DataFrame()
     out = pd.DataFrame({
@@ -73,6 +73,22 @@ def _theme_to_recs(theme_top: pd.DataFrame) -> pd.DataFrame:
         "n_members": theme_top["n_members"],
         "n_deficient": theme_top["n_deficient"],
     })
+    # Carry the single-behavior recommendation this theme displaced, so the receipt can
+    # explain "theme over single X". These columns are NaN for non-theme rows (additive).
+    if displaced is not None and not displaced.empty:
+        src = displaced.copy()
+        for c in ("topic", "metric", "gap", "level_score"):
+            if c not in src.columns:
+                src[c] = pd.NA
+        alt = src[_KEYS + ["topic", "metric", "gap", "level_score"]].rename(
+            columns={
+                "topic": "alt_topic",
+                "metric": "alt_metric",
+                "gap": "alt_gap",
+                "level_score": "alt_level_score",
+            }
+        )
+        out = out.merge(alt, on=_KEYS, how="left")
     return out
 
 
@@ -111,13 +127,20 @@ def select_recommendations(
     # Themes never override a break-glass agent.
     theme_top = _anti_join(theme_top, bg_top)
 
+    # The single-behavior rec each theme displaced (for the theme "why not" narrative).
+    displaced = (
+        singles.merge(_key_index(theme_top), on=_KEYS, how="inner")
+        if not theme_top.empty
+        else pd.DataFrame()
+    )
+
     # Singles only where neither Tier 1 nor Tier 2 claimed the agent.
     claimed = pd.concat([_key_index(bg_top), _key_index(theme_top)], ignore_index=True) \
         if (not bg_top.empty or not theme_top.empty) else pd.DataFrame(columns=_KEYS)
     singles_kept = _anti_join(singles, claimed)
 
     recs = pd.concat(
-        [_break_glass_to_recs(bg_top), _theme_to_recs(theme_top), singles_kept],
+        [_break_glass_to_recs(bg_top), _theme_to_recs(theme_top, displaced), singles_kept],
         ignore_index=True,
     )
     recs = recs.sort_values(_KEYS, kind="mergesort").reset_index(drop=True)

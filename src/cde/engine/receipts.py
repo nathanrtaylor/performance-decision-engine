@@ -10,10 +10,13 @@ import pandas as pd
 from cde.explainability.evidence import build_competitors
 from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
-    narrative_theme_why_this, narrative_theme_why_now, narrative_break_glass,
-    narrative_abstention,
+    narrative_theme_why_this, narrative_theme_why_now, narrative_theme_why_not,
+    narrative_break_glass, narrative_break_glass_why_now,
+    narrative_abstention, _is_missing,
 )
 from cde.utils.io import _json_default
+
+_TREND_FIELDS = ["trend_8w", "recency_shift", "weeks_present", "direction"]
 
 _KEYS = ["agent_id", "period", "call_type"]
 
@@ -57,6 +60,10 @@ def build_receipts(
     single_recs = recs[recs["tier"] == "single"]
     comps = build_competitors(single_recs, candidates, config) if not single_recs.empty else pd.DataFrame()
 
+    # Per-metric trend/recency lookup, built once from scores_windowed (already passed in as
+    # ``scores``). Used to narrate the trend in "why now" without widening the rec keep-lists.
+    trend_idx = _trend_index(scores)
+
     meta = config.get("meta") or {}
     provenance = {
         "config_version": meta.get("version"),
@@ -89,11 +96,11 @@ def build_receipts(
         }
 
         if tier == "theme":
-            receipts.append(_theme_receipt(base, r, selection_detail))
+            receipts.append(_theme_receipt(base, r, selection_detail, trend_idx))
         elif tier == "break_glass":
-            receipts.append(_break_glass_receipt(base, r, selection_detail))
+            receipts.append(_break_glass_receipt(base, r, trend_idx))
         else:
-            receipts.append(_single_receipt(base, r, comps))
+            receipts.append(_single_receipt(base, r, comps, trend_idx))
 
     # Abstention receipts (explicit, explained non-recommendations)
     if has_abstentions:
@@ -101,6 +108,24 @@ def build_receipts(
             receipts.append(_abstention_receipt(a, provenance, config_hash))
 
     return pd.DataFrame(receipts)
+
+
+def _trend_index(scores: Optional[pd.DataFrame]) -> Dict[Any, Dict[str, Any]]:
+    """Map (agent_id, period, call_type, metric) -> {trend_8w, recency_shift, weeks_present, direction}."""
+    if scores is None or scores.empty or "metric" not in scores.columns:
+        return {}
+    have = [c for c in _TREND_FIELDS if c in scores.columns]
+    if not have:
+        return {}
+    idx: Dict[Any, Dict[str, Any]] = {}
+    for _, s in scores[_KEYS + ["metric"] + have].iterrows():
+        key = (s["agent_id"], s["period"], s.get("call_type"), s.get("metric"))
+        idx[key] = {c: s.get(c) for c in have}
+    return idx
+
+
+def _trend_for(idx: Dict[Any, Dict[str, Any]], agent_id, period, call_type, metric) -> Dict[str, Any]:
+    return idx.get((agent_id, period, call_type, metric), {})
 
 
 def _excluded_for(excluded_signals, agent_id, period, call_type):
@@ -114,7 +139,7 @@ def _excluded_for(excluded_signals, agent_id, period, call_type):
     return ex.to_dict(orient="records") if not ex.empty else []
 
 
-def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame) -> Dict[str, Any]:
+def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
     if comps is not None and not comps.empty:
         comp_rows = comps[
             (comps["agent_id"] == base["agent_id"])
@@ -125,6 +150,7 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame) -> 
     else:
         competitors = []
 
+    trend = _trend_for(trend_idx, base["agent_id"], base["period"], base["call_type"], r.get("metric"))
     driver = {
         "metric": r.get("metric"),
         "value": _float_or_none(r.get("value")),
@@ -136,6 +162,8 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame) -> 
         "confidence_score": _float_or_none(r.get("confidence_score"), default=0.0),
         "metric_weight": _float_or_none(r.get("metric_weight"), default=0.0),
         "topic_weight": _float_or_none(r.get("topic_weight"), default=0.0),
+        "trend_8w": _float_or_none(trend.get("trend_8w")),
+        "recency_shift": _float_or_none(trend.get("recency_shift")),
     }
     return {
         **base,
@@ -143,13 +171,18 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame) -> 
         "competing_topics": competitors,
         "narrative": {
             "why_this": narrative_why_this(r),
-            "why_now": narrative_why_now(r),
+            "why_now": narrative_why_now(
+                r,
+                trend_8w=trend.get("trend_8w"),
+                recency_shift=trend.get("recency_shift"),
+                direction=trend.get("direction"),
+            ),
             "why_not_others": narrative_why_not(competitors),
         },
     }
 
 
-def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame]) -> Dict[str, Any]:
+def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame], trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
     theme = base["recommended_topic"]
     drivers = []
     if selection_detail is not None and not selection_detail.empty:
@@ -162,6 +195,7 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
             & (selection_detail["deficient"] == True)  # noqa: E712
         ].sort_values("level_score", ascending=False)
         for _, d in det.iterrows():
+            trend = _trend_for(trend_idx, base["agent_id"], base["period"], base["call_type"], d.get("metric"))
             drivers.append({
                 "metric": d.get("metric"),
                 "value": _float_or_none(d.get("value")),
@@ -171,10 +205,27 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
                 "trend_score": _float_or_none(d.get("trend_score"), default=0.0),
                 "risk_score": _float_or_none(d.get("risk_score"), default=0.0),
                 "confidence_score": _float_or_none(d.get("confidence_score"), default=0.0),
+                "trend_8w": _float_or_none(trend.get("trend_8w")),
+                "recency_shift": _float_or_none(trend.get("recency_shift")),
+                "direction": trend.get("direction"),
             })
 
     n_deficient = int(r.get("n_deficient") or len(drivers))
     n_members = int(r.get("n_members") or len(drivers))
+
+    # The single-behavior rec this theme displaced (attached in select._theme_to_recs).
+    alt_topic = r.get("alt_topic")
+    alt_metric = r.get("alt_metric")
+    competing_topics = []
+    if not _is_missing(alt_topic):
+        competing_topics = [{
+            "topic": alt_topic,
+            "metric": None if _is_missing(alt_metric) else alt_metric,
+            "gap": _float_or_none(r.get("alt_gap")),
+            "level_score": _float_or_none(r.get("alt_level_score"), default=0.0),
+            "reason_not_selected": "a coaching theme spanning several related behaviors was higher-leverage",
+        }]
+
     return {
         **base,
         "drivers": drivers,
@@ -183,11 +234,11 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
             "n_members": n_members,
             "deficient_metrics": [d["metric"] for d in drivers],
         },
-        "competing_topics": [],
+        "competing_topics": competing_topics,
         "narrative": {
             "why_this": narrative_theme_why_this(theme, drivers, n_deficient, n_members),
             "why_now": narrative_theme_why_now(drivers),
-            "why_not_others": "A coaching theme was preferred over any single-behavior alternative.",
+            "why_not_others": narrative_theme_why_not(theme, n_deficient, n_members, alt_topic, alt_metric),
         },
     }
 
@@ -222,14 +273,17 @@ def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any], config_hash: O
     }
 
 
-def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame]) -> Dict[str, Any]:
+def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
     cohort_pct = r.get("cohort_pct")
+    trend = _trend_for(trend_idx, base["agent_id"], base["period"], base["call_type"], r.get("metric"))
     driver = {
         "metric": r.get("metric"),
         "value": _float_or_none(r.get("value")),
         "benchmark": _float_or_none(r.get("benchmark")),
         "gap": _float_or_none(r.get("gap")),
         "cohort_pct": _float_or_none(cohort_pct),
+        "trend_8w": _float_or_none(trend.get("trend_8w")),
+        "recency_shift": _float_or_none(trend.get("recency_shift")),
     }
     return {
         **base,
@@ -239,7 +293,12 @@ def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: O
         "competing_topics": [],
         "narrative": {
             "why_this": narrative_break_glass(r),
-            "why_now": "A flagged critical metric is both severely and recently deficient.",
+            "why_now": narrative_break_glass_why_now(
+                r,
+                trend_8w=trend.get("trend_8w"),
+                recency_shift=trend.get("recency_shift"),
+                direction=trend.get("direction"),
+            ),
             "why_not_others": "Break-glass override supersedes theme and single-behavior selection.",
         },
     }
@@ -280,11 +339,11 @@ def _json_safe(obj: Any) -> Any:
         return {k: _json_safe(v) for k, v in obj.items()}
     if isinstance(obj, list):
         return [_json_safe(v) for v in obj]
-    # pandas NA checks
+    # pandas NA checks (float NaN, pd.NA, NaT) — obj is scalar here (dict/list handled above)
     try:
-        if isinstance(obj, float) and pd.isna(obj):
+        if pd.isna(obj):
             return None
-    except Exception:
+    except (TypeError, ValueError):
         pass
     # numpy / pandas scalar -> python scalar
     try:

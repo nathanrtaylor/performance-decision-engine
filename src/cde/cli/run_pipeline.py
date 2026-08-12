@@ -200,7 +200,7 @@ def main(argv=None) -> None:
         from cde.reporting.dashboard import write_dashboard
 
         write_dashboard(
-            out_dir / "dashboard.html",
+            out_dir / "summary_dashboard.html",
             recommendations=recs,
             signals=signals,  # full built signals: carries benchmark, gap, direction
             config=config,
@@ -211,6 +211,30 @@ def main(argv=None) -> None:
         )
     except Exception as e:  # noqa: BLE001
         print(f"WARNING: dashboard generation failed: {e!r}")
+
+    # Interactive per-expert decision-receipt dashboard (grouped by icp_client/mascot,
+    # modal per expert). Non-fatal: a dashboard error must not fail the run.
+    try:
+        from cde.reporting.expert_dashboard import write_expert_dashboard
+
+        meta = config.get("meta") or {}
+        stats = write_expert_dashboard(
+            out_dir / "expert_dashboard.html",
+            receipts=receipts,
+            agents=normalized.get("agents"),  # icp_client / mascot / coach / agent_name
+            meta={
+                "run_id": run_id,
+                "data_snapshot": meta.get("data_snapshot"),
+                "engine_version": meta.get("engine_version", "0.1.0"),
+                "config_version": meta.get("version"),
+                "config_hash": meta.get("config_hash"),
+                "generated": datetime.now().strftime("%Y-%m-%d %H:%M"),
+            },
+        )
+        print(f"expert dashboard: {stats['experts']} experts "
+              f"({stats['matched']} matched to icp/mascot)")
+    except Exception as e:  # noqa: BLE001
+        print(f"WARNING: expert dashboard generation failed: {e!r}")
 
     auditor.finish_run()
     print(f"Done. Wrote outputs to: {out_dir}")
