@@ -200,7 +200,7 @@ def main(argv=None) -> None:
         from cde.reporting.dashboard import write_dashboard
 
         write_dashboard(
-            out_dir / "dashboard.html",
+            out_dir / "summary_dashboard.html",
             recommendations=recs,
             signals=signals,  # full built signals: carries benchmark, gap, direction
             config=config,
