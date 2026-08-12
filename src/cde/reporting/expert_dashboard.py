@@ -160,6 +160,7 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
             "not": nar.get("why_not_others"),
         },
         "drivers": [_driver(d) for d in _as_list(r.get("drivers"))],
+        "cm": [_driver(d) for d in _as_list(r.get("core_metrics"))],
         "theme": None if not theme else {
             "nd": theme.get("n_deficient"),
             "nm": theme.get("n_members"),
@@ -362,6 +363,7 @@ input[type=search]{min-width:190px}
 .meter{position:relative;height:16px;background:var(--track);border-radius:5px;margin:9px 0 6px}
 .meter .fill{position:absolute;left:0;top:0;height:16px;background:var(--series);border-radius:5px 4px 4px 5px;min-width:3px}
 .meter .bench{position:absolute;top:-3px;width:2px;height:22px;background:var(--baseline)}
+.drv .top .cmbadges{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .drv .nums{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
 .drv .nums b{color:var(--text-1);font-weight:650}
 .legend{display:flex;gap:14px;align-items:center;color:var(--muted);font-size:11px;margin:2px 2px 10px}
@@ -598,6 +600,32 @@ function driverCard(d){
   </div>`;
 }
 
+/* ---- core metrics (this-week snapshot: value vs benchmark + trend) ---- */
+function prettyMetric(m){ return String(m==null?"":m).replace(/_/g," "); }
+function trendChip(d){
+  // Reuse the engine's 8-week trend (slope), falling back to recency_shift; sign = movement.
+  let s = (d.t8!==undefined && d.t8!==null) ? d.t8
+        : (d.rc!==undefined && d.rc!==null) ? d.rc : null;
+  if(s===null) return `<span class="chip"><span class="ico">→</span>trend n/a</span>`;
+  // Relative dead-band so tiny slopes read as steady (scales differ across metrics).
+  const eps = (d.b!==undefined && d.b!==null && d.b!==0) ? Math.abs(d.b)*0.005 : 0;
+  if(Math.abs(s) <= eps) return `<span class="chip"><span class="ico">→</span>steady</span>`;
+  const up = s>0;
+  // Favorable direction depends on the metric (lower_is_better flips which way is good).
+  const favorable = d.dir==="lower_is_better" ? !up : up;
+  const cls = favorable ? "good" : "serious";
+  return `<span class="chip ${cls}"><span class="ico">${up?"↑":"↓"}</span>trending ${up?"up":"down"}</span>`;
+}
+function coreMetricRow(d){
+  const nums = [`current <b>${fmtNum(d.v)}</b>`, `benchmark <b>${fmtNum(d.b)}</b>`];
+  return `<div class="drv">
+    <div class="top"><span class="m">${esc(prettyMetric(d.m))}</span>`+
+    `<span class="cmbadges">${sevChip(d)}${trendChip(d)}</span></div>
+    ${meter(d)}
+    <div class="nums">${nums.join("")}</div>
+  </div>`;
+}
+
 /* ---- modal ---- */
 function openModal(id){
   const e = byId.get(id);
@@ -606,6 +634,10 @@ function openModal(id){
   const theme = e.theme ? `<div class="sec"><div class="h">Theme pattern</div>
       <p style="margin:0 0 8px;font-size:13px;color:var(--text-2)">${e.theme.nd} of ${e.theme.nm} related behaviors are deficient together:</p>
       <div>${(Array.isArray(e.theme.dm)?e.theme.dm:[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
+
+  const coreMetrics = (e.cm||[]).length
+    ? `<div class="sec"><div class="h">Core metrics this week</div>${e.cm.map(coreMetricRow).join("")}</div>`
+    : "";  // hidden when no core metrics have data this week
 
   const drivers = (e.drivers||[]).length
     ? `<div class="legend"><span><span class="sw"></span>current value</span><span><span class="bk"></span>benchmark</span></div>`
@@ -639,6 +671,8 @@ function openModal(id){
         <div class="conv">${esc(e.conv||"")}</div>
       </div>
       ${e.adv ? `<div class="advbanner">${advChip()}<span>This expert is at or above benchmark on the recommended behavior: reinforcement of a strength, not a performance gap.</span></div>` : ""}
+
+      ${coreMetrics}
 
       <div class="sec"><div class="h">Why this</div>
         <div class="why this"><div class="lab">WHY THIS</div><p>${esc(e.why.this)}</p></div></div>

@@ -168,6 +168,31 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
         if k not in mnames:
             r.warnings.append(f"benchmarks: entry '{k}' does not correspond to a metric in metric_catalog (stale?)")
 
+    # ---- core_metrics.yaml: the per-icp_client "core metrics this week" receipt block ----
+    core_metrics = _inner(cfg.get("core_metrics") or {}, "core_metrics")
+    if core_metrics:
+        # Known cohorts are inferred from the benchmarks by_icp_client keys (there is no
+        # canonical cohort enum); an unknown cohort key just never matches, so it's a warning.
+        known_cohorts = set()
+        for b in benchmarks.values():
+            if isinstance(b, dict):
+                known_cohorts |= {str(k).strip().lower() for k in (b.get("by_icp_client") or {})}
+
+        cohort_lists = {"default": core_metrics.get("default") or []}
+        for cohort, keys in (core_metrics.get("by_icp_client") or {}).items():
+            cohort_lists[str(cohort)] = keys or []
+            if known_cohorts and str(cohort).strip().lower() not in known_cohorts:
+                r.warnings.append(
+                    f"core_metrics.by_icp_client: cohort '{cohort}' is not a known icp_client "
+                    f"(no benchmarks entry references it; block will never resolve to it)"
+                )
+        for cohort, keys in cohort_lists.items():
+            for m in keys:
+                if m not in mnames:
+                    r.errors.append(
+                        f"core_metrics[{cohort}]: '{m}' is not a metric in metric_catalog"
+                    )
+
     return r
 
 
