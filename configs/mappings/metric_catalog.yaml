@@ -14,6 +14,7 @@ metric_catalog:
     transfer_rate:
       source: agent_metrics
       source_metric_key: "client transfers"
+      display: { scale: 100, suffix: "%", decimals: 1 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -29,6 +30,7 @@ metric_catalog:
     resolution_rate:
       source: agent_metrics
       source_metric_key: "resolution rate"
+      display: { scale: 100, suffix: "%", decimals: 1 }
       category: business
       direction: higher_is_better
       unit: rate
@@ -44,6 +46,7 @@ metric_catalog:
     one_call_resolution:
       source: agent_metrics
       source_metric_key: "ocr"
+      display: { scale: 100, suffix: "%", decimals: 1 }
       category: business
       direction: higher_is_better
       unit: rate
@@ -59,6 +62,7 @@ metric_catalog:
     hold_time:
       source: agent_metrics
       source_metric_key: "hold time"
+      display: { scale: 1, suffix: "s", decimals: 0 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -74,6 +78,7 @@ metric_catalog:
     talk_time:
       source: agent_metrics
       source_metric_key: "talk time"
+      display: { scale: 1, suffix: "s", decimals: 0 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -89,6 +94,7 @@ metric_catalog:
     callback_rate:
       source: agent_metrics
       source_metric_key: "callback_rate"
+      display: { scale: 100, suffix: "%", decimals: 1 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -104,6 +110,7 @@ metric_catalog:
     cancel_rate:
       source: agent_metrics
       source_metric_key: "cancellation rate"
+      display: { scale: 100, suffix: "%", decimals: 1 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -126,6 +133,7 @@ metric_catalog:
     erp:
       source: agent_metrics
       source_metric_key: "erp"
+      display: { scale: 1, suffix: "", decimals: 0 }
       category: business
       direction: higher_is_better
       unit: rate
@@ -148,6 +156,7 @@ metric_catalog:
     expert_5star:
       source: agent_metrics
       source_metric_key: "expert 5star"
+      display: { scale: 1, suffix: "", decimals: 1 }
       category: business
       direction: higher_is_better
       unit: rate
@@ -163,6 +172,7 @@ metric_catalog:
     nsp100:
       source: agent_metrics
       source_metric_key: "nsp100"
+      display: { scale: 100, suffix: "", decimals: 1 }
       category: business
       direction: higher_is_better
       unit: rate
@@ -178,6 +188,7 @@ metric_catalog:
     crt:
       source: agent_metrics
       source_metric_key: "crt"
+      display: { scale: 1, suffix: "s", decimals: 0 }
       category: business
       direction: lower_is_better
       unit: rate
@@ -679,10 +690,13 @@ metric_catalog:
       benchmark:
         type: config
 
+  # display: optional per-metric block controlling how a value is SHOWN (scale, suffix, decimals)
+  # in dashboards/receipts only — never changes the stored value. Resolved per-metric over the
+  # metric's category_defaults[category].display. See cde/utils/metric_format.py.
   category_defaults:
     business:         { base_weight_class: high,   confidence_floor: 0.6 }
     tool_usage:       { base_weight_class: medium, confidence_floor: 0.5 }
-    quality_behavior: { base_weight_class: low,    confidence_floor: 0.7 }
+    quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 } }
 
   governance:
     disallow_unknown_metrics: true

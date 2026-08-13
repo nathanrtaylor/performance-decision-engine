@@ -118,6 +118,31 @@ def test_governance_flag_off_disables_check(cfg):
     assert not any("'unit'" in e for e in lint_config(c).errors)
 
 
+def test_malformed_display_is_warning_not_error(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    victim = next(iter(_metrics(c)))
+    _metrics(c)[victim]["display"] = {"scale": -1, "decimals": "two", "suffix": 5}
+    report = lint_config(c)
+    # display is presentation-only: never blocks (no errors), but surfaces warnings.
+    assert report.ok()
+    assert any("display.scale" in w for w in report.warnings)
+    assert any("display.decimals" in w for w in report.warnings)
+    assert any("display.suffix" in w for w in report.warnings)
+
+
+def test_valid_display_produces_no_warning(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    victim = next(iter(_metrics(c)))
+    _metrics(c)[victim]["display"] = {"scale": 100, "decimals": 1, "suffix": "%"}
+    report = lint_config(c)
+    assert report.ok()
+    assert not any(f"'{victim}'" in w and "display" in w for w in report.warnings)
+
+
 def test_config_hash_stable_and_content_sensitive(cfg):
     import copy
 

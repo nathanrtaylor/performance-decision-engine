@@ -9,6 +9,7 @@ import pandas as pd
 
 from cde.explainability.core_metrics import build_core_metrics_index
 from cde.explainability.evidence import build_competitors
+from cde.utils.metric_format import display_map, format_value
 from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
     narrative_theme_why_this, narrative_theme_why_now, narrative_theme_why_not,
@@ -164,7 +165,42 @@ def build_receipts(
         for _, a in abstentions.iterrows():
             receipts.append(_abstention_receipt(a, provenance, config_hash, core_metrics_idx))
 
+    # Presentation only: attach per-metric display strings (value/benchmark/gap) alongside the raw
+    # numbers on every per-metric record, per configs/mappings/metric_catalog.yaml `display`.
+    dmap = display_map(config)
+    if dmap:
+        for rec in receipts:
+            _decorate_receipt_display(rec, dmap)
+
     return pd.DataFrame(receipts)
+
+
+def _decorate_metric_record(d: Dict[str, Any], dmap: Dict[str, Any]) -> None:
+    """Add value_display / benchmark_display / gap_display to a per-metric record (in place)."""
+    if not isinstance(d, dict):
+        return
+    spec = dmap.get(d.get("metric"))
+    if not spec:
+        return
+    for raw_key, disp_key in (("value", "value_display"),
+                              ("benchmark", "benchmark_display"),
+                              ("gap", "gap_display")):
+        if d.get(raw_key) is not None:
+            s = format_value(d.get(raw_key), spec)
+            if s is not None:
+                d[disp_key] = s
+
+
+def _decorate_receipt_display(rec: Dict[str, Any], dmap: Dict[str, Any]) -> None:
+    """Decorate every per-metric record in a receipt (drivers, core_metrics, excluded_signals)."""
+    for d in rec.get("drivers") or []:
+        _decorate_metric_record(d, dmap)
+    cm = rec.get("core_metrics")
+    if isinstance(cm, dict):
+        for d in cm.get("metrics") or []:
+            _decorate_metric_record(d, dmap)
+    for x in rec.get("excluded_signals") or []:
+        _decorate_metric_record(x, dmap)
 
 
 def _trend_index(scores: Optional[pd.DataFrame]) -> Dict[Any, Dict[str, Any]]:
