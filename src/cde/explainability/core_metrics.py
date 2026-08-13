@@ -51,12 +51,18 @@ def build_core_metrics_index(
     eligible_signals: Optional[pd.DataFrame],
     trend_idx: Dict[Any, Dict[str, Any]],
     config: Dict[str, Any],
-) -> Dict[Any, List[Dict[str, Any]]]:
-    """Map ``(agent_id, period, call_type) -> [core-metric summary dict, ...]``.
+) -> Dict[Any, Dict[str, Any]]:
+    """Map ``(agent_id, call_type) -> {"period": <ts>, "metrics": [summary dict, ...]}``.
 
     For each ``(agent_id, call_type)`` the block is anchored on that group's latest
     ``period`` in ``eligible_signals``; the configured core metrics for the agent's
     ``icp_client`` are emitted in config order, skipping any with no row that week.
+
+    Keyed on ``(agent_id, call_type)`` (not period) so the receipt builder can attach
+    the block even when the recommendation's week is ahead of the agent's latest
+    *eligible* week (an agent with no qualifying calls in the current week still gets
+    its most-recent snapshot). The anchoring ``period`` is returned alongside the
+    records so the receipt can state which week the numbers are from and flag staleness.
 
     Each record uses the same key names as receipt ``drivers`` so the dashboard's
     existing compaction/rendering (``_driver`` / ``sevChip`` / ``meter``) is reused:
@@ -73,7 +79,7 @@ def build_core_metrics_index(
     latest = df.groupby(["agent_id", "call_type"])["period"].transform("max")
     latest_rows = df[df["period"] == latest]
 
-    index: Dict[Any, List[Dict[str, Any]]] = {}
+    index: Dict[Any, Dict[str, Any]] = {}
     for (agent_id, call_type), grp in latest_rows.groupby(["agent_id", "call_type"]):
         period = grp["period"].iloc[0]
         icp_client = grp["icp_client"].iloc[0] if "icp_client" in grp.columns else None
@@ -99,7 +105,7 @@ def build_core_metrics_index(
             })
 
         if records:
-            index[(agent_id, period, call_type)] = records
+            index[(agent_id, call_type)] = {"period": period, "metrics": records}
 
     return index
 

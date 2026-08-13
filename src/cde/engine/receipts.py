@@ -9,6 +9,7 @@ import pandas as pd
 
 from cde.explainability.core_metrics import build_core_metrics_index
 from cde.explainability.evidence import build_competitors
+from cde.utils.metric_format import display_map, format_value
 from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
     narrative_theme_why_this, narrative_theme_why_now, narrative_theme_why_not,
@@ -22,6 +23,48 @@ from cde.utils.io import _json_default
 _TREND_FIELDS = ["trend_8w", "recency_shift", "weeks_present", "direction"]
 
 _KEYS = ["agent_id", "period", "call_type"]
+
+
+def _period_str(p: Any) -> Optional[str]:
+    """Format a period as YYYY-MM-DD (the week-ending date shown in receipts)."""
+    if p is None or (isinstance(p, float) and pd.isna(p)):
+        return None
+    try:
+        return pd.Timestamp(p).strftime("%Y-%m-%d")
+    except Exception:
+        return str(p)
+
+
+def _periods_equal(a: Any, b: Any) -> bool:
+    try:
+        return pd.Timestamp(a).normalize() == pd.Timestamp(b).normalize()
+    except Exception:
+        return a == b
+
+
+def _core_metrics_block(
+    core_metrics_idx: Optional[Dict[Any, Any]],
+    agent_id: Any,
+    call_type: Any,
+    rec_period: Any,
+) -> Dict[str, Any]:
+    """Assemble the receipt's core-metrics block, keyed by ``(agent_id, call_type)``.
+
+    The block is anchored on the agent's latest *eligible* week, which can lag the
+    recommendation's week when the agent had no qualifying calls in the current week.
+    We surface the block's own ``period`` and ``as_of_latest`` (whether that week is the
+    recommendation week) so the dashboard states which week the numbers are from and
+    calls it out when they are older, instead of silently hiding the block.
+    """
+    block = (core_metrics_idx or {}).get((agent_id, call_type))
+    if not block or not block.get("metrics"):
+        return {"period": None, "as_of_latest": True, "metrics": []}
+    data_period = block["period"]
+    return {
+        "period": _period_str(data_period),
+        "as_of_latest": _periods_equal(data_period, rec_period),
+        "metrics": block["metrics"],
+    }
 
 
 def build_receipts(
@@ -104,7 +147,7 @@ def build_receipts(
             "tier": tier,
             "advisory": False,  # set True for reinforcement (expert already at/above benchmark)
             "excluded_signals": excluded_for_agent,
-            "core_metrics": core_metrics_idx.get((agent_id, period, call_type), []),
+            "core_metrics": _core_metrics_block(core_metrics_idx, agent_id, call_type, period),
             "provenance": provenance,
             "config_hash": config_hash,
         }
@@ -122,7 +165,42 @@ def build_receipts(
         for _, a in abstentions.iterrows():
             receipts.append(_abstention_receipt(a, provenance, config_hash, core_metrics_idx))
 
+    # Presentation only: attach per-metric display strings (value/benchmark/gap) alongside the raw
+    # numbers on every per-metric record, per configs/mappings/metric_catalog.yaml `display`.
+    dmap = display_map(config)
+    if dmap:
+        for rec in receipts:
+            _decorate_receipt_display(rec, dmap)
+
     return pd.DataFrame(receipts)
+
+
+def _decorate_metric_record(d: Dict[str, Any], dmap: Dict[str, Any]) -> None:
+    """Add value_display / benchmark_display / gap_display to a per-metric record (in place)."""
+    if not isinstance(d, dict):
+        return
+    spec = dmap.get(d.get("metric"))
+    if not spec:
+        return
+    for raw_key, disp_key in (("value", "value_display"),
+                              ("benchmark", "benchmark_display"),
+                              ("gap", "gap_display")):
+        if d.get(raw_key) is not None:
+            s = format_value(d.get(raw_key), spec)
+            if s is not None:
+                d[disp_key] = s
+
+
+def _decorate_receipt_display(rec: Dict[str, Any], dmap: Dict[str, Any]) -> None:
+    """Decorate every per-metric record in a receipt (drivers, core_metrics, excluded_signals)."""
+    for d in rec.get("drivers") or []:
+        _decorate_metric_record(d, dmap)
+    cm = rec.get("core_metrics")
+    if isinstance(cm, dict):
+        for d in cm.get("metrics") or []:
+            _decorate_metric_record(d, dmap)
+    for x in rec.get("excluded_signals") or []:
+        _decorate_metric_record(x, dmap)
 
 
 def _trend_index(scores: Optional[pd.DataFrame]) -> Dict[Any, Dict[str, Any]]:
@@ -300,8 +378,8 @@ def _abstention_receipt(
     drivers = []
     if best_topic is not None and not (isinstance(best_topic, float) and pd.isna(best_topic)):
         drivers = [{"topic": best_topic, "priority_score": best_ps, "level_score": best_lvl}]
-    core_metrics = (core_metrics_idx or {}).get(
-        (a.get("agent_id"), a.get("period"), a.get("call_type")), []
+    core_metrics = _core_metrics_block(
+        core_metrics_idx, a.get("agent_id"), a.get("call_type"), a.get("period")
     )
     return {
         "agent_id": a.get("agent_id"),

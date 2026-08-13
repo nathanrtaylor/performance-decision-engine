@@ -63,6 +63,22 @@ def _inner(obj: Any, key: str) -> Dict[str, Any]:
     return obj if isinstance(obj, dict) else {}
 
 
+def _validate_display(prefix: str, disp: Any, warnings: list) -> None:
+    """Additive check of an optional `display` block (scale/suffix/decimals). Warnings only."""
+    if not isinstance(disp, dict):
+        warnings.append(f"{prefix} display must be a mapping of scale/suffix/decimals")
+        return
+    scale = disp.get("scale")
+    if scale is not None and not (isinstance(scale, (int, float)) and not isinstance(scale, bool) and scale > 0):
+        warnings.append(f"{prefix} display.scale must be a positive number (got {scale!r})")
+    decimals = disp.get("decimals")
+    if decimals is not None and not (isinstance(decimals, int) and not isinstance(decimals, bool) and decimals >= 0):
+        warnings.append(f"{prefix} display.decimals must be a non-negative integer (got {decimals!r})")
+    suffix = disp.get("suffix")
+    if suffix is not None and not isinstance(suffix, str):
+        warnings.append(f"{prefix} display.suffix must be a string (got {suffix!r})")
+
+
 def lint_config(cfg: Dict[str, Any]) -> LintReport:
     """Validate cross-references in a resolved config (from resolve_active_config)."""
     r = LintReport()
@@ -136,6 +152,12 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
                 f"topic_map: eligible metric '{n}' has no topic in metric_to_topic "
                 f"(it can never be recommended)"
             )
+        if d.get("display") is not None:  # optional; presentation-only, so warn (never block)
+            _validate_display(f"metric_catalog: '{n}'", d.get("display"), r.warnings)
+
+    for cat, cd in (mc.get("category_defaults") or {}).items():
+        if isinstance(cd, dict) and cd.get("display") is not None:
+            _validate_display(f"category_defaults: '{cat}'", cd.get("display"), r.warnings)
 
     for tn, tb in (themes or {}).items():
         for mem in ((tb or {}).get("members") or []):

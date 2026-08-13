@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any, Optional
 
 from cde.reporting.dashboard_kit import esc as _esc, fmt_num, fmt_pct, chip, tile as _tile, page as _kit_page
+from cde.utils.metric_format import format_value as _format_value
 
 from . import config as C
 from .compare import BenchmarkDiffRow, CompareResult
@@ -69,15 +70,35 @@ def _page(body: str) -> str:
     return _kit_page(body, title="Benchmark Recalculation", css_extra=_EXTRA_CSS)
 
 
-def _row_html(r: BenchmarkDiffRow) -> str:
+def _disp(val: Any, spec: Optional[dict]) -> str:
+    """Benchmark value in display units when the metric has a `display` spec, else raw."""
+    s = _format_value(val, spec)
+    return s if s is not None else _fmt_num(val)
+
+
+def _disp_delta(val: Any, spec: Optional[dict]) -> str:
+    """Signed delta in display units (scale/decimals/suffix) when a spec exists, else raw."""
+    if not spec or val is None:
+        return _fmt_delta(val)
+    try:
+        scaled = float(val) * float(spec.get("scale", 1))
+    except (TypeError, ValueError):
+        return _fmt_delta(val)
+    d = spec.get("decimals")
+    d = 0 if d is None else max(0, int(d))
+    return f"{scaled:+,.{d}f}{spec.get('suffix') or ''}"
+
+
+def _row_html(r: BenchmarkDiffRow, dmap: Optional[dict] = None) -> str:
     metric_cell = f'<span class="mcell">{_esc(r.metric)}</span>' if r.cohort == "default" else ""
+    spec = (dmap or {}).get(r.metric)
     return (
         "<tr>"
         f"<td>{metric_cell}</td>"
         f"<td>{_esc(r.cohort)}</td>"
-        f'<td class="num">{_fmt_num(r.old)}</td>'
-        f'<td class="num">{_fmt_num(r.new)}</td>'
-        f'<td class="num">{_fmt_delta(r.delta)}</td>'
+        f'<td class="num">{_esc(_disp(r.old, spec))}</td>'
+        f'<td class="num">{_esc(_disp(r.new, spec))}</td>'
+        f'<td class="num">{_esc(_disp_delta(r.delta, spec))}</td>'
         f'<td class="num">{_fmt_pct(r.pct_change)}</td>'
         f"<td>{_chip(r.verdict)}</td>"
         f'<td class="just">{_esc(r.justification)}</td>'
@@ -85,13 +106,13 @@ def _row_html(r: BenchmarkDiffRow) -> str:
     )
 
 
-def _category_table(rows: list[BenchmarkDiffRow]) -> str:
+def _category_table(rows: list[BenchmarkDiffRow], dmap: Optional[dict] = None) -> str:
     head = (
         "<thead><tr><th>Metric</th><th>Cohort</th><th class='num'>Old</th><th class='num'>New</th>"
         "<th class='num'>Δ</th><th class='num'>%Δ</th><th>Verdict</th><th>Justification</th></tr></thead>"
     )
     # group rows by metric, default first (already ordered by compare)
-    body = "".join(_row_html(r) for r in rows)
+    body = "".join(_row_html(r, dmap) for r in rows)
     return f'<div class="card"><table>{head}<tbody>{body}</tbody></table></div>'
 
 
@@ -101,6 +122,7 @@ def build_recalc_dashboard_html(
     generated_at = generated_at or datetime.now().strftime("%Y-%m-%d %H:%M")
     by_cat = result.by_category()
     counts = result.counts
+    dmap = meta.get("display") or {}  # per-metric display specs (presentation only)
 
     parts: list[str] = []
     parts.append(
@@ -129,7 +151,7 @@ def build_recalc_dashboard_html(
             continue
         n_prop = sum(1 for r in rows if r.verdict == C.PROPOSE)
         parts.append(f"<h2>{_esc(title)} — {n_prop} proposed</h2>")
-        parts.append(_category_table(rows))
+        parts.append(_category_table(rows, dmap))
 
     parts.append(
         '<p class="foot">Anchors: operational = per-cohort median of 8-week windowed means; '

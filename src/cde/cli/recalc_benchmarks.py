@@ -15,6 +15,7 @@ from pathlib import Path
 
 from cde.governance.versioning import resolve_active_config
 from cde.utils.logging import get_logger
+from cde.utils.metric_format import display_map as _display_map
 
 from cde.benchmarks_recalc.compare import compare
 from cde.benchmarks_recalc.config import RecalcThresholds, PROPOSE, HOLD, UNCHANGED, SKIPPED
@@ -47,7 +48,11 @@ def main(argv=None) -> None:
     candidates = recompute_all(prepped, thr)
     result = compare(candidates, prepped, config, thr)
 
-    meta = {"snapshot": prepped.snapshot_id, "window_weeks": len(prepped.window_weeks) or "-"}
+    meta = {
+        "snapshot": prepped.snapshot_id,
+        "window_weeks": len(prepped.window_weeks) or "-",
+        "display": _display_map(config),  # per-metric display specs (presentation only)
+    }
 
     # Always: dashboard + machine-readable change-set + diff + summary.
     dash = write_recalc_dashboard(out_dir / "dashboard.html", result, meta)

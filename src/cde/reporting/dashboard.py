@@ -27,6 +27,7 @@ import pandas as pd
 
 from cde.utils.config import unwrap_root as _unwrap
 from cde.utils.logging import get_logger
+from cde.utils.metric_format import display_map as _display_map, format_value as _format_value
 from cde.reporting.dashboard_kit import (
     esc as _esc,
     fmt_int as _fmt_int,
@@ -317,6 +318,7 @@ def _metric_health_section(sig: pd.DataFrame, recs: pd.DataFrame, config: Dict[s
     if "period" in df.columns:  # cross-section on the latest period
         df = df[df["period"] == df["period"].max()]
     directions = _metric_directions(config)
+    dmap = _display_map(config)  # per-metric display spec (presentation only)
     recs_by_metric = recs["metric"].value_counts().to_dict() if "metric" in recs.columns else {}
 
     rows = []
@@ -361,10 +363,11 @@ def _metric_health_section(sig: pd.DataFrame, recs: pd.DataFrame, config: Dict[s
     rows = [r for _, r in sorted(zip(order, rows), key=lambda t: t[0])]
     tr = []
     for metric, d in rows:
+        bench_disp = _format_value(d["bval"], dmap.get(metric)) or _fmt_num(d["bval"], 4)
         tr.append(
             f"<tr><td>{_esc(metric)}</td>"
             f'<td class="small">{_esc(d["direction"].replace("_"," "))}</td>'
-            f'<td class="num">{_fmt_num(d["bval"],4)}</td>'
+            f'<td class="num">{_esc(bench_disp)}</td>'
             f'<td class="num">{_fmt_int(d["n"])}</td>'
             f'<td class="num">{_fmt_pct(d["breach"],0)}</td>'
             f'<td class="num">{_fmt_pct(d["null"],0)}</td>'

@@ -85,6 +85,11 @@ def _driver(d: Dict[str, Any]) -> Dict[str, Any]:
         val = _num(d.get(src))
         if val is not None:
             out[dst] = val
+    # Presentation-only display strings (per metric_catalog `display`), when receipts carry them.
+    for src, dst in (("value_display", "vf"), ("benchmark_display", "bf"), ("gap_display", "gf")):
+        s = d.get(src)
+        if s is not None:
+            out[dst] = str(s)
     direction = d.get("direction")
     if direction is not None and not (isinstance(direction, float) and pd.isna(direction)):
         out["dir"] = str(direction)
@@ -141,8 +146,21 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
             "m": e.get("metric"),
             "reasons": _as_str_list(e.get("exclusion_reasons")),
             "v": _num(e.get("value")),
+            "vf": (str(e.get("value_display")) if e.get("value_display") is not None else None),
             "conf": _num(e.get("confidence")),
         })
+    # Core-metrics block: new shape is {period, as_of_latest, metrics}; tolerate the legacy
+    # bare-list shape (older decision_receipts.jsonl) which carries no period info.
+    cm_raw = r.get("core_metrics")
+    if isinstance(cm_raw, dict):
+        cm_rows = _as_list(cm_raw.get("metrics"))
+        cm_period = cm_raw.get("period")
+        cm_stale = not bool(cm_raw.get("as_of_latest", True))
+    else:
+        cm_rows = _as_list(cm_raw)
+        cm_period = None
+        cm_stale = False
+
     prov = r.get("provenance") or {}
     return {
         "id": aid,
@@ -160,7 +178,10 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
             "not": nar.get("why_not_others"),
         },
         "drivers": [_driver(d) for d in _as_list(r.get("drivers"))],
-        "cm": [_driver(d) for d in _as_list(r.get("core_metrics"))],
+        "cm": [_driver(d) for d in cm_rows],
+        "cmp": cm_period,   # week-ending date (YYYY-MM-DD) the core metrics are from
+        "cms": cm_stale,    # True when that week is older than the recommendation week
+
         "theme": None if not theme else {
             "nd": theme.get("n_deficient"),
             "nm": theme.get("n_members"),
@@ -364,6 +385,8 @@ input[type=search]{min-width:190px}
 .cmtable td.m{font-weight:650;color:var(--text-1)}
 .cmtable td.num{font-variant-numeric:tabular-nums;color:var(--text-1);font-weight:600}
 .cmtable th.num,.cmtable td.num{text-align:right}
+.cmnote{font-size:12px;color:var(--muted);margin:-2px 0 9px}
+.cmnote.stale{color:var(--warning-ink);font-weight:600}
 .why{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--series);
   border-radius:8px;padding:11px 13px;margin-bottom:9px}
 .why .lab{font-size:11.5px;font-weight:700;color:var(--series);margin-bottom:3px;letter-spacing:.02em}
@@ -463,6 +486,12 @@ function fmtNum(x){
   if(a>=1000) return x.toLocaleString(undefined,{maximumFractionDigits:0});
   if(a>=1) return (+x).toFixed(2);
   return (+x).toFixed(3);
+}
+/* Per-metric display string (from metric_catalog `display`, carried on the record) when present,
+   else fall back to the generic numeric formatter. `key` is the display field: vf/bf/gf. */
+function fmtMetric(d, key, raw){
+  const f = d && d[key];
+  return (f!==undefined && f!==null) ? f : fmtNum(raw);
 }
 
 /* ---- tiles ---- */
@@ -580,7 +609,7 @@ function meter(d){
   const vp = Math.max(2, Math.min(100, Math.abs(v||0)/scale*100));
   const bp = Math.max(0, Math.min(100, Math.abs(b||0)/scale*100));
   return `<div class="meter"><div class="fill" style="width:${vp}%"></div>`+
-         `<div class="bench" title="benchmark ${fmtNum(b)}" style="left:${bp}%"></div></div>`;
+         `<div class="bench" title="benchmark ${fmtMetric(d,'bf',b)}" style="left:${bp}%"></div></div>`;
 }
 const SEV_WORD = {critical:"critical", serious:"elevated", warning:"minor"};
 function aboveBench(g, dir){
@@ -599,13 +628,13 @@ function sevChip(d){
   const r = Math.abs(d.g)/Math.abs(d.b);
   const lvl = r>=0.25 ? "critical" : r>=0.10 ? "serious" : "warning";
   // icon + word + number: severity never depends on hue alone.
-  return `<span class="chip ${lvl}"><span class="ico">${SEV_ICON[lvl]}</span>${SEV_WORD[lvl]} gap ${fmtNum(d.g)}</span>`;
+  return `<span class="chip ${lvl}"><span class="ico">${SEV_ICON[lvl]}</span>${SEV_WORD[lvl]} gap ${fmtMetric(d,'gf',d.g)}</span>`;
 }
 function driverCard(d){
   const nums = [];
-  nums.push(`current <b>${fmtNum(d.v)}</b>`);
-  nums.push(`benchmark <b>${fmtNum(d.b)}</b>`);
-  if(d.g!==undefined) nums.push(`gap <b>${fmtNum(d.g)}</b>`);
+  nums.push(`current <b>${fmtMetric(d,'vf',d.v)}</b>`);
+  nums.push(`benchmark <b>${fmtMetric(d,'bf',d.b)}</b>`);
+  if(d.g!==undefined) nums.push(`gap <b>${fmtMetric(d,'gf',d.g)}</b>`);
   if(d.cs!==undefined) nums.push(`confidence <b>${Math.round(d.cs*100)}%</b>`);
   return `<div class="drv">
     <div class="top"><span class="m">${esc(d.m)}</span>${sevChip(d)}</div>
@@ -638,7 +667,7 @@ function sevText(d){
   if(d.b===undefined || d.b===0) return "";
   const r = Math.abs(d.g)/Math.abs(d.b);
   const lvl = r>=0.25 ? "critical" : r>=0.10 ? "serious" : "warning";
-  return `${SEV_WORD[lvl]} gap ${fmtNum(d.g)}`;
+  return `${SEV_WORD[lvl]} gap ${fmtMetric(d,'gf',d.g)}`;
 }
 function trendText(d){
   let s = (d.t8!==undefined && d.t8!==null) ? d.t8
@@ -652,14 +681,26 @@ function trendText(d){
 function coreMetricsTable(rows){
   const body = rows.map(d=>`<tr>`+
     `<td class="m">${esc(prettyMetric(d.m))}</td>`+
-    `<td class="num">${fmtNum(d.v)}</td>`+
-    `<td class="num">${fmtNum(d.b)}</td>`+
+    `<td class="num">${fmtMetric(d,'vf',d.v)}</td>`+
+    `<td class="num">${fmtMetric(d,'bf',d.b)}</td>`+
     `<td>${sevChip(d)}</td>`+
     `<td>${trendChip(d)}</td>`+
   `</tr>`).join("");
   return `<table class="cmtable"><thead><tr>`+
     `<th>Metric</th><th class="num">This week</th><th class="num">Benchmark</th>`+
     `<th>vs. benchmark</th><th>Trend</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+/* Which week the core metrics are from — and a callout when it is not the current week. */
+function cmNoteText(e){
+  if(!e.cmp) return "";
+  return e.cms
+    ? `Latest available data — week ending ${e.cmp} (no data for the current coaching week).`
+    : `Data for week ending ${e.cmp}.`;
+}
+function cmNoteHtml(e){
+  const t = cmNoteText(e);
+  if(!t) return "";
+  return `<div class="cmnote${e.cms?" stale":""}">${e.cms?"⚠ ":""}${esc(t)}</div>`;
 }
 
 /* ---- copy-to-clipboard: block headers, writer, per-block serializers ---- */
@@ -720,19 +761,21 @@ function _tail(d){ return [sevText(d), trendText(d)].filter(Boolean).join(", ");
 function buildCopy(key, e){
   if(key==="cm"){
     const rows = e.cm||[];
+    const note = cmNoteText(e);
+    const noteHtml = note ? `<p style="margin:0 0 6px;color:${e.cms?"#8a6100":"#555"}${e.cms?";font-weight:600":""}">${esc(note)}</p>` : "";
     const rhtml = rows.map(d=>`<tr>`+
       `<td style="${_TD}"><b>${esc(prettyMetric(d.m))}</b></td>`+
-      `<td style="${_TDR}">${fmtNum(d.v)}</td>`+
-      `<td style="${_TDR}">${fmtNum(d.b)}</td>`+
+      `<td style="${_TDR}">${fmtMetric(d,'vf',d.v)}</td>`+
+      `<td style="${_TDR}">${fmtMetric(d,'bf',d.b)}</td>`+
       `<td style="${_TD}">${esc(sevText(d))}</td>`+
       `<td style="${_TD}">${esc(trendText(d))}</td></tr>`).join("");
-    const html = _WRAP(_H("Core metrics this week")+
+    const html = _WRAP(_H("Core metrics this week")+noteHtml+
       `<table style="${_TB}"><thead><tr>`+
       `<th style="${_TH}">Metric</th><th style="${_THR}">This week</th><th style="${_THR}">Benchmark</th>`+
       `<th style="${_TH}">vs. benchmark</th><th style="${_TH}">Trend</th></tr></thead><tbody>${rhtml}</tbody></table>`);
-    const text = "Core metrics this week\n" + rows.map(d=>{
+    const text = "Core metrics this week\n" + (note ? note+"\n" : "") + rows.map(d=>{
       const t = _tail(d);
-      return `- ${prettyMetric(d.m)}: ${fmtNum(d.v)} (benchmark ${fmtNum(d.b)})${t?` — ${t}`:""}`;
+      return `- ${prettyMetric(d.m)}: ${fmtMetric(d,'vf',d.v)} (benchmark ${fmtMetric(d,'bf',d.b)})${t?` — ${t}`:""}`;
     }).join("\n");
     return {html, text};
   }
@@ -758,16 +801,16 @@ function buildCopy(key, e){
     const conf = d => (d.cs!==undefined && d.cs!==null) ? `${Math.round(d.cs*100)}%` : "—";
     const rhtml = rows.map(d=>`<tr>`+
       `<td style="${_TD}"><b>${esc(prettyMetric(d.m))}</b></td>`+
-      `<td style="${_TDR}">${fmtNum(d.v)}</td>`+
-      `<td style="${_TDR}">${fmtNum(d.b)}</td>`+
-      `<td style="${_TDR}">${fmtNum(d.g)}</td>`+
+      `<td style="${_TDR}">${fmtMetric(d,'vf',d.v)}</td>`+
+      `<td style="${_TDR}">${fmtMetric(d,'bf',d.b)}</td>`+
+      `<td style="${_TDR}">${fmtMetric(d,'gf',d.g)}</td>`+
       `<td style="${_TDR}">${conf(d)}</td></tr>`).join("");
     const html = _WRAP(_H("Evidence & relevant numbers")+
       `<table style="${_TB}"><thead><tr>`+
       `<th style="${_TH}">Metric</th><th style="${_THR}">Current</th><th style="${_THR}">Benchmark</th>`+
       `<th style="${_THR}">Gap</th><th style="${_THR}">Confidence</th></tr></thead><tbody>${rhtml}</tbody></table>`);
     const text = "Evidence & relevant numbers\n" + rows.map(d=>
-      `- ${prettyMetric(d.m)}: current ${fmtNum(d.v)}, benchmark ${fmtNum(d.b)}, gap ${fmtNum(d.g)}, confidence ${conf(d)}`).join("\n");
+      `- ${prettyMetric(d.m)}: current ${fmtMetric(d,'vf',d.v)}, benchmark ${fmtMetric(d,'bf',d.b)}, gap ${fmtMetric(d,'gf',d.g)}, confidence ${conf(d)}`).join("\n");
     return {html, text};
   }
   if(key==="alts"){
@@ -785,7 +828,7 @@ function buildCopy(key, e){
     const rows = e.excl||[];
     if(!rows.length) return {html:_WRAP(_H("Data considered but excluded")+`<p style="margin:0">No signals were excluded for this expert.</p>`),
                              text:"Data considered but excluded\nNo signals were excluded for this expert."};
-    const meta = x => `value ${fmtNum(x.v)}${(x.conf!==null&&x.conf!==undefined)?`, confidence ${Math.round(x.conf*100)}%`:""}`;
+    const meta = x => `value ${fmtMetric(x,'vf',x.v)}${(x.conf!==null&&x.conf!==undefined)?`, confidence ${Math.round(x.conf*100)}%`:""}`;
     const reasons = x => (Array.isArray(x.reasons)?x.reasons:[]).join(", ");
     const html = _WRAP(_H("Data considered but excluded")+rows.map(x=>
       `<p style="margin:0 0 6px"><b>${esc(prettyMetric(x.m))}</b> — ${esc(meta(x))}`+
@@ -807,7 +850,7 @@ function openModal(id){
       <div>${(Array.isArray(e.theme.dm)?e.theme.dm:[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
 
   const coreMetrics = (e.cm||[]).length
-    ? `<div class="sec">${secHead("Core metrics this week","cm")}${coreMetricsTable(e.cm)}</div>`
+    ? `<div class="sec">${secHead("Core metrics this week","cm")}${cmNoteHtml(e)}${coreMetricsTable(e.cm)}</div>`
     : "";  // hidden when no core metrics have data this week
 
   const drivers = (e.drivers||[]).length
@@ -823,7 +866,7 @@ function openModal(id){
 
   const excl = (e.excl||[]).length
     ? e.excl.map(x=>`<div class="exrow"><div><span class="m">${esc(x.m)}</span>`+
-        `<div class="r">value ${fmtNum(x.v)}${x.conf!==null&&x.conf!==undefined?` · confidence ${Math.round(x.conf*100)}%`:""}</div></div>`+
+        `<div class="r">value ${fmtMetric(x,'vf',x.v)}${x.conf!==null&&x.conf!==undefined?` · confidence ${Math.round(x.conf*100)}%`:""}</div></div>`+
         `<div class="r">${(Array.isArray(x.reasons)?x.reasons:[]).map(r=>`<span class="tag">${esc(r)}</span>`).join("")}</div></div>`).join("")
     : `<p class="empty">No signals were excluded for this expert.</p>`;
 
