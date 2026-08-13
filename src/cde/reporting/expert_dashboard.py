@@ -143,6 +143,18 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
             "v": _num(e.get("value")),
             "conf": _num(e.get("confidence")),
         })
+    # Core-metrics block: new shape is {period, as_of_latest, metrics}; tolerate the legacy
+    # bare-list shape (older decision_receipts.jsonl) which carries no period info.
+    cm_raw = r.get("core_metrics")
+    if isinstance(cm_raw, dict):
+        cm_rows = _as_list(cm_raw.get("metrics"))
+        cm_period = cm_raw.get("period")
+        cm_stale = not bool(cm_raw.get("as_of_latest", True))
+    else:
+        cm_rows = _as_list(cm_raw)
+        cm_period = None
+        cm_stale = False
+
     prov = r.get("provenance") or {}
     return {
         "id": aid,
@@ -160,7 +172,10 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
             "not": nar.get("why_not_others"),
         },
         "drivers": [_driver(d) for d in _as_list(r.get("drivers"))],
-        "cm": [_driver(d) for d in _as_list(r.get("core_metrics"))],
+        "cm": [_driver(d) for d in cm_rows],
+        "cmp": cm_period,   # week-ending date (YYYY-MM-DD) the core metrics are from
+        "cms": cm_stale,    # True when that week is older than the recommendation week
+
         "theme": None if not theme else {
             "nd": theme.get("n_deficient"),
             "nm": theme.get("n_members"),
@@ -364,6 +379,8 @@ input[type=search]{min-width:190px}
 .cmtable td.m{font-weight:650;color:var(--text-1)}
 .cmtable td.num{font-variant-numeric:tabular-nums;color:var(--text-1);font-weight:600}
 .cmtable th.num,.cmtable td.num{text-align:right}
+.cmnote{font-size:12px;color:var(--muted);margin:-2px 0 9px}
+.cmnote.stale{color:var(--warning-ink);font-weight:600}
 .why{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--series);
   border-radius:8px;padding:11px 13px;margin-bottom:9px}
 .why .lab{font-size:11.5px;font-weight:700;color:var(--series);margin-bottom:3px;letter-spacing:.02em}
@@ -661,6 +678,18 @@ function coreMetricsTable(rows){
     `<th>Metric</th><th class="num">This week</th><th class="num">Benchmark</th>`+
     `<th>vs. benchmark</th><th>Trend</th></tr></thead><tbody>${body}</tbody></table>`;
 }
+/* Which week the core metrics are from — and a callout when it is not the current week. */
+function cmNoteText(e){
+  if(!e.cmp) return "";
+  return e.cms
+    ? `Latest available data — week ending ${e.cmp} (no data for the current coaching week).`
+    : `Data for week ending ${e.cmp}.`;
+}
+function cmNoteHtml(e){
+  const t = cmNoteText(e);
+  if(!t) return "";
+  return `<div class="cmnote${e.cms?" stale":""}">${e.cms?"⚠ ":""}${esc(t)}</div>`;
+}
 
 /* ---- copy-to-clipboard: block headers, writer, per-block serializers ---- */
 const CLIP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>`;
@@ -720,17 +749,19 @@ function _tail(d){ return [sevText(d), trendText(d)].filter(Boolean).join(", ");
 function buildCopy(key, e){
   if(key==="cm"){
     const rows = e.cm||[];
+    const note = cmNoteText(e);
+    const noteHtml = note ? `<p style="margin:0 0 6px;color:${e.cms?"#8a6100":"#555"}${e.cms?";font-weight:600":""}">${esc(note)}</p>` : "";
     const rhtml = rows.map(d=>`<tr>`+
       `<td style="${_TD}"><b>${esc(prettyMetric(d.m))}</b></td>`+
       `<td style="${_TDR}">${fmtNum(d.v)}</td>`+
       `<td style="${_TDR}">${fmtNum(d.b)}</td>`+
       `<td style="${_TD}">${esc(sevText(d))}</td>`+
       `<td style="${_TD}">${esc(trendText(d))}</td></tr>`).join("");
-    const html = _WRAP(_H("Core metrics this week")+
+    const html = _WRAP(_H("Core metrics this week")+noteHtml+
       `<table style="${_TB}"><thead><tr>`+
       `<th style="${_TH}">Metric</th><th style="${_THR}">This week</th><th style="${_THR}">Benchmark</th>`+
       `<th style="${_TH}">vs. benchmark</th><th style="${_TH}">Trend</th></tr></thead><tbody>${rhtml}</tbody></table>`);
-    const text = "Core metrics this week\n" + rows.map(d=>{
+    const text = "Core metrics this week\n" + (note ? note+"\n" : "") + rows.map(d=>{
       const t = _tail(d);
       return `- ${prettyMetric(d.m)}: ${fmtNum(d.v)} (benchmark ${fmtNum(d.b)})${t?` — ${t}`:""}`;
     }).join("\n");
@@ -807,7 +838,7 @@ function openModal(id){
       <div>${(Array.isArray(e.theme.dm)?e.theme.dm:[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
 
   const coreMetrics = (e.cm||[]).length
-    ? `<div class="sec">${secHead("Core metrics this week","cm")}${coreMetricsTable(e.cm)}</div>`
+    ? `<div class="sec">${secHead("Core metrics this week","cm")}${cmNoteHtml(e)}${coreMetricsTable(e.cm)}</div>`
     : "";  // hidden when no core metrics have data this week
 
   const drivers = (e.drivers||[]).length

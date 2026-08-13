@@ -24,6 +24,48 @@ _TREND_FIELDS = ["trend_8w", "recency_shift", "weeks_present", "direction"]
 _KEYS = ["agent_id", "period", "call_type"]
 
 
+def _period_str(p: Any) -> Optional[str]:
+    """Format a period as YYYY-MM-DD (the week-ending date shown in receipts)."""
+    if p is None or (isinstance(p, float) and pd.isna(p)):
+        return None
+    try:
+        return pd.Timestamp(p).strftime("%Y-%m-%d")
+    except Exception:
+        return str(p)
+
+
+def _periods_equal(a: Any, b: Any) -> bool:
+    try:
+        return pd.Timestamp(a).normalize() == pd.Timestamp(b).normalize()
+    except Exception:
+        return a == b
+
+
+def _core_metrics_block(
+    core_metrics_idx: Optional[Dict[Any, Any]],
+    agent_id: Any,
+    call_type: Any,
+    rec_period: Any,
+) -> Dict[str, Any]:
+    """Assemble the receipt's core-metrics block, keyed by ``(agent_id, call_type)``.
+
+    The block is anchored on the agent's latest *eligible* week, which can lag the
+    recommendation's week when the agent had no qualifying calls in the current week.
+    We surface the block's own ``period`` and ``as_of_latest`` (whether that week is the
+    recommendation week) so the dashboard states which week the numbers are from and
+    calls it out when they are older, instead of silently hiding the block.
+    """
+    block = (core_metrics_idx or {}).get((agent_id, call_type))
+    if not block or not block.get("metrics"):
+        return {"period": None, "as_of_latest": True, "metrics": []}
+    data_period = block["period"]
+    return {
+        "period": _period_str(data_period),
+        "as_of_latest": _periods_equal(data_period, rec_period),
+        "metrics": block["metrics"],
+    }
+
+
 def build_receipts(
     recommendations: pd.DataFrame,
     candidates: pd.DataFrame,
@@ -104,7 +146,7 @@ def build_receipts(
             "tier": tier,
             "advisory": False,  # set True for reinforcement (expert already at/above benchmark)
             "excluded_signals": excluded_for_agent,
-            "core_metrics": core_metrics_idx.get((agent_id, period, call_type), []),
+            "core_metrics": _core_metrics_block(core_metrics_idx, agent_id, call_type, period),
             "provenance": provenance,
             "config_hash": config_hash,
         }
@@ -300,8 +342,8 @@ def _abstention_receipt(
     drivers = []
     if best_topic is not None and not (isinstance(best_topic, float) and pd.isna(best_topic)):
         drivers = [{"topic": best_topic, "priority_score": best_ps, "level_score": best_lvl}]
-    core_metrics = (core_metrics_idx or {}).get(
-        (a.get("agent_id"), a.get("period"), a.get("call_type")), []
+    core_metrics = _core_metrics_block(
+        core_metrics_idx, a.get("agent_id"), a.get("call_type"), a.get("period")
     )
     return {
         "agent_id": a.get("agent_id"),
