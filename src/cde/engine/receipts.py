@@ -7,6 +7,7 @@ from typing import Any, Dict, Optional
 
 import pandas as pd
 
+from cde.explainability.core_metrics import build_core_metrics_index
 from cde.explainability.evidence import build_competitors
 from cde.explainability.templates import (
     narrative_why_this, narrative_why_now, narrative_why_not,
@@ -66,6 +67,11 @@ def build_receipts(
     # ``scores``). Used to narrate the trend in "why now" without widening the rec keep-lists.
     trend_idx = _trend_index(scores)
 
+    # Per-expert "core metrics this week" block (config-driven, per icp_client). Built once
+    # from eligible_signals (``signals``) + the trend index; attached to every receipt so it
+    # flows to both decision_receipts.jsonl and the expert-dashboard modals.
+    core_metrics_idx = build_core_metrics_index(signals, trend_idx, config)
+
     # How many topic candidates each agent had this period (a count of 1 means the chosen
     # behavior was the only one with enough data — used to explain "sole-signal" recs).
     cand_counts = _candidate_counts(candidates)
@@ -98,6 +104,7 @@ def build_receipts(
             "tier": tier,
             "advisory": False,  # set True for reinforcement (expert already at/above benchmark)
             "excluded_signals": excluded_for_agent,
+            "core_metrics": core_metrics_idx.get((agent_id, period, call_type), []),
             "provenance": provenance,
             "config_hash": config_hash,
         }
@@ -113,7 +120,7 @@ def build_receipts(
     # Abstention receipts (explicit, explained non-recommendations)
     if has_abstentions:
         for _, a in abstentions.iterrows():
-            receipts.append(_abstention_receipt(a, provenance, config_hash))
+            receipts.append(_abstention_receipt(a, provenance, config_hash, core_metrics_idx))
 
     return pd.DataFrame(receipts)
 
@@ -280,7 +287,12 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
     }
 
 
-def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any], config_hash: Optional[str] = None) -> Dict[str, Any]:
+def _abstention_receipt(
+    a: pd.Series,
+    provenance: Dict[str, Any],
+    config_hash: Optional[str] = None,
+    core_metrics_idx: Optional[Dict[Any, Any]] = None,
+) -> Dict[str, Any]:
     reason = a.get("reason")
     best_topic = a.get("best_topic")
     best_ps = _float_or_none(a.get("best_priority_score"))
@@ -288,6 +300,9 @@ def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any], config_hash: O
     drivers = []
     if best_topic is not None and not (isinstance(best_topic, float) and pd.isna(best_topic)):
         drivers = [{"topic": best_topic, "priority_score": best_ps, "level_score": best_lvl}]
+    core_metrics = (core_metrics_idx or {}).get(
+        (a.get("agent_id"), a.get("period"), a.get("call_type")), []
+    )
     return {
         "agent_id": a.get("agent_id"),
         "period": a.get("period"),
@@ -300,6 +315,7 @@ def _abstention_receipt(a: pd.Series, provenance: Dict[str, Any], config_hash: O
         "drivers": drivers,
         "competing_topics": [],
         "excluded_signals": [],
+        "core_metrics": core_metrics,
         "narrative": {
             "why_this": narrative_abstention(reason, best_topic, best_ps),
             "why_now": "Withheld this cycle; re-evaluated each run as data updates.",

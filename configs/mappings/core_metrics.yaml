@@ -1,0 +1,54 @@
+# Core metrics surfaced in the "Core metrics this week" receipt block.
+#
+# This drives the block shown in each decision receipt / expert-dashboard modal, just
+# below the coaching recommendation and above the "why" narratives. For each metric it
+# renders the most recent week's value, an above/below-benchmark indicator for the
+# expert's icp_client cohort, and an up/down trend over the prior several weeks.
+#
+# Selection is per icp_client cohort:
+#   by_icp_client[cohort]  ->  default   (a cohort not listed falls back to `default`)
+# icp_client matching is CASE-INSENSITIVE (source data uses 'MOB-AT&T', the agents table
+# 'mob-at&t'); keys here are lowercase, matching benchmarks.yaml.
+#
+# Keys in each list MUST be canonical metric keys from configs/mappings/metric_catalog.yaml
+# (validated at preflight by governance/config_lint). List order is the display order.
+# To surface a new metric, add it to the catalog first, then list its key here.
+#
+# The starter lists below use existing business metrics; curate per cohort as needed.
+
+core_metrics:
+
+  # Fallback for any cohort not explicitly listed under by_icp_client.
+  default:
+    - transfer_rate
+    - resolution_rate
+    - crt
+    - nsp100
+
+  by_icp_client:
+    mob-at&t:
+      - nsp100
+      - cancel_rate
+      - expert_5star
+      - transfer_rate
+      - crt
+    mob-verizon:
+      - nsp100
+      - cancel_rate
+      - expert_5star
+      - transfer_rate
+      - crt
+    pss-at&t:
+      - nsp100
+      - cancel_rate
+      - expert_5star
+      - transfer_rate
+      - resolution_rate
+      - crt
+    pss-verizon:
+      - nsp100
+      - cancel_rate
+      - erp
+      - transfer_rate
+      - resolution_rate
+      - crt

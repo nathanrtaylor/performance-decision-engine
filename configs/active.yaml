@@ -13,6 +13,7 @@ mappings:
   benchmarks: mappings/benchmarks.yaml
   coaching_history_map: mappings/coaching_history_map.yaml
   themes: mappings/themes.yaml   # human-curated coaching themes (auto-loads to cfg["themes"])
+  core_metrics: mappings/core_metrics.yaml   # per-icp_client "core metrics this week" receipt block (auto-loads to cfg["core_metrics"])
 
 # ---------------------------------------------------
 # Signal Gating
