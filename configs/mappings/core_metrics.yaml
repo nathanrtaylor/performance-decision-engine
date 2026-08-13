@@ -35,7 +35,7 @@ core_metrics:
     mob-verizon:
       - nsp100
       - cancel_rate
-      - erp
+      - expert_5star
       - transfer_rate
       - crt
     pss-at&t:
@@ -48,7 +48,7 @@ core_metrics:
     pss-verizon:
       - nsp100
       - cancel_rate
-      - expert_5star
+      - erp
       - transfer_rate
       - resolution_rate
       - crt
