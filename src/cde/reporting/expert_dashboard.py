@@ -349,6 +349,21 @@ input[type=search]{min-width:190px}
 .sec{margin-top:20px}
 .sec > .h{display:flex;align-items:center;gap:8px;font-size:12px;text-transform:uppercase;
   letter-spacing:.04em;color:var(--muted);font-weight:700;margin-bottom:8px}
+.copybtn{margin-left:auto;flex:none;display:inline-flex;align-items:center;justify-content:center;
+  width:25px;height:25px;border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);
+  border-radius:7px;cursor:pointer;padding:0;line-height:0}
+.copybtn svg{width:14px;height:14px;display:block}
+.copybtn:hover{color:var(--text-1)}
+.copybtn.done{color:var(--good);border-color:color-mix(in srgb,var(--good) 45%,var(--border))}
+/* core-metrics table (replaces bar meters for a copy-friendly view) */
+.cmtable{width:100%;border-collapse:collapse;font-size:12.5px}
+.cmtable th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;
+  letter-spacing:.03em;padding:0 12px 6px 0;border-bottom:1px solid var(--grid)}
+.cmtable td{padding:8px 12px 8px 0;border-bottom:1px solid var(--grid);vertical-align:middle}
+.cmtable tr:last-child td{border-bottom:none}
+.cmtable td.m{font-weight:650;color:var(--text-1)}
+.cmtable td.num{font-variant-numeric:tabular-nums;color:var(--text-1);font-weight:600}
+.cmtable th.num,.cmtable td.num{text-align:right}
 .why{background:var(--surface-2);border:1px solid var(--border);border-left:3px solid var(--series);
   border-radius:8px;padding:11px 13px;margin-bottom:9px}
 .why .lab{font-size:11.5px;font-weight:700;color:var(--series);margin-bottom:3px;letter-spacing:.02em}
@@ -363,7 +378,6 @@ input[type=search]{min-width:190px}
 .meter{position:relative;height:16px;background:var(--track);border-radius:5px;margin:9px 0 6px}
 .meter .fill{position:absolute;left:0;top:0;height:16px;background:var(--series);border-radius:5px 4px 4px 5px;min-width:3px}
 .meter .bench{position:absolute;top:-3px;width:2px;height:22px;background:var(--baseline)}
-.drv .top .cmbadges{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .drv .nums{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--text-2);font-variant-numeric:tabular-nums}
 .drv .nums b{color:var(--text-1);font-weight:650}
 .legend{display:flex;gap:14px;align-items:center;color:var(--muted);font-size:11px;margin:2px 2px 10px}
@@ -616,14 +630,171 @@ function trendChip(d){
   const cls = favorable ? "good" : "serious";
   return `<span class="chip ${cls}"><span class="ico">${up?"↑":"↓"}</span>trending ${up?"up":"down"}</span>`;
 }
-function coreMetricRow(d){
-  const nums = [`current <b>${fmtNum(d.v)}</b>`, `benchmark <b>${fmtNum(d.b)}</b>`];
-  return `<div class="drv">
-    <div class="top"><span class="m">${esc(prettyMetric(d.m))}</span>`+
-    `<span class="cmbadges">${sevChip(d)}${trendChip(d)}</span></div>
-    ${meter(d)}
-    <div class="nums">${nums.join("")}</div>
-  </div>`;
+/* Plain-text twins of sevChip / trendChip — same wording, no icon markup (for clipboard + table). */
+function sevText(d){
+  if(d.cp!==undefined) return `${Math.round(d.cp*100)}th percentile in cohort`;
+  if(d.g===undefined || d.g===null) return "";
+  if(aboveBench(d.g, d.dir)) return "at/above benchmark";
+  if(d.b===undefined || d.b===0) return "";
+  const r = Math.abs(d.g)/Math.abs(d.b);
+  const lvl = r>=0.25 ? "critical" : r>=0.10 ? "serious" : "warning";
+  return `${SEV_WORD[lvl]} gap ${fmtNum(d.g)}`;
+}
+function trendText(d){
+  let s = (d.t8!==undefined && d.t8!==null) ? d.t8
+        : (d.rc!==undefined && d.rc!==null) ? d.rc : null;
+  if(s===null) return "trend n/a";
+  const eps = (d.b!==undefined && d.b!==null && d.b!==0) ? Math.abs(d.b)*0.005 : 0;
+  if(Math.abs(s) <= eps) return "steady";
+  return s>0 ? "trending up" : "trending down";
+}
+/* Core metrics render as a table (no bar meters) so the on-screen view matches the paste. */
+function coreMetricsTable(rows){
+  const body = rows.map(d=>`<tr>`+
+    `<td class="m">${esc(prettyMetric(d.m))}</td>`+
+    `<td class="num">${fmtNum(d.v)}</td>`+
+    `<td class="num">${fmtNum(d.b)}</td>`+
+    `<td>${sevChip(d)}</td>`+
+    `<td>${trendChip(d)}</td>`+
+  `</tr>`).join("");
+  return `<table class="cmtable"><thead><tr>`+
+    `<th>Metric</th><th class="num">This week</th><th class="num">Benchmark</th>`+
+    `<th>vs. benchmark</th><th>Trend</th></tr></thead><tbody>${body}</tbody></table>`;
+}
+
+/* ---- copy-to-clipboard: block headers, writer, per-block serializers ---- */
+const CLIP_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15V5a2 2 0 0 1 2-2h10"></path></svg>`;
+const CHECK_ICON = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>`;
+function secHead(title, key){
+  return `<div class="h"><span>${esc(title)}</span>`+
+    `<button class="copybtn" data-copy="${key}" title="Copy ${esc(title)}" aria-label="Copy ${esc(title)}">${CLIP_ICON}</button></div>`;
+}
+
+function fallbackCopy(html, text){
+  try{
+    const div = document.createElement("div");
+    div.setAttribute("contenteditable","true");
+    div.style.cssText = "position:fixed;left:-9999px;top:0;white-space:pre-wrap";
+    div.innerHTML = html;
+    document.body.appendChild(div);
+    const range = document.createRange();
+    range.selectNodeContents(div);
+    const sel = window.getSelection();
+    sel.removeAllRanges(); sel.addRange(range);
+    const ok = document.execCommand("copy");
+    sel.removeAllRanges(); document.body.removeChild(div);
+    if(ok) return true;
+  }catch(e){}
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.cssText = "position:fixed;left:-9999px;top:0";
+    document.body.appendChild(ta); ta.focus(); ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  }catch(e){ return false; }
+}
+function writeClipboard(html, text){
+  if(navigator.clipboard && window.ClipboardItem){
+    try{
+      const item = new ClipboardItem({
+        "text/html": new Blob([html], {type:"text/html"}),
+        "text/plain": new Blob([text], {type:"text/plain"})
+      });
+      return navigator.clipboard.write([item]).catch(()=>fallbackCopy(html, text));
+    }catch(e){ return Promise.resolve(fallbackCopy(html, text)); }
+  }
+  return Promise.resolve(fallbackCopy(html, text));
+}
+
+/* Rich-text building blocks — inline styles only, so formatting survives paste into external editors. */
+const _WRAP = s => `<div style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;color:#111;line-height:1.5">${s}</div>`;
+const _H = t => `<p style="font-weight:700;margin:0 0 6px">${esc(t)}</p>`;
+const _TB = "border-collapse:collapse;font-size:13px";
+const _TH = "text-align:left;padding:4px 16px 5px 0;border-bottom:1px solid #bbb;color:#555;font-weight:600;white-space:nowrap";
+const _THR = _TH + ";text-align:right";
+const _TD = "padding:5px 16px 5px 0;border-bottom:1px solid #e5e5e5;vertical-align:top";
+const _TDR = _TD + ";text-align:right;font-variant-numeric:tabular-nums";
+function _tail(d){ return [sevText(d), trendText(d)].filter(Boolean).join(", "); }
+
+function buildCopy(key, e){
+  if(key==="cm"){
+    const rows = e.cm||[];
+    const rhtml = rows.map(d=>`<tr>`+
+      `<td style="${_TD}"><b>${esc(prettyMetric(d.m))}</b></td>`+
+      `<td style="${_TDR}">${fmtNum(d.v)}</td>`+
+      `<td style="${_TDR}">${fmtNum(d.b)}</td>`+
+      `<td style="${_TD}">${esc(sevText(d))}</td>`+
+      `<td style="${_TD}">${esc(trendText(d))}</td></tr>`).join("");
+    const html = _WRAP(_H("Core metrics this week")+
+      `<table style="${_TB}"><thead><tr>`+
+      `<th style="${_TH}">Metric</th><th style="${_THR}">This week</th><th style="${_THR}">Benchmark</th>`+
+      `<th style="${_TH}">vs. benchmark</th><th style="${_TH}">Trend</th></tr></thead><tbody>${rhtml}</tbody></table>`);
+    const text = "Core metrics this week\n" + rows.map(d=>{
+      const t = _tail(d);
+      return `- ${prettyMetric(d.m)}: ${fmtNum(d.v)} (benchmark ${fmtNum(d.b)})${t?` — ${t}`:""}`;
+    }).join("\n");
+    return {html, text};
+  }
+  if(key==="why-this" || key==="why-now" || key==="why-not"){
+    const m = {"why-this":["Why this", e.why.this],
+               "why-now":["Why now", e.why.now],
+               "why-not":["Why not something else", e.why.not]};
+    const [label, body] = m[key];
+    return {html: _WRAP(_H(label)+`<p style="margin:0">${esc(body||"")}</p>`),
+            text: `${label}\n${body||""}`};
+  }
+  if(key==="theme"){
+    const t = e.theme || {};
+    const dm = Array.isArray(t.dm) ? t.dm : [];
+    const line = `${t.nd} of ${t.nm} related behaviors are deficient together: ${dm.map(prettyMetric).join(", ")}`;
+    return {html: _WRAP(_H("Theme pattern")+`<p style="margin:0">${esc(line)}</p>`),
+            text: `Theme pattern\n${line}`};
+  }
+  if(key==="drivers"){
+    const rows = e.drivers||[];
+    if(!rows.length) return {html:_WRAP(_H("Evidence & relevant numbers")+`<p style="margin:0">No driver detail recorded.</p>`),
+                             text:"Evidence & relevant numbers\nNo driver detail recorded."};
+    const conf = d => (d.cs!==undefined && d.cs!==null) ? `${Math.round(d.cs*100)}%` : "—";
+    const rhtml = rows.map(d=>`<tr>`+
+      `<td style="${_TD}"><b>${esc(prettyMetric(d.m))}</b></td>`+
+      `<td style="${_TDR}">${fmtNum(d.v)}</td>`+
+      `<td style="${_TDR}">${fmtNum(d.b)}</td>`+
+      `<td style="${_TDR}">${fmtNum(d.g)}</td>`+
+      `<td style="${_TDR}">${conf(d)}</td></tr>`).join("");
+    const html = _WRAP(_H("Evidence & relevant numbers")+
+      `<table style="${_TB}"><thead><tr>`+
+      `<th style="${_TH}">Metric</th><th style="${_THR}">Current</th><th style="${_THR}">Benchmark</th>`+
+      `<th style="${_THR}">Gap</th><th style="${_THR}">Confidence</th></tr></thead><tbody>${rhtml}</tbody></table>`);
+    const text = "Evidence & relevant numbers\n" + rows.map(d=>
+      `- ${prettyMetric(d.m)}: current ${fmtNum(d.v)}, benchmark ${fmtNum(d.b)}, gap ${fmtNum(d.g)}, confidence ${conf(d)}`).join("\n");
+    return {html, text};
+  }
+  if(key==="alts"){
+    const rows = e.comp||[];
+    if(!rows.length) return {html:_WRAP(_H("Alternatives considered")+`<p style="margin:0">No competing alternatives were recorded for this decision.</p>`),
+                             text:"Alternatives considered\nNo competing alternatives were recorded for this decision."};
+    const html = _WRAP(_H("Alternatives considered")+rows.map(c=>
+      `<p style="margin:0 0 6px"><b>${esc(c.topic)}</b>${c.metric?` — driver ${esc(c.metric)}`:""}`+
+      `${c.reason?`<br><span style="color:#555">${esc(c.reason)}</span>`:""}</p>`).join(""));
+    const text = "Alternatives considered\n" + rows.map(c=>
+      `- ${c.topic}${c.metric?` (driver ${c.metric})`:""}${c.reason?`: ${c.reason}`:""}`).join("\n");
+    return {html, text};
+  }
+  if(key==="excl"){
+    const rows = e.excl||[];
+    if(!rows.length) return {html:_WRAP(_H("Data considered but excluded")+`<p style="margin:0">No signals were excluded for this expert.</p>`),
+                             text:"Data considered but excluded\nNo signals were excluded for this expert."};
+    const meta = x => `value ${fmtNum(x.v)}${(x.conf!==null&&x.conf!==undefined)?`, confidence ${Math.round(x.conf*100)}%`:""}`;
+    const reasons = x => (Array.isArray(x.reasons)?x.reasons:[]).join(", ");
+    const html = _WRAP(_H("Data considered but excluded")+rows.map(x=>
+      `<p style="margin:0 0 6px"><b>${esc(prettyMetric(x.m))}</b> — ${esc(meta(x))}`+
+      `${reasons(x)?`<br><span style="color:#555">reasons: ${esc(reasons(x))}</span>`:""}</p>`).join(""));
+    const text = "Data considered but excluded\n" + rows.map(x=>
+      `- ${prettyMetric(x.m)}: ${meta(x)}${reasons(x)?` — reasons: ${reasons(x)}`:""}`).join("\n");
+    return {html, text};
+  }
+  return {html:"", text:""};
 }
 
 /* ---- modal ---- */
@@ -631,12 +802,12 @@ function openModal(id){
   const e = byId.get(id);
   if(!e) return;
   const coach = e.coach ? `<span>coach ${esc(e.coach)}</span>` : "";
-  const theme = e.theme ? `<div class="sec"><div class="h">Theme pattern</div>
+  const theme = e.theme ? `<div class="sec">${secHead("Theme pattern","theme")}
       <p style="margin:0 0 8px;font-size:13px;color:var(--text-2)">${e.theme.nd} of ${e.theme.nm} related behaviors are deficient together:</p>
       <div>${(Array.isArray(e.theme.dm)?e.theme.dm:[]).map(m=>`<span class="tag">${esc(m)}</span>`).join("")}</div></div>` : "";
 
   const coreMetrics = (e.cm||[]).length
-    ? `<div class="sec"><div class="h">Core metrics this week</div>${e.cm.map(coreMetricRow).join("")}</div>`
+    ? `<div class="sec">${secHead("Core metrics this week","cm")}${coreMetricsTable(e.cm)}</div>`
     : "";  // hidden when no core metrics have data this week
 
   const drivers = (e.drivers||[]).length
@@ -674,18 +845,18 @@ function openModal(id){
 
       ${coreMetrics}
 
-      <div class="sec"><div class="h">Why this</div>
+      <div class="sec">${secHead("Why this","why-this")}
         <div class="why this"><div class="lab">WHY THIS</div><p>${esc(e.why.this)}</p></div></div>
-      <div class="sec"><div class="h">Why now</div>
+      <div class="sec">${secHead("Why now","why-now")}
         <div class="why now"><div class="lab">WHY NOW</div><p>${esc(e.why.now)}</p></div></div>
-      <div class="sec"><div class="h">Why not something else</div>
+      <div class="sec">${secHead("Why not something else","why-not")}
         <div class="why not"><div class="lab">WHY NOT SOMETHING ELSE</div><p>${esc(e.why.not)}</p></div></div>
 
       ${theme}
 
-      <div class="sec"><div class="h">Evidence &amp; relevant numbers</div>${drivers}</div>
-      <div class="sec"><div class="h">Alternatives considered</div>${alts}</div>
-      <div class="sec"><div class="h">Data considered but excluded</div>${excl}</div>
+      <div class="sec">${secHead("Evidence & relevant numbers","drivers")}${drivers}</div>
+      <div class="sec">${secHead("Alternatives considered","alts")}${alts}</div>
+      <div class="sec">${secHead("Data considered but excluded","excl")}${excl}</div>
 
       <div class="prov">
         <span>config ${esc(p.cv||"?")}</span><span>hash ${esc(p.ch||"?")}</span>
@@ -696,6 +867,15 @@ function openModal(id){
   ov.classList.add("open");
   document.getElementById("closeBtn").onclick = closeModal;
   document.getElementById("closeBtn").focus();
+  document.querySelectorAll("#modal .copybtn").forEach(btn => {
+    btn.onclick = () => {
+      const {html, text} = buildCopy(btn.dataset.copy, e);
+      Promise.resolve(writeClipboard(html, text)).then(() => {
+        btn.classList.add("done"); btn.innerHTML = CHECK_ICON;
+        setTimeout(() => { btn.classList.remove("done"); btn.innerHTML = CLIP_ICON; }, 1200);
+      });
+    };
+  });
   if(location.hash !== "#a="+id) history.replaceState(null,"","#a="+id);
 }
 function closeModal(){
