@@ -111,7 +111,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "cancellation rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: business
+      category: sales
       direction: lower_is_better
       unit: rate
       description: "sales cancellations after the call"
@@ -173,7 +173,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "nsp100"
       display: { scale: 100, suffix: "", decimals: 1 }
-      category: business
+      category: sales
       direction: higher_is_better
       unit: rate
       description: "Sales, net of cancellation, per 100 calls"
@@ -694,6 +694,7 @@ metric_catalog:
   # in dashboards/receipts only — never changes the stored value. Resolved per-metric over the
   # metric's category_defaults[category].display. See cde/utils/metric_format.py.
   category_defaults:
+    sales:            { base_weight_class: high,   confidence_floor: 0.6 }
     business:         { base_weight_class: high,   confidence_floor: 0.6 }
     tool_usage:       { base_weight_class: medium, confidence_floor: 0.5 }
     quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 } }

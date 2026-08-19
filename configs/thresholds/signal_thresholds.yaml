@@ -15,6 +15,9 @@ signal_thresholds:
     min_denominator_default: 10
 
   by_category:
+    sales:
+      min_confidence: 0.30
+      min_denominator_default: 10
     business:
       min_confidence: 0.30
       min_denominator_default: 10

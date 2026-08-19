@@ -3,9 +3,10 @@ priorities:
 
   # Default weighting stance: business metrics dominate
   by_category:
-    business: 1.0
-    tool_usage: 0.9
-    quality_behavior: 0.8
+    sales: 1.0
+    business: 0.9
+    tool_usage: 0.8
+    quality_behavior: 0.7
 
   # Optional: explicit overrides (leave empty if you’re not ready)
   by_metric: {}
@@ -15,4 +16,4 @@ priorities:
 
   # Deterministic tie-break preferences (optional)
   tie_breakers:
-    prefer_categories_in_order: [business, tool_usage, quality_behavior]
+    prefer_categories_in_order: [sales, business, tool_usage, quality_behavior]

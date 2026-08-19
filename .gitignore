@@ -42,3 +42,7 @@ data/**/*.csv
 
 # keep small samples + fixtures
 !data/samples/**
+
+# temporary ignore until we pick up the ASCEND work
+extraction/compiled_sql/adhoc_training_assist/**
+materials/**
