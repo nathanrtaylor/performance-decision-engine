@@ -222,6 +222,7 @@ def main(argv=None) -> None:
             out_dir / "expert_dashboard.html",
             receipts=receipts,
             agents=normalized.get("agents"),  # icp_client / mascot / coach / agent_name
+            coaching_history=normalized.get("coaching_history"),  # recent coaching-history block
             meta={
                 "run_id": run_id,
                 "data_snapshot": meta.get("data_snapshot"),
