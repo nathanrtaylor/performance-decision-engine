@@ -63,6 +63,54 @@ def agents_map_from_df(agents: Optional[pd.DataFrame]) -> Dict[str, Dict[str, st
     return out
 
 
+def coaching_history_map_from_df(
+    coaching_history: Optional[pd.DataFrame],
+) -> Dict[str, List[Dict[str, str]]]:
+    """agent_id -> list of recent coaching events (most recent 5, newest first).
+
+    Reads the RAW coaching-history frame (``normalized["coaching_history"]``), not the
+    collapsed ``build_coaching_history`` output which drops status/behavior/date. Each event is a
+    compact dict with short keys to keep the embedded JSON small::
+
+        {"ty": coaching_type, "tp": behavior_selected|behavior, "dt": "YYYY-MM-DD", "st": coaching_status}
+
+    ``agent_id`` is cast to ``str`` so numeric ids join reliably with the expert records.
+    """
+    if (
+        coaching_history is None
+        or coaching_history.empty
+        or "agent_id" not in coaching_history.columns
+    ):
+        return {}
+    df = coaching_history.copy()
+    df["agent_id"] = df["agent_id"].astype(str)
+    # Parse the event date once; sort newest-first so head(5) keeps the most recent events.
+    dt = pd.to_datetime(df.get("coaching_date"), errors="coerce")
+    df["_dt"] = dt
+    df["_dt_str"] = dt.dt.strftime("%Y-%m-%d")
+    df = df.sort_values("_dt", ascending=False, kind="mergesort", na_position="last")
+
+    def _s(v: Any) -> str:
+        if v is None or (isinstance(v, float) and pd.isna(v)):
+            return ""
+        return str(v).strip()
+
+    out: Dict[str, List[Dict[str, str]]] = {}
+    for aid, grp in df.groupby("agent_id", sort=False):
+        events: List[Dict[str, str]] = []
+        for _, r in grp.head(5).iterrows():
+            ty = _s(r.get("coaching_type"))
+            tp = _s(r.get("behavior_selected")) or _s(r.get("behavior"))
+            dt_str = _s(r.get("_dt_str"))
+            st = _s(r.get("coaching_status"))
+            if not ty and not tp and not dt_str:
+                continue  # nothing meaningful to show
+            events.append({"ty": ty, "tp": tp, "dt": dt_str, "st": st})
+        if events:
+            out[aid] = events
+    return out
+
+
 def _num(x: Any) -> Optional[float]:
     if x is None:
         return None
@@ -127,7 +175,11 @@ def _as_str_list(x: Any) -> List[str]:
     return [p.strip() for p in s.split(",") if p.strip()]
 
 
-def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str, Any]:
+def build_expert(
+    r: Dict[str, Any],
+    amap: Dict[str, Dict[str, str]],
+    chmap: Optional[Dict[str, List[Dict[str, str]]]] = None,
+) -> Dict[str, Any]:
     aid = str(r.get("agent_id"))
     dim = amap.get(aid, {"icp": "(unknown)", "mascot": "(unknown)", "coach": "", "name": ""})
     nar = _as_dict(r.get("narrative")) or {}
@@ -181,6 +233,7 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
         "cm": [_driver(d) for d in cm_rows],
         "cmp": cm_period,   # week-ending date (YYYY-MM-DD) the core metrics are from
         "cms": cm_stale,    # True when that week is older than the recommendation week
+        "hist": (chmap or {}).get(aid, []),  # recent coaching events (most recent 5, newest first)
 
         "theme": None if not theme else {
             "nd": theme.get("n_deficient"),
@@ -198,8 +251,12 @@ def build_expert(r: Dict[str, Any], amap: Dict[str, Dict[str, str]]) -> Dict[str
     }
 
 
-def build_experts(receipts: List[Dict[str, Any]], amap: Dict[str, Dict[str, str]]) -> List[Dict[str, Any]]:
-    experts = [build_expert(r, amap) for r in receipts if r.get("tier") != "abstained"]
+def build_experts(
+    receipts: List[Dict[str, Any]],
+    amap: Dict[str, Dict[str, str]],
+    chmap: Optional[Dict[str, List[Dict[str, str]]]] = None,
+) -> List[Dict[str, Any]]:
+    experts = [build_expert(r, amap, chmap) for r in receipts if r.get("tier") != "abstained"]
     # break-glass first (most urgent), then theme, then single; then icp, mascot, id
     tier_rank = {"break_glass": 0, "theme": 1, "single": 2}
     experts.sort(key=lambda e: (
@@ -226,14 +283,20 @@ def write_expert_dashboard(
     receipts: Union[pd.DataFrame, List[Dict[str, Any]]],
     agents: Optional[pd.DataFrame],
     meta: Dict[str, Any],
+    coaching_history: Optional[pd.DataFrame] = None,
 ) -> Dict[str, int]:
-    """Render and write the expert dashboard. Returns {'experts': n, 'matched': m}."""
+    """Render and write the expert dashboard. Returns {'experts': n, 'matched': m}.
+
+    ``coaching_history`` is the RAW coaching-history frame (``normalized["coaching_history"]``);
+    when omitted the "Recent coaching history" block is simply absent and output is unchanged.
+    """
     if isinstance(receipts, pd.DataFrame):
         records = receipts.to_dict(orient="records")
     else:
         records = list(receipts or [])
     amap = agents_map_from_df(agents)
-    experts = build_experts(records, amap)
+    chmap = coaching_history_map_from_df(coaching_history)
+    experts = build_experts(records, amap, chmap)
     Path(out_path).write_text(render_html(experts, meta), encoding="utf-8")
     return {
         "experts": len(experts),
@@ -690,6 +753,18 @@ function coreMetricsTable(rows){
     `<th>Metric</th><th class="num">This week</th><th class="num">Benchmark</th>`+
     `<th>vs. benchmark</th><th>Trend</th></tr></thead><tbody>${body}</tbody></table>`;
 }
+/* Recent coaching history — the most recent coaching events for this expert (newest first). */
+function coachingHistoryTable(rows){
+  const body = rows.map(h=>`<tr>`+
+    `<td><span class="tag">${esc(h.ty||"—")}</span></td>`+
+    `<td class="m">${esc(h.tp||"—")}</td>`+
+    `<td>${esc(h.dt||"—")}</td>`+
+    `<td><span class="tag">${esc(h.st||"—")}</span></td>`+
+  `</tr>`).join("");
+  return `<table class="cmtable"><thead><tr>`+
+    `<th>Type</th><th>Topic</th><th>Date</th><th>Status</th>`+
+    `</tr></thead><tbody>${body}</tbody></table>`;
+}
 /* Which week the core metrics are from — and a callout when it is not the current week. */
 function cmNoteText(e){
   if(!e.cmp) return "";
@@ -779,6 +854,23 @@ function buildCopy(key, e){
     }).join("\n");
     return {html, text};
   }
+  if(key==="hist"){
+    const rows = e.hist||[];
+    if(!rows.length) return {html:_WRAP(_H("Recent coaching history")+`<p style="margin:0">No coaching history recorded.</p>`),
+                             text:"Recent coaching history\nNo coaching history recorded."};
+    const rhtml = rows.map(h=>`<tr>`+
+      `<td style="${_TD}">${esc(h.ty||"—")}</td>`+
+      `<td style="${_TD}"><b>${esc(h.tp||"—")}</b></td>`+
+      `<td style="${_TD}">${esc(h.dt||"—")}</td>`+
+      `<td style="${_TD}">${esc(h.st||"—")}</td></tr>`).join("");
+    const html = _WRAP(_H("Recent coaching history")+
+      `<table style="${_TB}"><thead><tr>`+
+      `<th style="${_TH}">Type</th><th style="${_TH}">Topic</th><th style="${_TH}">Date</th><th style="${_TH}">Status</th>`+
+      `</tr></thead><tbody>${rhtml}</tbody></table>`);
+    const text = "Recent coaching history\n" + rows.map(h=>
+      `- ${h.ty||"—"} · ${h.tp||"—"} (${h.dt||"—"})${h.st?` — ${h.st}`:""}`).join("\n");
+    return {html, text};
+  }
   if(key==="why-this" || key==="why-now" || key==="why-not"){
     const m = {"why-this":["Why this", e.why.this],
                "why-now":["Why now", e.why.now],
@@ -853,6 +945,10 @@ function openModal(id){
     ? `<div class="sec">${secHead("Core metrics this week","cm")}${cmNoteHtml(e)}${coreMetricsTable(e.cm)}</div>`
     : "";  // hidden when no core metrics have data this week
 
+  const coachingHistory = (e.hist||[]).length
+    ? `<div class="sec">${secHead("Recent coaching history","hist")}${coachingHistoryTable(e.hist)}</div>`
+    : "";  // hidden when this expert has no recorded coaching history
+
   const drivers = (e.drivers||[]).length
     ? `<div class="legend"><span><span class="sw"></span>current value</span><span><span class="bk"></span>benchmark</span></div>`
       + e.drivers.map(driverCard).join("")
@@ -887,6 +983,8 @@ function openModal(id){
       ${e.adv ? `<div class="advbanner">${advChip()}<span>This expert is at or above benchmark on the recommended behavior: reinforcement of a strength, not a performance gap.</span></div>` : ""}
 
       ${coreMetrics}
+
+      ${coachingHistory}
 
       <div class="sec">${secHead("Why this","why-this")}
         <div class="why this"><div class="lab">WHY THIS</div><p>${esc(e.why.this)}</p></div></div>

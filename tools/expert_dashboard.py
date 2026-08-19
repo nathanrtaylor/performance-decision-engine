@@ -26,12 +26,17 @@ import pandas as pd
 from cde.reporting.expert_dashboard import (
     agents_map_from_df,
     build_experts,
+    coaching_history_map_from_df,
     render_html,
 )
 
 
 def _load_agents_df(agents_csv: Path) -> Optional[pd.DataFrame]:
     return pd.read_csv(agents_csv, dtype=str) if agents_csv.exists() else None
+
+
+def _load_coaching_history_df(path: Path) -> Optional[pd.DataFrame]:
+    return pd.read_csv(path, dtype=str) if path.exists() else None
 
 
 def _prov_from_jsonl(run_dir: Path) -> Dict[str, Any]:
@@ -117,6 +122,9 @@ def main(argv=None) -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("run_dir", nargs="?", default="outputs/runs/2026-08-12_fullrun")
     ap.add_argument("--agents", default="data/raw/weekly/latest/agents.csv")
+    ap.add_argument("--coaching-history", default="data/raw/weekly/latest/coaching_history.csv",
+                    help="Raw coaching_history.csv for the 'Recent coaching history' block "
+                         "(missing file simply omits the block).")
     ap.add_argument("--configs", default="configs")
     ap.add_argument("--from-jsonl", action="store_true",
                     help="Use the run's saved decision_receipts.jsonl as-is instead of "
@@ -129,6 +137,7 @@ def main(argv=None) -> None:
 
     agents_df = _load_agents_df(Path(args.agents))
     amap = agents_map_from_df(agents_df)
+    chmap = coaching_history_map_from_df(_load_coaching_history_df(Path(args.coaching_history)))
 
     if args.from_jsonl:
         print("Reading saved decision_receipts.jsonl ...", flush=True)
@@ -142,7 +151,7 @@ def main(argv=None) -> None:
             print(f"  rebuild unavailable ({ex}); falling back to saved jsonl.", flush=True)
             receipts = read_receipts_jsonl(run_dir)
 
-    experts = build_experts(receipts, amap)
+    experts = build_experts(receipts, amap, chmap)
     prov = experts[0]["prov"] if experts else {}
     meta = _load_meta(run_dir)
     meta.update({
