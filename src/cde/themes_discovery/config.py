@@ -11,8 +11,7 @@ import dataclasses
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
-# 8-week decision window (matches cde.temporal.aggregate window_weeks default).
-WINDOW_WEEKS = 8
+from cde.constants import WINDOW_WEEKS  # single source; re-exported for callers importing from here
 
 # Verdicts.
 PROPOSE = "PROPOSE"

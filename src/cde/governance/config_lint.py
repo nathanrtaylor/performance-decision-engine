@@ -23,6 +23,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List
 
+from cde.benchmarks_recalc.config import COHORTS  # fallback roster; validated == active.yaml icp_clients
+
 VALID_DIRECTIONS = {"higher_is_better", "lower_is_better"}
 # Mirrors benchmarks_recalc.config.RECIPE_SECTION keys + "skip" (kept local to avoid coupling
 # governance to the recalc package). A metric's recalc.recipe selects its recompute recipe/section.
@@ -217,6 +219,59 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
             r.warnings.append(
                 f"metric_catalog: '{n}' has no recalc.recipe (nor a category default); "
                 f"it will be silently skipped by benchmark recalculation"
+            )
+        # An 'absolute' metric must declare its degeneracy bound (recalc.bound), since that knowledge
+        # is no longer hardcoded per metric name in recompute_absolute.
+        if resolved == "absolute":
+            bound = (d.get("recalc") or {}).get("bound")
+            bkind = (bound or {}).get("kind") if isinstance(bound, dict) else None
+            if bkind not in ("floor", "ceiling"):
+                r.errors.append(
+                    f"metric_catalog: '{n}' recipe=absolute needs recalc.bound.kind in (floor, ceiling)"
+                )
+            elif bkind == "ceiling" and (bound.get("at") is None):
+                r.errors.append(
+                    f"metric_catalog: '{n}' recalc.bound.kind=ceiling requires a numeric 'at'"
+                )
+
+    # ---- ROSTER single-source consistency (active.yaml icp_clients is canonical) ----
+    roster = list(cfg.get("icp_clients") or [])
+    roster_set = set(roster)
+    if roster_set and set(COHORTS) != roster_set:
+        r.errors.append(
+            f"icp_clients: benchmarks_recalc.config.COHORTS fallback {sorted(set(COHORTS))} "
+            f"!= active.yaml icp_clients {sorted(roster_set)} (keep the fallback in sync)"
+        )
+    if roster_set:
+        for m, b in (benchmarks or {}).items():
+            for coh in ((b or {}).get("by_icp_client") or {}) if isinstance(b, dict) else {}:
+                if coh not in roster_set:
+                    r.errors.append(
+                        f"benchmarks: '{m}' by_icp_client cohort '{coh}' is not in active.yaml icp_clients"
+                    )
+        cm_inner = _inner(cfg.get("core_metrics") or {}, "core_metrics")
+        for coh in (cm_inner.get("by_icp_client") or {}):
+            if coh not in roster_set:
+                r.errors.append(
+                    f"core_metrics: by_icp_client cohort '{coh}' is not in active.yaml icp_clients"
+                )
+
+    # ---- DENOMINATOR FLOOR coupling: signal_thresholds.by_metric must match the catalog floor ----
+    for k, v in (by_metric or {}).items():
+        st_floor = (v or {}).get("min_denominator_default")
+        cat_floor = ((metrics.get(k) or {}).get("computation_override") or {}).get("denominator_min")
+        if st_floor is not None and cat_floor is not None and float(st_floor) != float(cat_floor):
+            r.errors.append(
+                f"signal_thresholds.by_metric['{k}'].min_denominator_default ({st_floor}) != "
+                f"metric_catalog denominator_min ({cat_floor}) — keep the two in sync"
+            )
+
+    # ---- conversation_type completeness (tolerated: missing falls back to the default) ----
+    for topic in sorted(set(m2t.values())):
+        if topic not in t2c:
+            r.warnings.append(
+                f"topic_map: topic '{topic}' has no topic_to_conversation_type entry "
+                f"(falls back to conversation_types.default)"
             )
 
     for tn, tb in (themes or {}).items():

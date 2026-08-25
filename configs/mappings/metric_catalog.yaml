@@ -108,7 +108,7 @@ metric_catalog:
         type: config
 
     cancel_rate:
-      recalc: { recipe: absolute }   # cohort medians degenerate at the 0 floor -> keep curated absolute
+      recalc: { recipe: absolute, bound: { kind: floor } }   # median at 0 floor -> keep curated absolute
       source: agent_metrics
       source_metric_key: "cancellation rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
@@ -132,7 +132,7 @@ metric_catalog:
         worst_pct: 5
 
     erp:
-      recalc: { recipe: absolute }   # ceiling-degenerate cohort medians -> keep curated absolute
+      recalc: { recipe: absolute, bound: { kind: ceiling, at: 100 } }   # 0-100 scale; median at ceiling
       source: agent_metrics
       source_metric_key: "erp"
       display: { scale: 1, suffix: "", decimals: 0 }
@@ -156,7 +156,7 @@ metric_catalog:
         worst_pct: 5  
 
     expert_5star:
-      recalc: { recipe: absolute }   # ceiling-degenerate cohort medians -> keep curated absolute
+      recalc: { recipe: absolute, bound: { kind: ceiling, at: 5 } }   # 1-5 scale; median at ceiling
       source: agent_metrics
       source_metric_key: "expert 5star"
       display: { scale: 1, suffix: "", decimals: 1 }

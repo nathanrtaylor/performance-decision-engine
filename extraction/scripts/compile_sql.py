@@ -11,6 +11,7 @@ from jinja2 import Environment, FileSystemLoader, StrictUndefined
 from common import (
     RunPaths,
     apply_agent_metrics_from_catalog,
+    apply_icp_clients_from_active,
     deep_merge,
     load_yaml,
     repo_root_from_this_file,
@@ -80,6 +81,7 @@ def guard_single_statement(sql: str, out_name: str) -> None:
 def compile_all(cfg_path: Path) -> Dict[str, Any]:
     cfg = load_yaml(cfg_path)
     apply_agent_metrics_from_catalog(cfg, repo_root_from_this_file())
+    apply_icp_clients_from_active(cfg, repo_root_from_this_file())
     validate_min_config(cfg)
 
     paths = RunPaths.from_config(cfg)

@@ -10,6 +10,7 @@ import pandas as pd
 from common import (
     RunPaths,
     apply_agent_metrics_from_catalog,
+    apply_icp_clients_from_active,
     load_yaml,
     repo_root_from_this_file,
     sha256_text,
@@ -42,6 +43,7 @@ def update_latest_pointer(run_outputs_dir: Path) -> None:
 def run_extract(cfg_path: Path) -> Dict[str, Any]:
     cfg = load_yaml(cfg_path)
     apply_agent_metrics_from_catalog(cfg, repo_root_from_this_file())
+    apply_icp_clients_from_active(cfg, repo_root_from_this_file())
     validate_min_config(cfg)
 
     # 1) compile (also writes compile manifest)

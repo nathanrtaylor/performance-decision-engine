@@ -5,6 +5,7 @@ from typing import Dict, Any, List
 import numpy as np
 import pandas as pd
 
+from cde.constants import WINDOW_WEEKS
 from cde.utils.logging import get_logger
 
 log = get_logger(__name__)
@@ -12,7 +13,7 @@ log = get_logger(__name__)
 
 DEFAULT_TEMPORAL_CONFIG: Dict[str, Any] = {
     # Windowing
-    "window_weeks": 8,
+    "window_weeks": WINDOW_WEEKS,
     "period_col": "period",
     "value_col": "value",       # used for trend if gap not present / not used
     "gap_col": "gap",           # recommended for level/trend if your gap is “badness vs benchmark”
@@ -193,7 +194,7 @@ def aggregate_scores_window(
         df[value_col] = _safe_numeric(df[value_col])
 
     # Window: last N unique periods globally (deterministic “latest completed week” behavior)
-    window_weeks = int(cfg.get("window_weeks", 8))
+    window_weeks = int(cfg.get("window_weeks", WINDOW_WEEKS))
     window_periods = _get_last_n_periods(df, period_col, window_weeks)
     if not window_periods:
         return pd.DataFrame(columns=cols_out + ["recency_shift"])

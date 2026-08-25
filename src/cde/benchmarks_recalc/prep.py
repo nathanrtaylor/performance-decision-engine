@@ -36,6 +36,7 @@ class MetricMeta:
     benchmark_type: str
     denominator_min: Optional[float]
     recalc_recipe: Optional[str] = None   # which recompute recipe to run (declared in metric_catalog)
+    recalc_bound: Optional[Dict[str, Any]] = None  # absolute-recipe degeneracy bound {kind: floor|ceiling, at?}
 
 
 @dataclass(frozen=True)
@@ -103,6 +104,7 @@ def build_metric_meta(config: Dict[str, Any]) -> Dict[str, MetricMeta]:
             benchmark_type=str(bench.get("type", "config")),
             denominator_min=(float(dmin) if dmin is not None else None),
             recalc_recipe=_resolve_recipe(entry, category, cat_defaults),
+            recalc_bound=((entry.get("recalc") or {}).get("bound") or None),
         )
     return out
 

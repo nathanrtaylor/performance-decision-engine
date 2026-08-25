@@ -225,6 +225,36 @@ string to the **same topic string** used in step 2:
     "Reopen Rate": "Reduce Reopen Rate"
 ```
 
+### Derived (composite) metrics
+
+The assumption above is that a source row already exists for the metric. A **derived** metric is the
+exception: it has *no* source row and is computed from *other* metrics' `numerator`/`denominator`
+columns. Use `source: derived` plus a `derived:` block (no real `source_metric_key` — set it to the
+metric's own name, the label stamped on the synthesized rows). The numerator is the **sum** of one or
+more component columns, divided by one component column; each side names which column (`numerator` or
+`denominator`) of which component. Components are raw source keys and are pulled into the extract
+automatically. Example — `sp100 = enrolled ÷ Sale Opportunities` (both source counts that carry data
+in the numerator column only):
+
+```yaml
+    sp100:
+      source: derived
+      source_metric_key: sp100            # self-referential; stamped on synthesized rows
+      category: sales
+      direction: higher_is_better
+      unit: rate
+      eligible_for_prioritization: true
+      derived:
+        numerator:
+          - { metric_key: "enrolled", part: numerator }
+        denominator: { metric_key: "Sale Opportunities", part: numerator }
+      benchmark: { type: config }
+```
+
+A group (agent × week × cohort) missing any component is **skipped**, never fabricated. Component-key
+matching is case-insensitive, but a wrong string yields **zero** rows *silently* — verify the exact
+source `metric` string exists in the extract. Implementation: `src/cde/signals/derived_metrics.py`.
+
 ### Validate before the full run
 
 Run the linter first — it checks every cross-reference above in one pass, so you catch a typo in
@@ -237,6 +267,22 @@ python -m cde.cli.check_config --configs-dir configs
 A clean metric produces `config-lint PASS`. The pipeline also runs this automatically as a preflight;
 use `--strict-preflight` to make warnings fatal. Then run the pipeline normally — the new metric now
 flows through signals → scoring → recommendations → receipts like any other.
+
+## Onboarding an ICP client cohort
+
+The cohort roster has **one source of truth**: `icp_clients:` in `configs/active.yaml`. Add a cohort
+there and that single edit feeds every consumer:
+
+- **Extraction** — `extraction/configs/extract_run.yaml` sets `icp_clients_from: configs/active.yaml`,
+  so the SQL `WHERE LOWER(icp_client) IN (…)` filter is derived from the roster at compile time (no
+  hand-listed copy).
+- **Benchmark recalculation** — `RecalcThresholds.cohorts` reads the roster; the `COHORTS` tuple in
+  `benchmarks_recalc/config.py` is only a fallback, lint-checked to equal the roster.
+- **Per-cohort values** — add the cohort's keys under `by_icp_client` in `benchmarks.yaml` /
+  `core_metrics.yaml` where you want cohort-specific targets (they inherit `default` otherwise).
+
+`python -m cde.cli.check_config` fails if `COHORTS` drifts from the roster or if any `by_icp_client`
+key is not in the roster.
 
 ## Adding the metric to an existing theme
 
@@ -263,7 +309,7 @@ Notes:
 - **Use the canonical metric name** (`reopen_rate`), not the topic string — theme members are metrics,
   not topics.
 - **Qualification shifts with theme size.** A theme qualifies when at least
-  `theme_selection.count_fraction` of its *configured* members are deficient (`active.yaml`). Growing a
+  `theme_selection.count_fraction` of its *configured* members are deficient (`themes.yaml`). Growing a
   3-member theme to 4 raises the absolute count needed at the default `0.5` fraction (2-of-3 → 2-of-4),
   so adding a member makes the theme slightly harder to trigger. Re-check `count_fraction` if that is
   not what you want (see [Coaching Themes & Break-Glass Selection](#coaching-themes--break-glass-selection)).
@@ -604,6 +650,12 @@ behaviors = p25 of the windowed mean, capped at 0.95; degenerate cohort distribu
 absolute default; sentiment is Verizon-only and splits by cohort only when cohorts differ materially.
 Guardrails: sample sufficiency, materiality, non-degeneracy, cohort-split validity, and observed-range
 sanity. Thresholds live in `src/cde/benchmarks_recalc/config.py` (`RecalcThresholds`).
+
+Which recipe runs for a metric — and which dashboard section it lands in — is **declared** in
+`metric_catalog.yaml` as `recalc.recipe` (`operational | sales | absolute | quality | sentiment | tool
+| skip`), inherited from `category_defaults[category].recalc.recipe` unless the metric overrides it.
+Absolute metrics also declare their degeneracy boundary as `recalc.bound: { kind: floor | ceiling,
+at: <n> }`. There is no metric-name dispatch in code; `config_lint` validates the recipe and bound.
 
 ## Outputs (in `--out-dir`)
 

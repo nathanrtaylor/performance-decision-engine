@@ -232,12 +232,47 @@ def test_absolute_default_degeneracy_kept():
     meta = {"cancel_rate": {"source": "agent_metrics", "source_metric_key": "cancellation rate",
                             "category": "business", "direction": "lower_is_better", "unit": "rate",
                             "benchmark": {"type": "config", "key": "cancel_rate"},
-                            "recalc": {"recipe": "absolute"}}}
+                            "recalc": {"recipe": "absolute", "bound": {"kind": "floor"}}}}
     cfg = _config(meta, {"cancel_rate": 0.12})
     prepped = prep_frames(_raw(agent_metrics=rows), cfg)
     cand = recompute_all(prepped, THR)["cancel_rate"]
     assert cand.default.degenerate is True
     assert cand.default.value is None  # keep curated absolute target
+
+
+def test_absolute_ceiling_bound_declarative():
+    # recalc.bound.kind=ceiling + at=100: a median at the ceiling is degenerate -> keep curated.
+    rows = _am_rows("erp raw", "pss-verizon", [(f"p{i}", 100.0) for i in range(30)])
+    meta = {"erp": {"source": "agent_metrics", "source_metric_key": "erp raw",
+                    "category": "business", "direction": "higher_is_better", "unit": "score",
+                    "benchmark": {"type": "config", "key": "erp"},
+                    "recalc": {"recipe": "absolute", "bound": {"kind": "ceiling", "at": 100}}}}
+    cfg = _config(meta, {"erp": {"default": 90}})
+    prepped = prep_frames(_raw(agent_metrics=rows), cfg)
+    cand = recompute_all(prepped, THR)["erp"]
+    assert cand.default.degenerate is True and cand.default.value is None
+
+
+def test_sentiment_vz_derived_from_roster():
+    # vz is derived from thr.cohorts; a roster with only ONE verizon cohort -> no pairwise split.
+    import dataclasses
+    q = "frustration?"
+    rows = _bs_rows(q, C.SENTIMENT_SCORECARD, "mob-verizon", [(f"m{i}", 0.90) for i in range(20)])
+    cfg = _config({"customer_frustration_sentiment": _beh_meta("customer_frustration_sentiment", q, recipe="sentiment")},
+                  {"customer_frustration_sentiment": {"default": 0.8}})
+    prepped = prep_frames(_raw(behavior_scores=rows, agents=_agents_rows("mob-verizon", [f"m{i}" for i in range(20)])), cfg)
+    thr1 = dataclasses.replace(THR, cohorts=("mob-verizon",))  # only one verizon cohort
+    cand = recompute_all(prepped, thr1)["customer_frustration_sentiment"]
+    assert cand.split_applied is False and cand.by_icp_client == {}
+
+
+def test_window_weeks_single_source():
+    from cde.constants import WINDOW_WEEKS as CANON
+    from cde.benchmarks_recalc.config import WINDOW_WEEKS as RECALC_WW
+    from cde.themes_discovery.config import WINDOW_WEEKS as DISC_WW
+    from cde.temporal.aggregate import DEFAULT_TEMPORAL_CONFIG
+    assert RECALC_WW is CANON and DISC_WW is CANON
+    assert DEFAULT_TEMPORAL_CONFIG["window_weeks"] == CANON
 
 
 def test_quality_p25_cap():

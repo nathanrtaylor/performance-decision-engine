@@ -151,15 +151,16 @@ def recompute_absolute(prepped: PreppedFrames, metric: str, thr: RecalcThreshold
         return CandidateBenchmark(metric, C.CAT_ABSOLUTE, default, {}, split_applied=False,
                                   skipped=False, value_lo=lo, value_hi=hi)
     raw = float(s.median())
-    if metric == "cancel_rate":
+    # Degeneracy bound is declared per metric (metric_catalog recalc.bound), not switched on name.
+    bound = prepped.metric_meta[metric].recalc_bound or {}
+    bkind = str(bound.get("kind", "")).lower()
+    if bkind == "floor":
         degenerate = raw <= thr.floor_eps
         kind = "floor 0"
-    elif metric == "erp":
-        degenerate = raw >= thr.erp_ceiling
-        kind = f"ceiling {thr.erp_ceiling:g}"
-    elif metric == "expert_5star":
-        degenerate = raw >= thr.star_ceiling
-        kind = f"ceiling {thr.star_ceiling:g}"
+    elif bkind == "ceiling":
+        at = float(bound.get("at"))
+        degenerate = raw >= at
+        kind = f"ceiling {at:g}"
     else:
         degenerate = False
         kind = ""
@@ -186,25 +187,24 @@ def recompute_sentiment(prepped: PreppedFrames, metric: str, thr: RecalcThreshol
     lo, hi = _value_range(wm, thr)
     default = _p25_stat(wm, None, thr)
 
-    # Verizon-only scope: candidate cohorts are the two Verizon cohorts.
-    vz = ["mob-verizon", "pss-verizon"]
+    # Verizon-only scope: candidate cohorts are the Verizon cohorts in the roster (derived, not
+    # hardcoded, so a new Verizon cohort is picked up automatically). The pairwise split below applies
+    # only when exactly two exist (today: mob-verizon, pss-verizon).
+    vz = sorted(c for c in thr.cohorts if "verizon" in c.lower())
     cohort_stats = {c: _p25_stat(wm, c, thr) for c in vz}
     cohort_stats = {c: s for c, s in cohort_stats.items() if s.n_agents > 0}
 
     split_applied = False
     by_icp: Dict[str, CohortStat] = {}
     if len(cohort_stats) == 2 and all(s.sufficient for s in cohort_stats.values()):
-        mob, pss = cohort_stats["mob-verizon"], cohort_stats["pss-verizon"]
-        if mob.value is not None and pss.value is not None:
-            delta = abs(mob.value - pss.value)
-            base = max(abs(mob.value), abs(pss.value), 1e-9)
+        (c_a, s_a), (c_b, s_b) = sorted(cohort_stats.items())
+        if s_a.value is not None and s_b.value is not None:
+            delta = abs(s_a.value - s_b.value)
+            base = max(abs(s_a.value), abs(s_b.value), 1e-9)
             if delta >= thr.split_abs or (delta / base) >= thr.split_rel:
                 split_applied = True
-                reason = f"mob {mob.value:.3f} vs pss {pss.value:.3f} Δ{delta:.3f} >= split threshold"
-                by_icp = {
-                    "mob-verizon": _with_note(mob, reason),
-                    "pss-verizon": _with_note(pss, reason),
-                }
+                reason = f"{c_a} {s_a.value:.3f} vs {c_b} {s_b.value:.3f} Δ{delta:.3f} >= split threshold"
+                by_icp = {c_a: _with_note(s_a, reason), c_b: _with_note(s_b, reason)}
     return CandidateBenchmark(metric, C.CAT_SENTIMENT, default, by_icp, split_applied, False, lo, hi)
 
 

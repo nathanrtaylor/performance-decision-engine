@@ -77,6 +77,48 @@ def test_missing_recalc_recipe_is_warning(cfg):
     assert any("no recalc.recipe" in w for w in report.warnings)
 
 
+def test_cohorts_fallback_must_match_active(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    c["icp_clients"] = list(c.get("icp_clients") or []) + ["ghost-cohort"]  # active gains a cohort
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("COHORTS fallback" in e for e in report.errors)
+
+
+def test_benchmarks_cohort_not_in_roster_is_error(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    bmetric = next(m for m, b in c["benchmarks"].items() if isinstance(b, dict) and b.get("by_icp_client"))
+    c["benchmarks"][bmetric]["by_icp_client"]["ghost-cohort"] = 0.5
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("not in active.yaml icp_clients" in e for e in report.errors)
+
+
+def test_denominator_floor_mismatch_is_error(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    thr = c["thresholds"]["signal_thresholds"] if "signal_thresholds" in c["thresholds"] else c["thresholds"]
+    thr.setdefault("by_metric", {})["cancel_rate"] = {"min_denominator_default": 999}  # != catalog floor
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("min_denominator_default" in e for e in report.errors)
+
+
+def test_absolute_recipe_requires_bound(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    _metrics(c)["cancel_rate"]["recalc"] = {"recipe": "absolute"}  # drop the bound
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("recalc.bound" in e for e in report.errors)
+
+
 def test_theme_member_not_a_metric_is_error(cfg):
     import copy
 

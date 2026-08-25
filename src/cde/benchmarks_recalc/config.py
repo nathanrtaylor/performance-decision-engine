@@ -11,8 +11,7 @@ import dataclasses
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, Tuple
 
-# 8-week decision window (matches cde.temporal.aggregate window_weeks default).
-WINDOW_WEEKS = 8
+from cde.constants import WINDOW_WEEKS  # single source; re-exported for callers importing from here
 
 # p25 floor cap for near-universal behaviors (quality + sentiment): flag only clear misses.
 QUALITY_CAP = 0.95
@@ -69,10 +68,10 @@ class RecalcThresholds:
     behavior_abs_delta: float = 0.03     # behaviors (0-1 pass-rates): >=0.03 absolute -> material
 
     # --- Guardrail 3: non-degeneracy (anchor not stuck at a scale boundary) ---
+    # Scale ceilings for absolute metrics now live in metric_catalog (recalc.bound.at), not here, so a
+    # metric's scale is declared next to the metric. Only the shared 0-floor epsilon remains global.
     floor_eps: float = 1e-6              # cohort median at/near 0 -> floor-degenerate
     near_universal: float = QUALITY_CAP  # behavior p25 >= this -> near-universal (cap, no churn)
-    erp_ceiling: float = 100.0
-    star_ceiling: float = 5.0
 
     # --- Guardrail 4: cohort-split validity (only split when cohorts genuinely differ) ---
     split_abs: float = 0.05              # |mob-vzw - pss-vzw| >= 0.05 ...

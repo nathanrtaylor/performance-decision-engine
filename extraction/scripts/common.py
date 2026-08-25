@@ -123,6 +123,30 @@ def apply_agent_metrics_from_catalog(cfg: Dict[str, Any], repo_root: Path) -> No
     params.pop("metrics_from_catalog", None)
 
 
+def apply_icp_clients_from_active(cfg: Dict[str, Any], repo_root: Path) -> None:
+    """
+    If globals.icp_clients_from is set (e.g. configs/active.yaml), load that file's top-level
+    ``icp_clients`` list into globals.icp_clients so the extraction roster has ONE source of truth
+    (the engine's active.yaml) instead of being hand-listed here. Mirrors
+    apply_agent_metrics_from_catalog. An explicit globals.icp_clients (no _from) is left untouched.
+    """
+    g = cfg.get("globals")
+    if not isinstance(g, dict):
+        return
+    rel = g.get("icp_clients_from")
+    if not rel:
+        return
+    src = (repo_root / rel).resolve()
+    if not src.exists():
+        raise FileNotFoundError(f"icp_clients_from not found: {src}")
+    loaded = load_yaml(src) or {}
+    roster = loaded.get("icp_clients")
+    if not roster:
+        raise ValueError(f"icp_clients_from {rel} has no top-level 'icp_clients' list")
+    g["icp_clients"] = [str(c) for c in roster]
+    g.pop("icp_clients_from", None)
+
+
 def deep_merge(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
     """Return merged dict: values from b override/extend a."""
     out = dict(a)

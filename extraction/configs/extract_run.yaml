@@ -19,14 +19,11 @@ globals:
   # Always define optional flags globally to avoid StrictUndefined failures
   use_pay_calendar: false
 
-  icp_clients:
-    - "pss-verizon"
-    - "pss-at&t"
-    - "pss-at&t nac"
-    - "mob-verizon"
-    - "mob-at&t"
-    - "xbox"
-    - "mcafee"
+  # Single source of truth for the cohort roster: the engine's active.yaml. Resolved at
+  # compile/run time by apply_icp_clients_from_active (extraction/scripts/common.py) into
+  # globals.icp_clients, which the SQL templates filter on. To onboard a client, edit ONLY
+  # configs/active.yaml icp_clients. (An explicit icp_clients: list here still overrides, e.g. tests.)
+  icp_clients_from: configs/active.yaml
 
 outputs:
   agent_metrics:
