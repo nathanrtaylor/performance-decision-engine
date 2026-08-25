@@ -22,6 +22,7 @@ globals:
   icp_clients:
     - "pss-verizon"
     - "pss-at&t"
+    - "pss-at&t nac"
     - "mob-verizon"
     - "mob-at&t"
     - "xbox"

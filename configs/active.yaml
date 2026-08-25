@@ -28,6 +28,7 @@ icp_clients:
   - "mob-at&t"
   - "mob-verizon"
   - "pss-at&t"
+  - "pss-at&t nac"
   - "pss-verizon"
   - "xbox"
   - "mcafee"
