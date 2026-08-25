@@ -34,7 +34,9 @@ SKIPPED = "SKIPPED"
 
 # Category labels (drive dashboard section grouping).
 CAT_OPERATIONAL = "operational"
-CAT_SALES = "sales"
+CAT_SELL = "sell"
+CAT_SERVE = "serve"
+CAT_SOLVE = "solve"
 CAT_ABSOLUTE = "absolute-default"
 CAT_QUALITY = "quality"
 CAT_SENTIMENT = "sentiment"
@@ -44,9 +46,14 @@ CAT_TOOL = "tool-usage"
 # fallback) selects BOTH the recompute worker (see recompute.RECIPE_WORKERS) and the dashboard section
 # below. "skip" produces no candidate. This map is the single source of truth for a candidate's section,
 # replacing the per-worker hardcoded category and the old metric-name dispatch tuples.
+# sell/serve/solve are the business metric types; sell reuses the nsp100 computation, serve+solve the
+# per-cohort operational medians. "operational" is retained as the fallback recipe for the (now unused)
+# business category.
 RECIPE_SECTION = {
     "operational": CAT_OPERATIONAL,
-    "sales": CAT_SALES,
+    "sell": CAT_SELL,
+    "serve": CAT_SERVE,
+    "solve": CAT_SOLVE,
     "absolute": CAT_ABSOLUTE,
     "quality": CAT_QUALITY,
     "sentiment": CAT_SENTIMENT,
@@ -64,7 +71,7 @@ class RecalcThresholds:
     min_agents_overall: int = 30     # emit a default only when the overall population clears this
 
     # --- Guardrail 2: materiality (the move is big enough to bother proposing) ---
-    op_rel_change: float = 0.10          # operational/sales: >=10% relative change -> material
+    op_rel_change: float = 0.10          # operational/sell/serve/solve: >=10% relative change -> material
     behavior_abs_delta: float = 0.03     # behaviors (0-1 pass-rates): >=0.03 absolute -> material
 
     # --- Guardrail 3: non-degeneracy (anchor not stuck at a scale boundary) ---

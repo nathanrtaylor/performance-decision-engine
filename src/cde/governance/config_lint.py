@@ -28,7 +28,7 @@ from cde.benchmarks_recalc.config import COHORTS  # fallback roster; validated =
 VALID_DIRECTIONS = {"higher_is_better", "lower_is_better"}
 # Mirrors benchmarks_recalc.config.RECIPE_SECTION keys + "skip" (kept local to avoid coupling
 # governance to the recalc package). A metric's recalc.recipe selects its recompute recipe/section.
-VALID_RECIPES = {"operational", "sales", "absolute", "quality", "sentiment", "tool", "skip"}
+VALID_RECIPES = {"operational", "sell", "serve", "solve", "absolute", "quality", "sentiment", "tool", "skip"}
 
 
 @dataclass

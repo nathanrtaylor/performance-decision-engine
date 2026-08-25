@@ -174,8 +174,8 @@ def test_derived_metric_recomputed_from_component_source_rows():
     metrics = {
         "sp100_c": {
             "source": "derived", "source_metric_key": "sp100_c",
-            "category": "sales", "direction": "higher_is_better", "unit": "rate",
-            "recalc": {"recipe": "sales"},
+            "category": "sell", "direction": "higher_is_better", "unit": "rate",
+            "recalc": {"recipe": "sell"},
             "derived": {
                 "numerator": [{"metric_key": "enrolled"}],
                 "denominator": {"metric_key": "sales opportunities", "part": "numerator"},
@@ -188,7 +188,7 @@ def test_derived_metric_recomputed_from_component_source_rows():
     cand = recompute_all(prepped, THR)["sp100_c"]
     # per agent enrolled.num(20)/salesopp.num(40) = 0.5 -> cohort median 0.5
     assert cand.by_icp_client["pss-verizon"].value == pytest.approx(0.5)
-    assert cand.category == C.CAT_SALES   # declared recipe: sales -> Sales section (not operational)
+    assert cand.category == C.CAT_SELL   # declared recipe: sell -> Sell section (not operational)
 
 
 # ---------------------------------------------------------------------------------------------------
@@ -196,11 +196,23 @@ def test_derived_metric_recomputed_from_component_source_rows():
 # ---------------------------------------------------------------------------------------------------
 
 def test_recipe_selects_section_declaratively():
-    # Same agent_metrics rate; recipe alone decides the section (sales vs operational).
+    # Same agent_metrics rate; recipe alone decides the section (sell vs operational).
     rows = _am_rows("client transfers", "pss-verizon", [(f"p{i}", 0.10) for i in range(20)])
-    cfg = _config({"m": _op_meta("m", "client transfers", recipe="sales")}, {"m": {"default": 0.1}})
+    cfg = _config({"m": _op_meta("m", "client transfers", recipe="sell")}, {"m": {"default": 0.1}})
     prepped = prep_frames(_raw(agent_metrics=rows), cfg)
-    assert recompute_all(prepped, THR)["m"].category == C.CAT_SALES
+    assert recompute_all(prepped, THR)["m"].category == C.CAT_SELL
+
+
+def test_serve_and_solve_recipes_produce_operational_candidates():
+    # serve/solve are business metric types computed via the operational worker (per-cohort medians);
+    # the recipe still drives the dashboard section (Serve vs Solve), not the shared worker.
+    rows = _am_rows("client transfers", "pss-verizon", [(f"p{i}", 0.10) for i in range(20)])
+    for recipe, section in [("serve", C.CAT_SERVE), ("solve", C.CAT_SOLVE)]:
+        cfg = _config({"m": _op_meta("m", "client transfers", recipe=recipe)}, {"m": {"default": 0.1}})
+        prepped = prep_frames(_raw(agent_metrics=rows), cfg)
+        cand = recompute_all(prepped, THR)["m"]
+        assert cand.category == section
+        assert cand.by_icp_client["pss-verizon"].value == pytest.approx(0.10)
 
 
 def test_recipe_inherited_from_category_default():

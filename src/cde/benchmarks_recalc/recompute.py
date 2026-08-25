@@ -6,8 +6,8 @@ justifies them (sample size, quantile used, degeneracy/cap/split flags). Guardra
 old-vs-new comparison happen downstream; this module only computes candidates + evidence.
 
 Recipe per category (see benchmarks.yaml methodology comments):
-  operational -> per-cohort MEDIAN of agents' windowed means
-  sales(nsp100) -> cohort median where a real distribution exists; floor -> keep absolute default
+  serve / solve / operational -> per-cohort MEDIAN of agents' windowed means
+  sell(nsp100) -> cohort median where a real distribution exists; floor -> keep absolute default
   absolute-default -> keep curated target when cohort medians are degenerate (floor/ceiling)
   quality behaviors -> p25 of windowed means, capped 0.95, no cohort split
   sentiment behaviors -> p25 capped, Verizon-only cohorts, split only when cohorts differ materially
@@ -137,7 +137,7 @@ def recompute_nsp100(prepped: PreppedFrames, metric: str, thr: RecalcThresholds)
                                       True, False, f"cohort median at floor 0 ({st.n_agents} agents)")
         else:
             by_cohort[c] = st
-    return CandidateBenchmark(metric, C.CAT_SALES, default, by_cohort, bool(by_cohort), False, lo, hi)
+    return CandidateBenchmark(metric, C.CAT_SELL, default, by_cohort, bool(by_cohort), False, lo, hi)
 
 
 def recompute_absolute(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
@@ -245,7 +245,9 @@ def recompute_all(prepped: PreppedFrames, thr: RecalcThresholds) -> Dict[str, Ca
 # config.RECIPE_SECTION (applied in recompute_all), so a worker's own CAT_* is not authoritative.
 RECIPE_WORKERS = {
     "operational": recompute_operational,
-    "sales": recompute_nsp100,
+    "sell": recompute_nsp100,
+    "serve": recompute_operational,
+    "solve": recompute_operational,
     "absolute": recompute_absolute,
     "quality": recompute_quality,
     "sentiment": recompute_sentiment,

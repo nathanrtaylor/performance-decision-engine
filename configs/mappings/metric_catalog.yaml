@@ -15,7 +15,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "client transfers"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: business
+      category: solve
       direction: lower_is_better
       unit: rate
       description: "Transfers / handled calls."
@@ -31,7 +31,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "resolution rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: business
+      category: solve
       direction: higher_is_better
       unit: rate
       description: "Resolved / eligible calls."
@@ -47,7 +47,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "ocr"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: business
+      category: solve
       direction: higher_is_better
       unit: rate
       description: "Resolved / eligible calls on the first call"
@@ -63,7 +63,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "hold time"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: business
+      category: serve
       direction: lower_is_better
       unit: rate
       description: "time spent on hold / calls"
@@ -79,7 +79,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "talk time"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: business
+      category: serve
       direction: lower_is_better
       unit: rate
       description: "time spent on talking / calls"
@@ -95,7 +95,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "callback_rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: business
+      category: serve
       direction: lower_is_better
       unit: rate
       description: "outbound calls to customers / calls"
@@ -112,7 +112,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "cancellation rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
-      category: sales
+      category: sell
       direction: lower_is_better
       unit: rate
       description: "sales cancellations after the call"
@@ -136,7 +136,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "erp"
       display: { scale: 1, suffix: "", decimals: 0 }
-      category: business
+      category: serve
       direction: higher_is_better
       unit: rate
       description: "Entire Rep Performance, survey based scoring"
@@ -160,7 +160,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "expert 5star"
       display: { scale: 1, suffix: "", decimals: 1 }
-      category: business
+      category: serve
       direction: higher_is_better
       unit: rate
       description: "Expert survey based scoring only when 5 stars is received"
@@ -176,7 +176,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "nsp100"
       display: { scale: 100, suffix: "", decimals: 1 }
-      category: sales
+      category: sell
       direction: higher_is_better
       unit: rate
       description: "Sales, net of cancellation, per 100 calls"
@@ -198,7 +198,7 @@ metric_catalog:
       source: derived
       source_metric_key: "sp100"
       display: { scale: 100, suffix: "", decimals: 1 }
-      category: sales
+      category: sell
       direction: higher_is_better
       unit: rate
       description: "Sales per opportunity: enrolled / Sale Opportunities (both source counts)."
@@ -218,7 +218,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "crt"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: business
+      category: serve
       direction: lower_is_better
       unit: rate
       description: "Call Resolution time. Measure of call handling time and efficiency"
@@ -742,7 +742,9 @@ metric_catalog:
   # Overrides in use: erp/expert_5star/cancel_rate -> absolute; *_sentiment -> sentiment;
   # distribution behaviors (enroll_with_consent, provide_self_service_options, read_t_and_c_s) -> skip.
   category_defaults:
-    sales:            { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: sales } }
+    sell:            { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: sell } }
+    serve:           { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: serve } }
+    solve:           { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: solve } }
     business:         { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: operational } }
     tool_usage:       { base_weight_class: medium, confidence_floor: 0.5, recalc: { recipe: tool } }
     quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 }, recalc: { recipe: quality } }

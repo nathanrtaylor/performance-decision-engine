@@ -15,10 +15,16 @@ signal_thresholds:
     min_denominator_default: 10
 
   by_category:
-    sales:
+    sell:
       min_confidence: 0.30
       min_denominator_default: 10
-    business:
+    serve:
+      min_confidence: 0.30
+      min_denominator_default: 10
+    solve:
+      min_confidence: 0.30
+      min_denominator_default: 10
+    business:            # retained as fallback; no metric currently uses this category
       min_confidence: 0.30
       min_denominator_default: 10
 
@@ -31,11 +37,11 @@ signal_thresholds:
       min_denominator_default: 5
 
   by_metric:
-    # cancel_rate is a low-volume metric (its catalog denominator_min is 5). The business default of
-    # 10 gates out ~94% of its weekly rows, which starves the break-glass override that reads
+    # cancel_rate is a low-volume metric (its catalog denominator_min is 5). The sell-category default
+    # of 10 gates out ~94% of its weekly rows, which starves the break-glass override that reads
     # eligible_signals. Gate it at its own catalog floor so break-glass stays meaningful.
     cancel_rate:
-      min_denominator_default: 5
+      min_denominator_default: 1
 
   candidate_rules:
     require_reference_point: true    # must have a benchmark gap or distribution z (NO_REFERENCE_POINT)

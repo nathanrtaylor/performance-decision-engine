@@ -163,7 +163,8 @@ already emitted by `agent_metrics` under the source key `"reopen rate"`.
     reopen_rate:
       source: agent_metrics
       source_metric_key: "reopen rate"    # EXACT metric string as it appears in the source rows
-      category: business                  # MUST be a key in metric_catalog.category_defaults
+      category: solve                     # MUST be a key in metric_catalog.category_defaults
+                                          #   (sell | serve | solve | tool_usage | quality_behavior)
       direction: lower_is_better          # REQUIRED: higher_is_better | lower_is_better
                                           #   (a blank/misspelled direction is a hard linter error —
                                           #    it would otherwise silently coach the wrong tail)
@@ -200,7 +201,7 @@ linter errors). `default` is mandatory; per-cohort overrides are optional and fa
 ```
 
 **4. `thresholds/signal_thresholds.yaml`** *(optional)* — only if this metric needs different gating
-than its category default. Otherwise it inherits `by_category.business`:
+than its category default. Otherwise it inherits `by_category.solve`:
 
 ```yaml
   by_metric:
@@ -209,7 +210,7 @@ than its category default. Otherwise it inherits `by_category.business`:
 ```
 
 **5. `priorities/<active>.yaml`** *(optional)* — only to weight this metric differently from its
-category. Otherwise it inherits `by_category.business`:
+category. Otherwise it inherits `by_category.solve`:
 
 ```yaml
   by_metric:
@@ -240,7 +241,7 @@ in the numerator column only):
     sp100:
       source: derived
       source_metric_key: sp100            # self-referential; stamped on synthesized rows
-      category: sales
+      category: sell
       direction: higher_is_better
       unit: rate
       eligible_for_prioritization: true
@@ -652,8 +653,9 @@ Guardrails: sample sufficiency, materiality, non-degeneracy, cohort-split validi
 sanity. Thresholds live in `src/cde/benchmarks_recalc/config.py` (`RecalcThresholds`).
 
 Which recipe runs for a metric — and which dashboard section it lands in — is **declared** in
-`metric_catalog.yaml` as `recalc.recipe` (`operational | sales | absolute | quality | sentiment | tool
-| skip`), inherited from `category_defaults[category].recalc.recipe` unless the metric overrides it.
+`metric_catalog.yaml` as `recalc.recipe` (`operational | sell | serve | solve | absolute | quality |
+sentiment | tool | skip`), inherited from `category_defaults[category].recalc.recipe` unless the metric
+overrides it.
 Absolute metrics also declare their degeneracy boundary as `recalc.bound: { kind: floor | ceiling,
 at: <n> }`. There is no metric-name dispatch in code; `config_lint` validates the recipe and bound.
 

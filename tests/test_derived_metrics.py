@@ -129,7 +129,7 @@ def _bs_config() -> dict:
         "metric_catalog": {"metric_catalog": {
             "metrics": {
                 "sp100": {
-                    "source": "derived", "source_metric_key": "sp100", "category": "sales",
+                    "source": "derived", "source_metric_key": "sp100", "category": "sell",
                     "direction": "higher_is_better", "unit": "rate", "benchmark": {"type": "config"},
                 }
             },
