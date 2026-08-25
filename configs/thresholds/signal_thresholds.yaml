@@ -36,6 +36,10 @@ signal_thresholds:
       min_confidence: 0.30
       min_denominator_default: 5
 
+    advanced_discovery:      # AI-scored sell-flow behaviors; gate like quality_behavior
+      min_confidence: 0.30
+      min_denominator_default: 5
+
   by_metric:
     # cancel_rate is a low-volume metric (its catalog denominator_min is 5). The sell-category default
     # of 10 gates out ~94% of its weekly rows, which starves the break-glass override that reads

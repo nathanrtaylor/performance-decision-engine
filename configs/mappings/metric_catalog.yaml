@@ -428,7 +428,7 @@ metric_catalog:
 
     clarify_product_misunderstanding:
       source: behavior_scores
-      source_metric_key: "Clarify product misunderstanding"
+      source_metric_key: "Clarify Product Misunderstanding"
       category: quality_behavior
       direction: higher_is_better
       unit: score
@@ -486,7 +486,7 @@ metric_catalog:
 
     test_resolution:
       source: behavior_scores
-      source_metric_key: "Test resolution"
+      source_metric_key: "Test Resolution"
       category: quality_behavior
       direction: higher_is_better
       unit: score
@@ -500,7 +500,7 @@ metric_catalog:
 
     protect_customer_information:
       source: behavior_scores
-      source_metric_key: "Protect customer information"
+      source_metric_key: "Protect Customer Information"
       category: quality_behavior
       direction: higher_is_better
       unit: score
@@ -734,6 +734,178 @@ metric_catalog:
       benchmark:
         type: config
 
+    # --- Advanced Discovery Call Flow V1 (Verizon proactive-sell scorecard; AI-scored pass-rates) ---
+    # 10 behaviors unique to this flow + 2 (confirm_resolution_ad/transition_statement_ad) whose source
+    # names collide with HEROES and are namespaced ' (Advanced Discovery)' in behavior_scores.sql.j2 so
+    # the proactive-sell context stays separate from the reactive HEROES metrics.
+    ask_for_the_sale:
+      source: behavior_scores
+      source_metric_key: "Ask for the Sale"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert asking for the sale."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    ask_to_send_link_to_enroll:
+      source: behavior_scores
+      source_metric_key: "Ask to Send Link to Enroll"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert asking to send the enrollment link."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    assess_the_account:
+      source: behavior_scores
+      source_metric_key: "Assess the Account"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert assessing the customer's account."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    celebrate_enrollment:
+      source: behavior_scores
+      source_metric_key: "Celebrate Enrollment"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert celebrating the enrollment."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    core_benefits:
+      source: behavior_scores
+      source_metric_key: "Core Benefits"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert conveying core benefits."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    discovery_questions:
+      source: behavior_scores
+      source_metric_key: "Discovery Questions"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert asking discovery questions."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    greeting:
+      source: behavior_scores
+      source_metric_key: "Greeting"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of a proper call greeting."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    price:
+      source: behavior_scores
+      source_metric_key: "Price"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert presenting price."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    provide_empathy:
+      source: behavior_scores
+      source_metric_key: "Provide Empathy"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert providing empathy."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    provide_reassurance:
+      source: behavior_scores
+      source_metric_key: "Provide Reassurance"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of the expert providing reassurance."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    confirm_resolution_ad:
+      source: behavior_scores
+      source_metric_key: "Confirm Resolution (Advanced Discovery)"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of resolution confirmation on the Advanced Discovery sell flow."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
+    transition_statement_ad:
+      source: behavior_scores
+      source_metric_key: "Transition Statement (Advanced Discovery)"
+      category: advanced_discovery
+      direction: higher_is_better
+      unit: score
+      description: "AI-scored detection of a transition statement on the Advanced Discovery sell flow."
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+      benchmark:
+        type: config
+
   # display: optional per-metric block controlling how a value is SHOWN (scale, suffix, decimals)
   # in dashboards/receipts only — never changes the stored value. Resolved per-metric over the
   # metric's category_defaults[category].display. See cde/utils/metric_format.py.
@@ -748,6 +920,10 @@ metric_catalog:
     business:         { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: operational } }
     tool_usage:       { base_weight_class: medium, confidence_floor: 0.5, recalc: { recipe: tool } }
     quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 }, recalc: { recipe: quality } }
+    # Advanced Discovery Call Flow V1 behaviors: distinct metric type from quality_behavior, but computed
+    # identically (AI-scored pass-rates -> quality/p25 recipe, % display). Category separates them for
+    # weighting/reporting; recipe stays 'quality' so the recalc treats them like other behaviors.
+    advanced_discovery: { base_weight_class: low, confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 }, recalc: { recipe: quality } }
 
   governance:
     disallow_unknown_metrics: true

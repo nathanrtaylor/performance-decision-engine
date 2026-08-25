@@ -10,6 +10,15 @@
 -- inflating numerator/denominator ~100-300x and re-weighting the weekly rate by
 -- metric-count instead of opportunity. A DISTINCT semi-join filters without multiplying.
 --
+-- DEDUP: the AutoQA evaluations table (l3_asurion_observe_autoqa_evaluations) carries duplicate
+-- rows per call -- the same (agent, meeting, behavior) evaluation appears more than once, which
+-- inflates SUM(score)/SUM(opportunity) opportunity counts (observed ~15-40x vs the prior source).
+-- The `dedup` CTE collapses to ONE row per (agent, event-date, scorecard, behavior, meeting_id)
+-- BEFORE the weekly SUM, so each call contributes its opportunity exactly once. meeting_id is used
+-- ONLY as a dedup key here; it is deliberately NOT emitted. (MAX assumes the duplicate rows for a
+-- given meeting/behavior are identical; if evaluations can genuinely differ per meeting, switch to a
+-- row_number() "pick one" on a deterministic ordering column instead.)
+--
 -- Cohort (icp_client) is NOT emitted here; it is attached downstream in build_signals by
 -- merging agents.csv on (agent_id, week_ending) -- the single canonical roster/cohort
 -- source. That merge already exists and already backfills icp_client for this source.
@@ -22,36 +31,73 @@ WITH roster AS (
     AND LOWER(a.icp_client) IN (
       {% for c in icp_clients %}'{{ c | lower }}'{% if not loop.last %},{% endif %}{% endfor %}
     )
+),
+
+dedup AS (
+  -- one row per (agent, event-date, scorecard, behavior, meeting_id): collapse duplicate
+  -- evaluation rows for the same call so each call's opportunity is counted once downstream.
+  SELECT
+    b.partner_agent_id                       AS agent_id,
+    CAST(b."created_at" AS DATE)             AS evt_date,
+    b.template_questions_name                AS scorecard_name,
+    b.template_questions_phrase              AS behavior_raw,
+    MAX(CAST(b.obtainedscore AS DOUBLE))     AS obtainedscore,
+    MAX(CAST(b.totalscore AS DOUBLE))        AS totalscore
+  FROM {{ source_schema }}.{{ observe_table }} b
+  JOIN roster r
+    ON r.agent_id = b.partner_agent_id
+  WHERE CAST(b."created_at" AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+    AND b.template_questions_name IN (
+      {% for sc in observe_scorecards %}'{{ sc }}'{% if not loop.last %},{% endif %}{% endfor %}
+    )
+  GROUP BY
+    b.partner_agent_id,
+    CAST(b."created_at" AS DATE),
+    b.template_questions_name,
+    b.template_questions_phrase,
+    b.meeting_id          -- dedup key only; intentionally not selected/emitted
 )
 
 SELECT
-  b.expert_id AS agent_id,
+  d.agent_id AS agent_id,
   {% if use_pay_calendar | default(false) %}
-  CAST(d.week_stop_date AS DATE) AS week_ending,
+  CAST(pc.week_stop_date AS DATE) AS week_ending,
   {% else %}
-  CAST(date_add('day', 4, date_trunc('week', CAST(b."date" AS DATE))) AS DATE) AS week_ending,
+  CAST(date_add('day', 4, date_trunc('week', d.evt_date)) AS DATE) AS week_ending,
   {% endif %}
   'all' AS call_type,
-  b.template_questions_name AS scorecard_name,
-  b.behavior_name AS behavior,
-  SUM(COALESCE(CAST(b.score AS DOUBLE), 0.0))       AS numerator,
-  SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0)) AS denominator,
+  d.scorecard_name AS scorecard_name,
+  -- The AutoQA source prefixes HEROES behavior names per scorecard ('_Foo' on the AT&T-family
+  -- Auto Scorecard, 'N~Foo' on the Verizon QA scorecard) and varies '&'/'and'. Normalize the two
+  -- HEROES scorecards to the canonical clean name so each cohort feeds ONE metric_catalog behavior
+  -- (matching is by behavior string, scorecard-agnostic).
+  --
+  -- Advanced Discovery is a distinct Verizon proactive-sell flow: TRIM its names (source has trailing
+  -- spaces on 'Greeting '/'Transition Statement '), and namespace the two behaviors whose names collide
+  -- with HEROES ('Confirm Resolution', 'Transition Statement') with an ' (Advanced Discovery)' suffix so
+  -- the proactive-sell context maps to its own metrics instead of blending into the reactive HEROES ones.
   CASE
-    WHEN SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0)) = 0 THEN NULL
-    ELSE SUM(COALESCE(CAST(b.score AS DOUBLE), 0.0)) / SUM(COALESCE(CAST(b.opportunity AS DOUBLE), 0.0))
+    WHEN d.scorecard_name IN ('HEROES Auto Scorecard', 'HEROES Auto QA Reporting - VZW')
+    THEN replace(TRIM(regexp_replace(regexp_replace(d.behavior_raw, '^\s*(\d+~|_)', ''), '\s*:\s*$', '')), ' & ', ' and ')
+    WHEN d.scorecard_name = 'Advanced Discovery Call Flow V1'
+    THEN CASE TRIM(regexp_replace(d.behavior_raw, '\s*:\s*$', ''))
+           WHEN 'Confirm Resolution'   THEN 'Confirm Resolution (Advanced Discovery)'
+           WHEN 'Transition Statement' THEN 'Transition Statement (Advanced Discovery)'
+           ELSE TRIM(regexp_replace(d.behavior_raw, '\s*:\s*$', ''))
+         END
+    ELSE d.behavior_raw
+  END AS behavior,
+  SUM(COALESCE(d.obtainedscore, 0.0)) AS numerator,
+  SUM(COALESCE(d.totalscore, 0.0))    AS denominator,
+  CASE
+    WHEN SUM(COALESCE(d.totalscore, 0.0)) = 0 THEN NULL
+    ELSE SUM(COALESCE(d.obtainedscore, 0.0)) / SUM(COALESCE(d.totalscore, 0.0))
   END AS calc
-FROM {{ source_schema }}.{{ observe_table }} b
+FROM dedup d
 
 {% if use_pay_calendar | default(false) %}
-LEFT JOIN {{ pay_calendar_schema }}.{{ pay_calendar_table }} d
-  ON CAST(b."date" AS DATE) = CAST(d.event_date AS DATE)
+LEFT JOIN {{ pay_calendar_schema }}.{{ pay_calendar_table }} pc
+  ON d.evt_date = CAST(pc.event_date AS DATE)
 {% endif %}
 
-JOIN roster r
-  ON r.agent_id = b.expert_id
-
-WHERE CAST(b."date" AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
-  AND b.template_questions_name IN (
-    {% for sc in observe_scorecards %}'{{ sc }}'{% if not loop.last %},{% endif %}{% endfor %}
-  )
 GROUP BY 1, 2, 3, 4, 5

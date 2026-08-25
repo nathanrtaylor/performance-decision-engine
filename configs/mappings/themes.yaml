@@ -68,13 +68,13 @@ themes:
       - transfer_rate
     conversation_type: "Performance Correction"
 
-  "Customer Sentiment":
-    members:
-      - customer_frustration_sentiment
-      - customer_escalation_sentiment
-      - customer_retention_risk_sentiment
-      - expert_listening_sentiment
-    conversation_type: "Quality Coaching"
+  #"Customer Sentiment":
+  #  members:
+  #    - customer_frustration_sentiment
+  #    - customer_escalation_sentiment
+  #    - customer_retention_risk_sentiment
+  #    - expert_listening_sentiment
+  #  conversation_type: "Quality Coaching"
 
   "Quality Sales":
     members:

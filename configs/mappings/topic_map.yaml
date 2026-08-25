@@ -56,6 +56,20 @@ topic_map:
     read_t_and_c_s: "Read T&C's"
     #Offer Survey: not a coaching topic, suppressed
 
+    # ===== Advanced Discovery Call Flow V1 (Verizon proactive-sell behaviors)
+    ask_for_the_sale: "Ask for the Sale"
+    ask_to_send_link_to_enroll: "Ask to Send Enrollment Link"
+    assess_the_account: "Assess the Account"
+    celebrate_enrollment: "Celebrate Enrollment"
+    core_benefits: "Explain Core Benefits"
+    discovery_questions: "Ask Discovery Questions"
+    greeting: "Deliver a Strong Greeting"
+    price: "Present Price"
+    provide_empathy: "Provide Empathy"
+    provide_reassurance: "Provide Reassurance"
+    confirm_resolution_ad: "Confirm Resolution (Advanced Discovery)"
+    transition_statement_ad: "Use Transition Statements (Advanced Discovery)"
+
     customer_frustration_sentiment: "Sentiment: Customer Frustration"
     customer_complaint_relevance_sentiment: "Sentiment: Customer Complaint Relevance"
     expert_recap_resolution_sentiment: "Sentiment: Expert Recap Resolution"
@@ -117,6 +131,21 @@ topic_map:
     "Build Confidence through Language": "Quality Coaching"
     "Act as a Representative of Our Brand": "Quality Coaching"
     "Tailor Products based on Customer Responses": "Quality Coaching"
+
+    # Advanced Discovery Call Flow V1 (proactive-sell behaviors)
+    "Ask for the Sale": "Quality Coaching"
+    "Ask to Send Enrollment Link": "Quality Coaching"
+    "Assess the Account": "Quality Coaching"
+    "Celebrate Enrollment": "Quality Coaching"
+    "Explain Core Benefits": "Quality Coaching"
+    "Ask Discovery Questions": "Quality Coaching"
+    "Deliver a Strong Greeting": "Quality Coaching"
+    "Present Price": "Quality Coaching"
+    "Provide Empathy": "Quality Coaching"
+    "Provide Reassurance": "Quality Coaching"
+    "Confirm Resolution (Advanced Discovery)": "Quality Coaching"
+    "Use Transition Statements (Advanced Discovery)": "Quality Coaching"
+
     "Sentiment: Customer Frustration": "Quality Coaching"
     "Sentiment: Customer Complaint Relevance": "Quality Coaching"
     "Sentiment: Expert Recap Resolution": "Quality Coaching"

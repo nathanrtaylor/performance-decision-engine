@@ -78,13 +78,14 @@ outputs:
       - calc
     params:
       epm_table: "expert_performance_metrics"
-      observe_table: "l3_asurion_observe_behaviors_scores"
+      observe_table: "l3_asurion_observe_autoqa_evaluations"
 
       # governed list of scorecards (template_questions_name)
       observe_scorecards:
         - "HEROES Auto Scorecard"
         - "HEROES Auto QA Reporting - VZW"
-        - "Customer Sentiment Scorecard V1"  
+        - "Customer Sentiment Scorecard V1"
+        - "Advanced Discovery Call Flow V1"
 
   # Coaching history feeds recency dampening (soft-suppress recently-coached topics).
   coaching_history:

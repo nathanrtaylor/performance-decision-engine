@@ -32,3 +32,57 @@
   - nsp100 [pss-at&t] (new cohort split - manual merge)
   - crt [mcafee] (new cohort split - manual merge)
   - crt [xbox] (new cohort split - manual merge)
+
+## 2026-08-25 18:12 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - hold_time [mcafee]: 9 -> 9.949
+  - cancel_rate [default]: 0.133 -> 0.111
+  - sp100 [default]: 0.05486 -> 0.04651
+  - transition_statement [default]: 0.638 -> 0.751
+  - make_an_offer [default]: 0.5 -> 0.718
+  - demonstrate_professionalism_and_courtesy [default]: 0.95 -> 0.733
+  - appropriate_product_positioning_language [default]: 0.95 -> 0.728
+  - positive_and_helpful_tone [default]: 0.95 -> 0.728
+  - manage_call_efficiently [default]: 0.94 -> 0.728
+  - actively_listen [default]: 0.95 -> 0.728
+  - confirm_caller_and_account_information [default]: 0.95 -> 0.731
+  - provide_assurance [default]: 0.485 -> 0.749
+  - consistent_closing [default]: 0.273 -> 0.732
+  - ask_effective_questions [default]: 0.881 -> 0.728
+  - clarify_product_misunderstanding [default]: 0.95 -> 0.733
+  - recap_resolution [default]: 0.13 -> 0.723
+  - test_resolution [default]: 0.29 -> 0.736
+  - protect_customer_information [default]: 0.92 -> 0.723
+  - build_confidence_through_language [default]: 0.95 -> 0.728
+  - act_as_representative_of_our_brand [default]: 0.95 -> 0.728
+  - tailor_products_based_on_customer_responses [default]: 0.125 -> 0.728
+  - customer_complaint_relevance_sentiment [default]: 0.918 -> 0.705
+  - expert_recap_resolution_sentiment [default]: 0.133 -> 0.705
+  - customer_retention_risk_sentiment [default]: 0.95 -> 0.704
+  - customer_score_positive_sentiment [default]: 0.248 -> 0.739
+  - customer_score_negative_sentiment [default]: 0.731 -> 0.647
+  - expert_listening_sentiment [default]: 0.763 -> 0.705
+  - customer_complaint_resolution_time_sentiment [default]: 0.95 -> 0.703
+  - customer_complaint_vague_language_sentiment [default]: 0.778 -> 0.705
+  - expert_lack_of_resolution_confidence_sentiment [default]: 0.95 -> 0.704
+  - customer_escalation_sentiment [default]: 0.95 -> 0.704
+  - customer_repetition_sentiment [default]: 0.95 -> 0.704
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-25 18:46 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - complete_product_scope_expectations [default]: 0.767 -> 0.728
+  - customer_score_positive_sentiment [default]: 0.739 -> 0.705
+  - customer_score_negative_sentiment [default]: 0.647 -> 0.705
+  - core_benefits [default]: 0.509 -> 0.463
+  - price [default]: 0.504 -> 0.463
+  - confirm_resolution_ad [default]: 0.427 -> 0.463
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)

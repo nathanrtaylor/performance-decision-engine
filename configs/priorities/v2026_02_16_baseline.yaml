@@ -7,8 +7,9 @@ priorities:
     serve: 0.8
     solve: 0.9
     business: 0.9
-    tool_usage: 0.8
+    tool_usage: 0.6
     quality_behavior: 0.7
+    advanced_discovery: 0.8   # AI-scored sell-flow behaviors; weighted like quality behaviors for now
 
   # Optional: explicit overrides (leave empty if you’re not ready)
   by_metric: {}
@@ -18,4 +19,4 @@ priorities:
 
   # Deterministic tie-break preferences (optional)
   tie_breakers:
-    prefer_categories_in_order: [sell, serve, solve, business, tool_usage, quality_behavior]
+    prefer_categories_in_order: [sell, serve, solve, business, tool_usage, advanced_discovery, quality_behavior]
