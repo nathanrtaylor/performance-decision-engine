@@ -24,22 +24,27 @@ core_metrics:
     - resolution_rate
     - crt
     - nsp100
+    - sp100
+    - cancel_rate
 
   by_icp_client:
     mob-at&t:
       - nsp100
+      - sp100
       - cancel_rate
       - expert_5star
       - transfer_rate
       - crt
     mob-verizon:
       - nsp100
+      - sp100
       - cancel_rate
       - expert_5star
       - transfer_rate
       - crt
     pss-at&t:
       - nsp100
+      - sp100
       - cancel_rate
       - expert_5star
       - transfer_rate
@@ -47,8 +52,23 @@ core_metrics:
       - crt
     pss-verizon:
       - nsp100
+      - sp100
       - cancel_rate
       - erp
       - transfer_rate
       - resolution_rate
       - crt
+    mcafee:
+      - nsp100
+      - sp100
+      - cancel_rate
+      - transfer_rate
+      - resolution_rate
+      - crt  
+    xbox:
+      #- nsp100
+      # sp100
+      #- cancel_rate
+      - transfer_rate
+      - resolution_rate
+      - crt 
