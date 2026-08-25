@@ -120,7 +120,7 @@ metric_catalog:
       eligible_for_prioritization: true
       computation_override:
         expected_calculation: rate
-        denominator_min: 5
+        denominator_min: 3
       benchmark:
         type: config
       # break_glass: a Tier-1 override metric. Over the latest break_glass.recency_weeks

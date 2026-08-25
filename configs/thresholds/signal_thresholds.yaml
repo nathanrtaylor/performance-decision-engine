@@ -41,7 +41,7 @@ signal_thresholds:
     # of 10 gates out ~94% of its weekly rows, which starves the break-glass override that reads
     # eligible_signals. Gate it at its own catalog floor so break-glass stays meaningful.
     cancel_rate:
-      min_denominator_default: 1
+      min_denominator_default: 3
 
   candidate_rules:
     require_reference_point: true    # must have a benchmark gap or distribution z (NO_REFERENCE_POINT)
