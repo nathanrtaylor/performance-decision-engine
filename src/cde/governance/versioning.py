@@ -130,6 +130,7 @@ def resolve_active_config(configs_dir: Path) -> Dict[str, Any]:
         "normalization",
         "topic_map_options",
         "data_snapshot",
+        "icp_clients",
         "theme_selection",
         "break_glass",
         "abstention",

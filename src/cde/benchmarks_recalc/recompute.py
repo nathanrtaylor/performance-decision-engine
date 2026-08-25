@@ -113,7 +113,7 @@ def recompute_operational(prepped: PreppedFrames, metric: str, thr: RecalcThresh
     wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col="icp_client", denominator_min=dmin)
     lo, hi = _value_range(wm, thr)
     default = _median_stat(wm, None, thr)
-    by_cohort = {c: _median_stat(wm, c, thr) for c in C.COHORTS}
+    by_cohort = {c: _median_stat(wm, c, thr) for c in thr.cohorts}
     by_cohort = {c: s for c, s in by_cohort.items() if s.n_agents > 0}
     return CandidateBenchmark(metric, C.CAT_OPERATIONAL, default, by_cohort, bool(by_cohort), False, lo, hi)
 
@@ -124,7 +124,7 @@ def recompute_nsp100(prepped: PreppedFrames, metric: str, thr: RecalcThresholds)
     lo, hi = _value_range(wm, thr)
     default = _median_stat(wm, None, thr)
     by_cohort: Dict[str, CohortStat] = {}
-    for c in C.COHORTS:
+    for c in thr.cohorts:
         st = _median_stat(wm, c, thr)
         if st.n_agents == 0:
             continue

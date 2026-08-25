@@ -131,6 +131,38 @@ def test_operational_median_and_cohort_sufficiency():
     assert cand.by_icp_client["mob-verizon"].sufficient is False    # 5 < 15
 
 
+# ---------------------------------------------------------------------------------------------------
+# icp_client roster is config-driven (RecalcThresholds.cohorts)
+# ---------------------------------------------------------------------------------------------------
+
+def test_cohorts_default_and_from_config_override():
+    # Absent config -> the module default roster.
+    assert RecalcThresholds().cohorts == C.COHORTS
+    assert RecalcThresholds.from_config({}).cohorts == C.COHORTS
+    assert RecalcThresholds.from_config(None).cohorts == C.COHORTS
+    # active.yaml icp_clients overrides the roster (top-level, not in benchmark_recalc).
+    thr = RecalcThresholds.from_config({"icp_clients": ["mob-verizon", "acme"]})
+    assert thr.cohorts == ("mob-verizon", "acme")
+    # Guardrail knobs still come from the benchmark_recalc block alongside the roster.
+    thr2 = RecalcThresholds.from_config(
+        {"icp_clients": ["acme"], "benchmark_recalc": {"min_agents_cohort": 5}}
+    )
+    assert thr2.cohorts == ("acme",) and thr2.min_agents_cohort == 5
+
+
+def test_new_cohort_from_config_is_computed_without_code_change():
+    # A cohort present only in config (not in C.COHORTS) must get a per-cohort benchmark,
+    # proving the roster no longer needs a source edit to onboard a client.
+    rows = _am_rows("client transfers", "acme", [(f"a{i}", 0.20) for i in range(20)])
+    cfg = _config({"transfer_rate": _op_meta("transfer_rate", "client transfers")},
+                  {"transfer_rate": {"default": 0.10}})
+    prepped = prep_frames(_raw(agent_metrics=rows), cfg)
+    thr = RecalcThresholds.from_config({"icp_clients": ["acme"]})
+    cand = recompute_all(prepped, thr)["transfer_rate"]
+    assert "acme" in cand.by_icp_client
+    assert cand.by_icp_client["acme"].value == pytest.approx(0.20)
+
+
 def test_absolute_default_degeneracy_kept():
     rows = _am_rows("cancellation rate", "pss-verizon", [(f"p{i}", 0.0) for i in range(30)])  # floor
     meta = {"cancel_rate": {"source": "agent_metrics", "source_metric_key": "cancellation rate",
