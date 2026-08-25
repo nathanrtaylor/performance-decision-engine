@@ -52,6 +52,31 @@ def test_unknown_direction_is_error(cfg):
     assert not lint_config(c).ok()
 
 
+def test_invalid_recalc_recipe_is_error(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    victim = next(iter(_metrics(c)))
+    _metrics(c)[victim]["recalc"] = {"recipe": "bogus"}
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("recalc.recipe" in e for e in report.errors)
+
+
+def test_missing_recalc_recipe_is_warning(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    victim = next(iter(_metrics(c)))
+    cat = _metrics(c)[victim].get("category")
+    _metrics(c)[victim].pop("recalc", None)  # remove any per-metric recipe
+    cd = c["metric_catalog"]["metric_catalog"].get("category_defaults", {})
+    if isinstance(cd.get(cat), dict):
+        cd[cat].pop("recalc", None)          # and the category default, so nothing supplies one
+    report = lint_config(c)
+    assert any("no recalc.recipe" in w for w in report.warnings)
+
+
 def test_theme_member_not_a_metric_is_error(cfg):
     import copy
 

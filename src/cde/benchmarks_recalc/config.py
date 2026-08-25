@@ -17,39 +17,15 @@ WINDOW_WEEKS = 8
 # p25 floor cap for near-universal behaviors (quality + sentiment): flag only clear misses.
 QUALITY_CAP = 0.95
 
-# Scorecard whose behaviors are "sentiment" (Verizon-only). Others on behavior_scores are "quality".
+# Scorecard whose behaviors are "sentiment" (Verizon-only). Kept for test fixtures + prep's dominant-
+# scorecard tagging; recipe dispatch is now DECLARATIVE (metric_catalog recalc.recipe), not scorecard-based.
 SENTIMENT_SCORECARD = "Customer Sentiment Scorecard V1"
-
-# Operational business metrics: benchmark = per-cohort MEDIAN of agents' windowed means.
-OPERATIONAL_METRICS = (
-    "transfer_rate",
-    "crt",
-    "talk_time",
-    "hold_time",
-    "callback_rate",
-    "one_call_resolution",
-    "resolution_rate",
-)
-
-# Sales: cohort median where a real (non-floor) distribution exists; otherwise absolute stretch target.
-SALES_METRICS = ("nsp100",)
-
-# Cohort medians degenerate (floor 0 / ceiling): keep the curated absolute target, do not chase data.
-ABSOLUTE_DEFAULT_METRICS = ("cancel_rate", "erp", "expert_5star")
-
-# Tool-usage sources are inactive (no data) -> always skipped, current kept.
-TOOL_USAGE_METRICS = ("guided_flow_adoption", "expert_assist_usage", "smart_offer_adoption")
-
-# Behaviors carried as benchmark.type: distribution (opportunity-gated) -> excluded from recompute.
-DISTRIBUTION_BEHAVIORS = frozenset(
-    {"enroll_with_consent", "provide_self_service_options", "read_t_and_c_s"}
-)
 
 # Default icp_client roster (lowercase canonical form used everywhere in benchmarks.yaml).
 # This is only the FALLBACK: the governed roster lives in configs/active.yaml
 # (icp_clients:) and reaches recompute via RecalcThresholds.cohorts. Keep this in
 # sync as a safety net for callers that build thresholds without a config.
-COHORTS = ("mob-at&t", "mob-verizon", "pss-at&t", "pss-verizon", "mcafee", "xbox")
+COHORTS = ("mob-at&t", "mob-verizon", "pss-at&t", "pss-at&t nac", "pss-verizon", "mcafee", "xbox")
 
 # Verdicts.
 PROPOSE = "PROPOSE"
@@ -64,6 +40,20 @@ CAT_ABSOLUTE = "absolute-default"
 CAT_QUALITY = "quality"
 CAT_SENTIMENT = "sentiment"
 CAT_TOOL = "tool-usage"
+
+# Declarative recalc recipes. A metric's recalc.recipe (metric_catalog.yaml, or a category_defaults
+# fallback) selects BOTH the recompute worker (see recompute.RECIPE_WORKERS) and the dashboard section
+# below. "skip" produces no candidate. This map is the single source of truth for a candidate's section,
+# replacing the per-worker hardcoded category and the old metric-name dispatch tuples.
+RECIPE_SECTION = {
+    "operational": CAT_OPERATIONAL,
+    "sales": CAT_SALES,
+    "absolute": CAT_ABSOLUTE,
+    "quality": CAT_QUALITY,
+    "sentiment": CAT_SENTIMENT,
+    "tool": CAT_TOOL,
+}
+VALID_RECIPES = frozenset(RECIPE_SECTION) | {"skip"}
 
 
 @dataclass(frozen=True)

@@ -36,7 +36,7 @@ _VERDICT_STYLE = {
 
 _CATEGORY_TITLES = [
     (C.CAT_OPERATIONAL, "Operational metrics (per-cohort medians)"),
-    (C.CAT_SALES, "Sales (nsp100)"),
+    (C.CAT_SALES, "Sales"),
     (C.CAT_ABSOLUTE, "Absolute-default metrics"),
     (C.CAT_QUALITY, "Quality behaviors (p25 floor)"),
     (C.CAT_SENTIMENT, "Sentiment behaviors (p25 floor, Verizon-only)"),

@@ -50,6 +50,13 @@ core_metrics:
       - transfer_rate
       - resolution_rate
       - crt
+    "pss-at&t nac":
+      - nsp100
+      - sp100
+      - cancel_rate
+      - transfer_rate
+      - resolution_rate
+      - crt  
     pss-verizon:
       - nsp100
       - sp100
@@ -67,7 +74,7 @@ core_metrics:
       - crt  
     xbox:
       #- nsp100
-      # sp100
+      #- sp100
       #- cancel_rate
       - transfer_rate
       - resolution_rate

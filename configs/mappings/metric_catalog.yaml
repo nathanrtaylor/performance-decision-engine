@@ -108,6 +108,7 @@ metric_catalog:
         type: config
 
     cancel_rate:
+      recalc: { recipe: absolute }   # cohort medians degenerate at the 0 floor -> keep curated absolute
       source: agent_metrics
       source_metric_key: "cancellation rate"
       display: { scale: 100, suffix: "%", decimals: 1 }
@@ -131,6 +132,7 @@ metric_catalog:
         worst_pct: 5
 
     erp:
+      recalc: { recipe: absolute }   # ceiling-degenerate cohort medians -> keep curated absolute
       source: agent_metrics
       source_metric_key: "erp"
       display: { scale: 1, suffix: "", decimals: 0 }
@@ -154,6 +156,7 @@ metric_catalog:
         worst_pct: 5  
 
     expert_5star:
+      recalc: { recipe: absolute }   # ceiling-degenerate cohort medians -> keep curated absolute
       source: agent_metrics
       source_metric_key: "expert 5star"
       display: { scale: 1, suffix: "", decimals: 1 }
@@ -409,6 +412,7 @@ metric_catalog:
         type: config
 
     provide_self_service_options:
+      recalc: { recipe: skip }   # benchmark.type: distribution (opportunity-gated) -> not recomputed
       source: behavior_scores
       source_metric_key: "Provide Self-Service Options"
       category: quality_behavior
@@ -451,6 +455,7 @@ metric_catalog:
         type: config
 
     read_t_and_c_s:
+      recalc: { recipe: skip }   # benchmark.type: distribution (opportunity-gated) -> not recomputed
       source: behavior_scores
       source_metric_key: "Read T&C's"
       category: quality_behavior
@@ -465,6 +470,7 @@ metric_catalog:
         type: distribution
 
     enroll_with_consent:
+      recalc: { recipe: skip }   # benchmark.type: distribution (opportunity-gated) -> not recomputed
       source: behavior_scores
       source_metric_key: "Enroll with Consent"
       category: quality_behavior
@@ -549,6 +555,7 @@ metric_catalog:
         type: config
 
     customer_frustration_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer show signs of frustration and was that frustration ignored?"
       category: quality_behavior
@@ -563,6 +570,7 @@ metric_catalog:
         type: config
 
     customer_complaint_relevance_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer have a sales complaint regarding the timing or relevance of the product offer?"
       category: quality_behavior
@@ -577,6 +585,7 @@ metric_catalog:
         type: config
 
     expert_recap_resolution_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the agent recap the resolution?"
       category: quality_behavior
@@ -591,6 +600,7 @@ metric_catalog:
         type: config
 
     customer_retention_risk_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer pose a retention risk due to unresolved issues or frustration?"
       category: quality_behavior
@@ -605,6 +615,7 @@ metric_catalog:
         type: config
 
     customer_score_positive_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Was the overall customer sentiment score Positive?"
       category: quality_behavior
@@ -619,6 +630,7 @@ metric_catalog:
         type: config
 
     customer_score_negative_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Was the overall customer sentiment score Negative?"
       category: quality_behavior
@@ -633,6 +645,7 @@ metric_catalog:
         type: config
 
     expert_listening_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the agent actively listen to the customer?"
       category: quality_behavior
@@ -647,6 +660,7 @@ metric_catalog:
         type: config
 
     customer_complaint_resolution_time_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer complain about the resolution time for their issue?"
       category: quality_behavior
@@ -661,6 +675,7 @@ metric_catalog:
         type: config
 
     customer_complaint_vague_language_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the expert use vague or unclear language that confused the customer?"
       category: quality_behavior
@@ -675,6 +690,7 @@ metric_catalog:
         type: config
 
     expert_lack_of_resolution_confidence_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer lack confidence in the resolution?"
       category: quality_behavior
@@ -689,6 +705,7 @@ metric_catalog:
         type: config
 
     customer_escalation_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer request to escalate to a supervisor or someone more knowledgeable?"
       category: quality_behavior
@@ -703,6 +720,7 @@ metric_catalog:
         type: config
 
     customer_repetition_sentiment:
+      recalc: { recipe: sentiment }
       source: behavior_scores
       source_metric_key: "Did the customer have to repeat their issue?"
       category: quality_behavior
@@ -719,11 +737,15 @@ metric_catalog:
   # display: optional per-metric block controlling how a value is SHOWN (scale, suffix, decimals)
   # in dashboards/receipts only — never changes the stored value. Resolved per-metric over the
   # metric's category_defaults[category].display. See cde/utils/metric_format.py.
+  # recalc.recipe here is the DEFAULT recompute recipe for each category (benchmarks_recalc). A metric
+  # overrides it with its own `recalc: { recipe: ... }`. Recipe -> dashboard section is config.RECIPE_SECTION.
+  # Overrides in use: erp/expert_5star/cancel_rate -> absolute; *_sentiment -> sentiment;
+  # distribution behaviors (enroll_with_consent, provide_self_service_options, read_t_and_c_s) -> skip.
   category_defaults:
-    sales:            { base_weight_class: high,   confidence_floor: 0.6 }
-    business:         { base_weight_class: high,   confidence_floor: 0.6 }
-    tool_usage:       { base_weight_class: medium, confidence_floor: 0.5 }
-    quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 } }
+    sales:            { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: sales } }
+    business:         { base_weight_class: high,   confidence_floor: 0.6, recalc: { recipe: operational } }
+    tool_usage:       { base_weight_class: medium, confidence_floor: 0.5, recalc: { recipe: tool } }
+    quality_behavior: { base_weight_class: low,    confidence_floor: 0.7, display: { scale: 100, suffix: "%", decimals: 0 }, recalc: { recipe: quality } }
 
   governance:
     disallow_unknown_metrics: true

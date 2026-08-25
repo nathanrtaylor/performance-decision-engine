@@ -57,17 +57,19 @@ def _config(metrics: dict, benchmarks: dict) -> dict:
     return {"metric_catalog": {"metric_catalog": {"metrics": metrics}}, "benchmarks": benchmarks}
 
 
-def _op_meta(name, raw, denom_min=None):
+def _op_meta(name, raw, denom_min=None, recipe="operational"):
     entry = {"source": "agent_metrics", "source_metric_key": raw, "category": "business",
-             "direction": "lower_is_better", "unit": "rate", "benchmark": {"type": "config", "key": name}}
+             "direction": "lower_is_better", "unit": "rate", "benchmark": {"type": "config", "key": name},
+             "recalc": {"recipe": recipe}}
     if denom_min is not None:
         entry["computation_override"] = {"denominator_min": denom_min}
     return entry
 
 
-def _beh_meta(name, raw):
+def _beh_meta(name, raw, recipe="quality"):
     return {"source": "behavior_scores", "source_metric_key": raw, "category": "quality_behavior",
-            "direction": "higher_is_better", "unit": "score", "benchmark": {"type": "config", "key": name}}
+            "direction": "higher_is_better", "unit": "score", "benchmark": {"type": "config", "key": name},
+            "recalc": {"recipe": recipe}}
 
 
 def _raw(agent_metrics=None, behavior_scores=None, agents=None):
@@ -173,6 +175,7 @@ def test_derived_metric_recomputed_from_component_source_rows():
         "sp100_c": {
             "source": "derived", "source_metric_key": "sp100_c",
             "category": "sales", "direction": "higher_is_better", "unit": "rate",
+            "recalc": {"recipe": "sales"},
             "derived": {
                 "numerator": [{"metric_key": "enrolled"}],
                 "denominator": {"metric_key": "sales opportunities", "part": "numerator"},
@@ -185,13 +188,51 @@ def test_derived_metric_recomputed_from_component_source_rows():
     cand = recompute_all(prepped, THR)["sp100_c"]
     # per agent enrolled.num(20)/salesopp.num(40) = 0.5 -> cohort median 0.5
     assert cand.by_icp_client["pss-verizon"].value == pytest.approx(0.5)
+    assert cand.category == C.CAT_SALES   # declared recipe: sales -> Sales section (not operational)
+
+
+# ---------------------------------------------------------------------------------------------------
+# declarative recipe dispatch (recalc.recipe -> worker + section)
+# ---------------------------------------------------------------------------------------------------
+
+def test_recipe_selects_section_declaratively():
+    # Same agent_metrics rate; recipe alone decides the section (sales vs operational).
+    rows = _am_rows("client transfers", "pss-verizon", [(f"p{i}", 0.10) for i in range(20)])
+    cfg = _config({"m": _op_meta("m", "client transfers", recipe="sales")}, {"m": {"default": 0.1}})
+    prepped = prep_frames(_raw(agent_metrics=rows), cfg)
+    assert recompute_all(prepped, THR)["m"].category == C.CAT_SALES
+
+
+def test_recipe_inherited_from_category_default():
+    # No per-metric recalc: category_defaults supplies the recipe.
+    rows = _am_rows("client transfers", "pss-verizon", [(f"p{i}", 0.10) for i in range(20)])
+    meta = {"m": {"source": "agent_metrics", "source_metric_key": "client transfers",
+                  "category": "business", "direction": "lower_is_better", "unit": "rate",
+                  "benchmark": {"type": "config", "key": "m"}}}
+    cfg = {"metric_catalog": {"metric_catalog": {
+               "metrics": meta,
+               "category_defaults": {"business": {"recalc": {"recipe": "operational"}}}}},
+           "benchmarks": {"m": {"default": 0.1}}}
+    prepped = prep_frames(_raw(agent_metrics=rows), cfg)
+    assert recompute_all(prepped, THR)["m"].category == C.CAT_OPERATIONAL
+
+
+def test_skip_and_missing_recipe_yield_no_candidate():
+    m_skip = _op_meta("m_skip", "ct_skip", recipe="skip")
+    m_none = {"source": "agent_metrics", "source_metric_key": "ct_none", "category": "business",
+              "direction": "lower_is_better", "unit": "rate", "benchmark": {"type": "config", "key": "m_none"}}
+    cfg = _config({"m_skip": m_skip, "m_none": m_none}, {})   # no category_defaults -> m_none unresolved
+    prepped = prep_frames(_raw(), cfg)
+    out = recompute_all(prepped, THR)
+    assert "m_skip" not in out and "m_none" not in out
 
 
 def test_absolute_default_degeneracy_kept():
     rows = _am_rows("cancellation rate", "pss-verizon", [(f"p{i}", 0.0) for i in range(30)])  # floor
     meta = {"cancel_rate": {"source": "agent_metrics", "source_metric_key": "cancellation rate",
                             "category": "business", "direction": "lower_is_better", "unit": "rate",
-                            "benchmark": {"type": "config", "key": "cancel_rate"}}}
+                            "benchmark": {"type": "config", "key": "cancel_rate"},
+                            "recalc": {"recipe": "absolute"}}}
     cfg = _config(meta, {"cancel_rate": 0.12})
     prepped = prep_frames(_raw(agent_metrics=rows), cfg)
     cand = recompute_all(prepped, THR)["cancel_rate"]
@@ -220,7 +261,7 @@ def test_sentiment_split_rule_and_vzw_only():
     pss = _bs_rows(q, C.SENTIMENT_SCORECARD, "pss-verizon", [(f"p{i}", 0.70) for i in range(20)])
     agents = _agents_rows("mob-verizon", [f"m{i}" for i in range(20)]) + \
              _agents_rows("pss-verizon", [f"p{i}" for i in range(20)])
-    cfg = _config({"customer_frustration_sentiment": _beh_meta("customer_frustration_sentiment", q)},
+    cfg = _config({"customer_frustration_sentiment": _beh_meta("customer_frustration_sentiment", q, recipe="sentiment")},
                   {"customer_frustration_sentiment": {"default": 0.8}})
     prepped = prep_frames(_raw(behavior_scores=mob + pss, agents=agents), cfg)
     cand = recompute_all(prepped, THR)["customer_frustration_sentiment"]
@@ -236,7 +277,7 @@ def test_sentiment_no_split_when_close():
     pss = _bs_rows(q, C.SENTIMENT_SCORECARD, "pss-verizon", [(f"p{i}", 0.81) for i in range(20)])
     agents = _agents_rows("mob-verizon", [f"m{i}" for i in range(20)]) + \
              _agents_rows("pss-verizon", [f"p{i}" for i in range(20)])
-    cfg = _config({"customer_frustration_sentiment": _beh_meta("customer_frustration_sentiment", q)},
+    cfg = _config({"customer_frustration_sentiment": _beh_meta("customer_frustration_sentiment", q, recipe="sentiment")},
                   {"customer_frustration_sentiment": {"default": 0.8}})
     prepped = prep_frames(_raw(behavior_scores=mob + pss, agents=agents), cfg)
     cand = recompute_all(prepped, THR)["customer_frustration_sentiment"]
@@ -247,7 +288,8 @@ def test_sentiment_no_split_when_close():
 def test_tool_metric_skipped():
     meta = {"guided_flow_adoption": {"source": "smart_offer", "source_metric_key": "gfa",
                                      "category": "tool_usage", "direction": "higher_is_better",
-                                     "unit": "rate", "benchmark": {"type": "config", "key": "guided_flow_adoption"}}}
+                                     "unit": "rate", "benchmark": {"type": "config", "key": "guided_flow_adoption"},
+                                     "recalc": {"recipe": "tool"}}}
     cfg = _config(meta, {"guided_flow_adoption": {"default": 0.65}})
     prepped = prep_frames(_raw(), cfg)
     cand = recompute_all(prepped, THR)["guided_flow_adoption"]

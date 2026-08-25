@@ -35,6 +35,7 @@ class MetricMeta:
     benchmark_key: str
     benchmark_type: str
     denominator_min: Optional[float]
+    recalc_recipe: Optional[str] = None   # which recompute recipe to run (declared in metric_catalog)
 
 
 @dataclass(frozen=True)
@@ -61,32 +62,47 @@ class PreppedFrames:
 # config helpers
 # ---------------------------------------------------------------------------------------------------
 
-def _catalog_metrics(config: Dict[str, Any]) -> Dict[str, Any]:
-    """Unwrap cfg['metric_catalog'] -> {metric: entry}. resolve_active_config keeps the wrapper."""
+def _metric_catalog_block(config: Dict[str, Any]) -> Dict[str, Any]:
     mc = config.get("metric_catalog") or {}
     if isinstance(mc, dict) and "metric_catalog" in mc:
         mc = mc["metric_catalog"]
-    return (mc or {}).get("metrics", {}) or {}
+    return mc or {}
+
+
+def _catalog_metrics(config: Dict[str, Any]) -> Dict[str, Any]:
+    """Unwrap cfg['metric_catalog'] -> {metric: entry}. resolve_active_config keeps the wrapper."""
+    return _metric_catalog_block(config).get("metrics", {}) or {}
+
+
+def _resolve_recipe(entry: Dict[str, Any], category: str, cat_defaults: Dict[str, Any]) -> Optional[str]:
+    """Recalc recipe: per-metric ``recalc.recipe`` overrides ``category_defaults[category].recalc.recipe``."""
+    recipe = (entry.get("recalc") or {}).get("recipe")
+    if recipe is None:
+        recipe = ((cat_defaults.get(category) or {}).get("recalc") or {}).get("recipe")
+    return str(recipe) if recipe is not None else None
 
 
 def build_metric_meta(config: Dict[str, Any]) -> Dict[str, MetricMeta]:
     """Canonical metric -> MetricMeta pulled from metric_catalog."""
+    cat_defaults = _metric_catalog_block(config).get("category_defaults", {}) or {}
     out: Dict[str, MetricMeta] = {}
     for metric, entry in _catalog_metrics(config).items():
         entry = entry or {}
         over = entry.get("computation_override") or {}
         bench = entry.get("benchmark") or {}
         dmin = over.get("denominator_min")
+        category = str(entry.get("category", ""))
         out[metric] = MetricMeta(
             metric=metric,
             source=str(entry.get("source", "")),
             source_metric_key=str(entry.get("source_metric_key", "")),
-            category=str(entry.get("category", "")),
+            category=category,
             direction=str(entry.get("direction", "higher_is_better")),
             unit=str(entry.get("unit", "")),
             benchmark_key=str((bench.get("key") or metric)),
             benchmark_type=str(bench.get("type", "config")),
             denominator_min=(float(dmin) if dmin is not None else None),
+            recalc_recipe=_resolve_recipe(entry, category, cat_defaults),
         )
     return out
 

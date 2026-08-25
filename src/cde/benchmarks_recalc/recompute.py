@@ -15,7 +15,7 @@ Recipe per category (see benchmarks.yaml methodology comments):
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, Optional, Tuple
 
 import pandas as pd
@@ -23,6 +23,9 @@ import pandas as pd
 from . import config as C
 from .config import RecalcThresholds
 from .prep import PreppedFrames, windowed_mean_per_agent
+from cde.utils.logging import get_logger
+
+log = get_logger(__name__)
 
 
 @dataclass(frozen=True)
@@ -210,7 +213,8 @@ def _with_note(st: CohortStat, extra: str) -> CohortStat:
                       st.sufficient, st.degenerate, st.capped, f"{st.note}; {extra}")
 
 
-def recompute_tool(metric: str) -> CandidateBenchmark:
+def recompute_tool(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
+    # Signature matches the other workers (prepped/thr unused) so dispatch can call them uniformly.
     default = CohortStat("default", None, 0, "absolute", None, False, False, False,
                          "source inactive (no data) -> keep current")
     return CandidateBenchmark(metric, C.CAT_TOOL, default, {}, False, True)
@@ -223,26 +227,27 @@ def recompute_tool(metric: str) -> CandidateBenchmark:
 def recompute_all(prepped: PreppedFrames, thr: RecalcThresholds) -> Dict[str, CandidateBenchmark]:
     out: Dict[str, CandidateBenchmark] = {}
     for metric, meta in prepped.metric_meta.items():
-        if meta.source == "derived":
-            # Composite metrics are rates synthesized into prepped.agent_metrics (prep.prep_frames);
-            # recompute their per-cohort benchmark with the operational recipe (median of windowed mean).
-            out[metric] = recompute_operational(prepped, metric, thr)
-        elif metric in C.TOOL_USAGE_METRICS:
-            out[metric] = recompute_tool(metric)
-        elif metric in C.ABSOLUTE_DEFAULT_METRICS:
-            out[metric] = recompute_absolute(prepped, metric, thr)
-        elif metric in C.SALES_METRICS:
-            out[metric] = recompute_nsp100(prepped, metric, thr)
-        elif metric in C.OPERATIONAL_METRICS:
-            out[metric] = recompute_operational(prepped, metric, thr)
-        elif meta.category == "quality_behavior":
-            # exclude distribution-type / non-config behaviors
-            if meta.benchmark_type != "config" or metric in C.DISTRIBUTION_BEHAVIORS:
-                continue
-            scorecard = prepped.behavior_scorecards.get(metric, "")
-            if scorecard == C.SENTIMENT_SCORECARD:
-                out[metric] = recompute_sentiment(prepped, metric, thr)
-            else:
-                out[metric] = recompute_quality(prepped, metric, thr)
-        # else: unknown metric -> no candidate
+        recipe = meta.recalc_recipe
+        worker = RECIPE_WORKERS.get(recipe)
+        if worker is None:
+            # "skip" and missing recipe both produce no candidate; only an unrecognized value is noteworthy.
+            if recipe not in (None, "skip"):
+                log.warning("recompute_all: metric %r has unknown recalc.recipe %r; skipped", metric, recipe)
+            continue
+        cand = worker(prepped, metric, thr)
+        # Section is authoritative from the recipe registry, not whatever the worker stamped.
+        section = C.RECIPE_SECTION[recipe]
+        out[metric] = cand if cand.category == section else replace(cand, category=section)
     return out
+
+
+# recipe name -> recompute worker. The section/category each candidate carries comes from
+# config.RECIPE_SECTION (applied in recompute_all), so a worker's own CAT_* is not authoritative.
+RECIPE_WORKERS = {
+    "operational": recompute_operational,
+    "sales": recompute_nsp100,
+    "absolute": recompute_absolute,
+    "quality": recompute_quality,
+    "sentiment": recompute_sentiment,
+    "tool": recompute_tool,
+}

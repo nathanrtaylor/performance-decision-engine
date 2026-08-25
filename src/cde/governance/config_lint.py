@@ -24,6 +24,9 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 VALID_DIRECTIONS = {"higher_is_better", "lower_is_better"}
+# Mirrors benchmarks_recalc.config.RECIPE_SECTION keys + "skip" (kept local to avoid coupling
+# governance to the recalc package). A metric's recalc.recipe selects its recompute recipe/section.
+VALID_RECIPES = {"operational", "sales", "absolute", "quality", "sentiment", "tool", "skip"}
 
 
 @dataclass
@@ -193,6 +196,28 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
                         f"metric_catalog: '{n}' derived.{side} '{ref.get('metric_key')}' has invalid "
                         f"part {part!r} (must be 'numerator' or 'denominator')"
                     )
+
+    # ---- recalc.recipe: validate value + surface metrics that won't be recomputed ----
+    cat_defaults = mc.get("category_defaults") or {}
+    for cat, cd in cat_defaults.items():
+        cd_recipe = (isinstance(cd, dict) and (cd.get("recalc") or {}).get("recipe")) or None
+        if cd_recipe is not None and cd_recipe not in VALID_RECIPES:
+            r.errors.append(
+                f"category_defaults: '{cat}' recalc.recipe {cd_recipe!r} not in {sorted(VALID_RECIPES)}"
+            )
+    for n, d in metrics.items():
+        own = (d.get("recalc") or {}).get("recipe")
+        if own is not None and own not in VALID_RECIPES:
+            r.errors.append(
+                f"metric_catalog: '{n}' recalc.recipe {own!r} not in {sorted(VALID_RECIPES)}"
+            )
+        # Resolved recipe: per-metric override else category default. None => never recomputed.
+        resolved = own or ((cat_defaults.get(d.get("category")) or {}).get("recalc") or {}).get("recipe")
+        if resolved is None:
+            r.warnings.append(
+                f"metric_catalog: '{n}' has no recalc.recipe (nor a category default); "
+                f"it will be silently skipped by benchmark recalculation"
+            )
 
     for tn, tb in (themes or {}).items():
         for mem in ((tb or {}).get("members") or []):
