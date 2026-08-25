@@ -88,8 +88,12 @@ benchmarks:
   sp100:
     default: 0.05486       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
     by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
-      mob-at&t: 0.05733
-      mob-verizon: 0.05533    
+      mob-at&t: 0.04082
+      mob-verizon: 0.03977
+      pss-verizon: 0.048
+      pss-at&t: 0.036
+      "pss-at&t nac": 0.022
+      mcafee: 0.11   
 
   # ---- absolute defaults: cohort medians degenerate (scale boundary/floor) or no cohort variation ----
   cancel_rate:
