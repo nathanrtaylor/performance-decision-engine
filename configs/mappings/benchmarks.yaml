@@ -19,7 +19,7 @@ benchmarks:
     default: 0.105
     by_icp_client:
       mob-at&t: 0.10
-      mob-verizon: 0.053
+      mob-verizon: 0.06876
       pss-at&t: 0.094
       pss-verizon: 0.133
   crt:
@@ -40,7 +40,7 @@ benchmarks:
     default: 80         # seconds
     by_icp_client:
       mob-at&t: 80
-      mob-verizon: 50
+      mob-verizon: 61.8
       pss-at&t: 60
       pss-verizon: 100
   callback_rate:
@@ -63,14 +63,19 @@ benchmarks:
 
   # ---- sales: cohort-aware where a real distribution exists ----
   nsp100:
-    default: 0.03       # net sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    default: 0.02486       # net sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
     by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
-      mob-at&t: 0.02
-      mob-verizon: 0.014
+      mob-at&t: 0.02733
+      mob-verizon: 0.02533
+  sp100:
+    default: 0.05486       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
+      mob-at&t: 0.05733
+      mob-verizon: 0.05533    
 
   # ---- absolute defaults: cohort medians degenerate (scale boundary/floor) or no cohort variation ----
   cancel_rate:
-    default: 0.12       # median is 0 across all cohorts (floor); a relative bar isn't usable.
+    default: 0.133       # median is 0 across all cohorts (floor); a relative bar isn't usable.
   erp:
     default: 90         # 0-100 scale; cohort median is 100 (ceiling) -> absolute sub-max target.
   expert_5star:
@@ -101,23 +106,23 @@ benchmarks:
   manage_call_efficiently:
     default: 0.94
   ask_effective_questions:
-    default: 0.92
+    default: 0.881
   protect_customer_information:
     default: 0.92
   transition_statement:
-    default: 0.87
+    default: 0.638
   complete_product_scope_expectations:
-    default: 0.70
+    default: 0.767
   provide_assurance:
-    default: 0.61
+    default: 0.485
   make_an_offer:
-    default: 0.45
+    default: 0.5
   test_resolution:
     default: 0.29
   consistent_closing:
-    default: 0.21
+    default: 0.273
   tailor_products_based_on_customer_responses:
-    default: 0.28
+    default: 0.125
   recap_resolution:
     default: 0.13
 
@@ -155,7 +160,7 @@ benchmarks:
   expert_listening_sentiment:
     default: 0.763
     by_icp_client:
-      mob-verizon: 0.937
+      mob-verizon: 0.89
       pss-verizon: 0.750
   customer_complaint_resolution_time_sentiment:
     default: 0.95       # near-universal floor

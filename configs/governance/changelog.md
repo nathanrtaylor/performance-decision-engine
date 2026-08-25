@@ -1,0 +1,34 @@
+# Governance changelog
+
+## 2026-08-25 09:20 — benchmark recalculation apply
+- snapshot: 2026-08-21_weekly_wk6
+- approver: Nathan
+- applied:
+  - transfer_rate [mob-verizon]: 0.053 -> 0.06876
+  - hold_time [mob-verizon]: 50 -> 61.8
+  - cancel_rate [default]: 0.12 -> 0.133
+  - nsp100 [default]: 0.03 -> 0.02486
+  - nsp100 [mob-at&t]: 0.02 -> 0.02733
+  - nsp100 [mob-verizon]: 0.014 -> 0.02533
+  - transition_statement [default]: 0.87 -> 0.638
+  - make_an_offer [default]: 0.45 -> 0.5
+  - provide_assurance [default]: 0.61 -> 0.485
+  - consistent_closing [default]: 0.21 -> 0.273
+  - complete_product_scope_expectations [default]: 0.7 -> 0.767
+  - ask_effective_questions [default]: 0.92 -> 0.881
+  - tailor_products_based_on_customer_responses [default]: 0.28 -> 0.125
+  - expert_listening_sentiment [mob-verizon]: 0.937 -> 0.89
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)
+  - one_call_resolution [mcafee] (new cohort split - manual merge)
+  - hold_time [mcafee] (new cohort split - manual merge)
+  - hold_time [xbox] (new cohort split - manual merge)
+  - talk_time [mcafee] (new cohort split - manual merge)
+  - talk_time [xbox] (new cohort split - manual merge)
+  - callback_rate [mcafee] (new cohort split - manual merge)
+  - callback_rate [xbox] (new cohort split - manual merge)
+  - nsp100 [mcafee] (new cohort split - manual merge)
+  - nsp100 [pss-at&t] (new cohort split - manual merge)
+  - crt [mcafee] (new cohort split - manual merge)
+  - crt [xbox] (new cohort split - manual merge)

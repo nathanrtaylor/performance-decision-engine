@@ -1,3 +1,17 @@
+# ---------------------------------------------------
+# Theme tier configuration — definitions AND selection knobs, centralized.
+# The selection knobs below previously lived in configs/active.yaml
+# (theme_selection); they now live here so ALL theme config is in one file.
+# active.yaml only points at this file via mappings.themes.
+# ---------------------------------------------------
+
+# Global selection bar for the theme tier (Tier 2). A theme may override
+# count_fraction per-theme (see below); score_level_floor and aggregate are global.
+theme_selection:
+  count_fraction: 0.5      # >= this fraction of a theme's members must be deficient to qualify
+  score_level_floor: 0.24  # single low global "deficient" floor (looser than the solo bar)
+  aggregate: mean          # mean | sum: how member score_total combine into the theme score
+
 themes:
 
   # ---------------------------------------------------
@@ -16,6 +30,10 @@ themes:
   #     loose theme_selection.score_level_floor). This is looser than the
   #     solo-coaching bar on purpose: a metric not worth coaching alone can
   #     still count toward a pattern.
+  #   * A theme may set its own `count_fraction` (0, 1] to override the global
+  #     bar for that theme only — used to make a WIDE, correlated theme require
+  #     a broader pattern (e.g. Call Control 3-of-4) without demanding 3-of-3
+  #     on the 3-member themes the way a global 0.75 would.
   #   * Among qualifying themes, the highest combined score wins.
   #   * A break-glass single (metric_catalog break_glass flag) can still
   #     override a theme; an ordinary single is the fallback when no theme
@@ -36,6 +54,12 @@ themes:
       - crt
       - callback_rate
     conversation_type: "Performance Coaching"
+    # Four correlated efficiency metrics co-move, so a 2-of-4 (global 0.5) bar
+    # trips constantly and lets a marginal pattern crowd out other themes and
+    # single behaviors. Require 3-of-4 for this theme specifically. Do NOT raise
+    # the GLOBAL count_fraction to 0.75: 0.75*3=2.25 rounds up to 3-of-3 on the
+    # 3-member themes (Resolution Effectiveness, Quality Sales) and guts them.
+    count_fraction: 0.75
 
   "Resolution Effectiveness":
     members:
@@ -54,7 +78,7 @@ themes:
 
   "Quality Sales":
     members:
-      - nsp100
+      - sp100
       - cancel_rate
       - transition_statement
     conversation_type: "Quality Coaching"  

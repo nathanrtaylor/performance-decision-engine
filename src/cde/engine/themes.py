@@ -17,6 +17,14 @@ Deficiency here is deliberately LOOSER than the solo-coaching bar:
     versioned business weights + argmax; themes apply none of those, so a
     metric "not worth coaching alone" can still count toward a pattern.
 
+The qualification fraction is global by default (``theme_selection.count_fraction``)
+but a theme may override it with its own ``count_fraction`` in themes.yaml. This is
+the intended lever for a WIDE theme of correlated metrics (e.g. Call Control's four
+efficiency metrics): raising just that theme to 0.75 (3-of-4) stops a marginal 2-of-4
+pattern from crowding out other themes and single behaviors, without touching the bar
+for smaller themes — a global bump would instead demand 3-of-3 on any 3-member theme
+(integer rounding of 0.75*3=2.25) and gut the thin-tailed ones.
+
 This module reads ``scores_windowed`` (the 8-week decision grain). It does NOT
 need the ICP_Client cohort (that is only used by Tier-1 break-glass), so the
 windowed frame — which does not carry ``icp_client`` — is the right input.
@@ -70,12 +78,54 @@ def _load_themes(config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
         out[str(name)] = {
             "members": members,
             "conversation_type": spec.get("conversation_type"),
+            # Optional per-theme qualification bar; None => use the global
+            # theme_selection.count_fraction. Resolved (validated) in
+            # build_theme_candidates via _resolve_count_fraction.
+            "count_fraction": spec.get("count_fraction"),
         }
     return out
 
 
+def _resolve_count_fraction(name: str, spec: Dict[str, Any], default: float) -> float:
+    """
+    Per-theme count_fraction override, falling back to the global default.
+
+    A theme may set its own ``count_fraction`` in themes.yaml to make its
+    qualification bar stricter or looser than the global one — e.g. a wide
+    theme of correlated metrics can require 3-of-4 (0.75) so a marginal 2-of-4
+    pattern no longer crowds out other themes and single behaviors. Invalid or
+    out-of-range values fall back to the global default with a warning.
+    """
+    raw = spec.get("count_fraction")
+    if raw is None:
+        return default
+    try:
+        val = float(raw)
+    except (TypeError, ValueError):
+        log.warning(
+            "themes: theme %r has non-numeric count_fraction %r; using global %.3f",
+            name, raw, default,
+        )
+        return default
+    if not (0.0 < val <= 1.0):
+        log.warning(
+            "themes: theme %r count_fraction %.3f out of range (0, 1]; using global %.3f",
+            name, val, default,
+        )
+        return default
+    return val
+
+
 def _theme_selection_cfg(config: Dict[str, Any]) -> Tuple[float, float, str]:
-    ts = config.get("theme_selection") or {}
+    # The theme tier's selection knobs are centralized in themes.yaml, next to
+    # the theme definitions: cfg["themes"]["theme_selection"]. Fall back to a
+    # top-level cfg["theme_selection"] for backward compatibility (older
+    # active.yaml layout and programmatic callers that pass it directly).
+    themes_map = config.get("themes")
+    ts = themes_map.get("theme_selection") if isinstance(themes_map, dict) else None
+    if ts is None:
+        ts = config.get("theme_selection")
+    ts = ts or {}
     frac = float(ts.get("count_fraction", 0.5))
     floor = float(ts.get("score_level_floor", 0.15))
     aggregate = str(ts.get("aggregate", "mean")).lower().strip()
@@ -190,15 +240,18 @@ def build_theme_candidates(
     # n_members is the CONFIGURED theme size (missing members count against qualification).
     theme_size = {name: len(spec["members"]) for name, spec in themes.items()}
     theme_members = {name: sorted(spec["members"]) for name, spec in themes.items()}
+    # Per-theme qualification bar: explicit spec.count_fraction, else global frac.
+    theme_frac = {name: _resolve_count_fraction(name, spec, frac) for name, spec in themes.items()}
     agg["n_members"] = agg["theme"].map(theme_size).astype(int)
     agg["members"] = agg["theme"].map(theme_members)
+    agg["count_fraction"] = agg["theme"].map(theme_frac).astype(float)
     agg["conversation_type"] = agg["theme"].map(
         lambda t: _conversation_type_for_theme(themes.get(t, {}), config)
     )
 
-    # Qualify: >= frac of configured members deficient, and at least one deficient.
+    # Qualify: >= (per-theme) frac of configured members deficient, and at least one deficient.
     qualifies = (agg["n_deficient"] > 0) & (
-        agg["n_deficient"] >= (frac * agg["n_members"] - 1e-9)
+        agg["n_deficient"] >= (agg["count_fraction"] * agg["n_members"] - 1e-9)
     )
     candidates = agg[qualifies].copy()
     if candidates.empty:

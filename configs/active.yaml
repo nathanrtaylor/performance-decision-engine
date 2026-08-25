@@ -16,6 +16,23 @@ mappings:
   core_metrics: mappings/core_metrics.yaml   # per-icp_client "core metrics this week" receipt block (auto-loads to cfg["core_metrics"])
 
 # ---------------------------------------------------
+# ICP Client Roster (governed cohort list)
+# ---------------------------------------------------
+# The canonical set of icp_client cohorts the business serves, in the lowercase
+# form used throughout benchmarks.yaml and the agents table. Add a client here
+# (and to extraction/configs/extract_run.yaml globals.icp_clients) when onboarding
+# a new cohort. Consumed by benchmark recalculation to know which per-cohort
+# benchmarks to compute; the main engine reads icp_client per-row from the data
+# and does not need this list.
+icp_clients:
+  - "mob-at&t"
+  - "mob-verizon"
+  - "pss-at&t"
+  - "pss-verizon"
+  - "xbox"
+  - "mcafee"
+
+# ---------------------------------------------------
 # Signal Gating
 # ---------------------------------------------------
 
@@ -84,11 +101,12 @@ dampening:
 # Tier 2: a theme (configs/mappings/themes.yaml) is delivered when a coherent
 # group of behaviors is deficient together; otherwise the engine falls back to
 # the single best behavior (Tier 3, unchanged). With no themes.yaml configured
-# this block is inert and behavior is identical to the pre-theme engine.
-theme_selection:
-  count_fraction: 0.5     # >= this fraction of a theme's members must be deficient to qualify
-  score_level_floor: 0.24 # single low global floor for "deficient" (looser than the solo bar)
-  aggregate: mean         # mean | sum: how member score_total combine into the theme score
+# this tier is inert and behavior is identical to the pre-theme engine.
+#
+# The Tier-2 selection knobs (count_fraction, score_level_floor, aggregate) now
+# live in configs/mappings/themes.yaml under `theme_selection:`, alongside the
+# theme definitions, so all theme config is in one file. They are intentionally
+# NOT duplicated here.
 
 # Tier 1: break-glass override. Only metrics carrying a per-metric break_glass
 # block in metric_catalog.yaml are eligible. Over the latest `recency_weeks`

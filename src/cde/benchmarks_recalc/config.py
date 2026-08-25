@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import dataclasses
 from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple
 
 # 8-week decision window (matches cde.temporal.aggregate window_weeks default).
 WINDOW_WEEKS = 8
@@ -45,8 +45,11 @@ DISTRIBUTION_BEHAVIORS = frozenset(
     {"enroll_with_consent", "provide_self_service_options", "read_t_and_c_s"}
 )
 
-# The four cohorts (lowercase canonical form used everywhere in benchmarks.yaml).
-COHORTS = ("mob-at&t", "mob-verizon", "pss-at&t", "pss-verizon")
+# Default icp_client roster (lowercase canonical form used everywhere in benchmarks.yaml).
+# This is only the FALLBACK: the governed roster lives in configs/active.yaml
+# (icp_clients:) and reaches recompute via RecalcThresholds.cohorts. Keep this in
+# sync as a safety net for callers that build thresholds without a config.
+COHORTS = ("mob-at&t", "mob-verizon", "pss-at&t", "pss-verizon", "mcafee", "xbox")
 
 # Verdicts.
 PROPOSE = "PROPOSE"
@@ -92,16 +95,27 @@ class RecalcThresholds:
     # Shared cap for behavior p25 anchors.
     quality_cap: float = QUALITY_CAP
 
+    # Governed icp_client roster (which per-cohort benchmarks to compute). Sourced
+    # from config["icp_clients"] via from_config; defaults to the module fallback.
+    cohorts: Tuple[str, ...] = COHORTS
+
     @classmethod
     def from_config(cls, config: Optional[Dict[str, Any]] = None) -> "RecalcThresholds":
-        """Build from the optional ``benchmark_recalc`` block in active.yaml.
+        """Build from active.yaml: the optional ``benchmark_recalc`` block (guardrail
+        knobs) plus the top-level ``icp_clients`` roster.
 
         Only recognized fields override the curated defaults; an absent/empty block
-        reproduces ``RecalcThresholds()`` exactly (so today's proposals are unchanged).
-        This is what the module docstring means by "governance can tune the bar
-        without touching logic."
+        and a missing roster reproduce ``RecalcThresholds()`` exactly (so today's
+        proposals are unchanged). This is what the module docstring means by
+        "governance can tune the bar without touching logic."
         """
-        block = (config or {}).get("benchmark_recalc") or {}
+        config = config or {}
+        block = config.get("benchmark_recalc") or {}
         known = {f.name for f in dataclasses.fields(cls)}
         overrides = {k: v for k, v in block.items() if k in known}
+        # Governed roster lives at the top level of active.yaml (icp_clients:),
+        # not inside benchmark_recalc; fall back to the module default when absent.
+        roster = config.get("icp_clients")
+        if roster:
+            overrides["cohorts"] = tuple(str(c) for c in roster)
         return dataclasses.replace(cls(), **overrides)

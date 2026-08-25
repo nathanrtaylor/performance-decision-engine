@@ -3,7 +3,7 @@
 # ============================================================
 
 run:
-  run_id: "2026-08-07_weekly_wk6"
+  run_id: "2026-08-21_weekly_wk6"
   compiled_sql_dir: "extraction/compiled_sql"
   output_dir: "data/raw/weekly"
   flatten_sql: true
@@ -24,6 +24,8 @@ globals:
     - "pss-at&t"
     - "mob-verizon"
     - "mob-at&t"
+    - "xbox"
+    - "mcafee"
 
 outputs:
   agent_metrics:

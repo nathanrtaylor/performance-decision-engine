@@ -426,7 +426,8 @@ Precedence, per agent (period, call_type):
    (default 0.5, i.e. ≥50%) of its members are *deficient*, where deficient = evidence-gated (already
    enforced upstream) **and** `score_level ≥ theme_selection.score_level_floor`. That floor is
    deliberately looser than the solo-coaching bar: a metric not worth coaching on its own can still
-   count toward a pattern. Among qualifying themes, the highest combined score
+   count toward a pattern. A theme may set its own `count_fraction` to override the global bar (see
+   below). Among qualifying themes, the highest combined score
    (`theme_selection.aggregate` = mean|sum of member scores) wins.
 3. **Single (fallback)** — today's deterministic single-behavior argmax
    (`recommend_for_population`), used when no theme qualifies and no break-glass trips. Unchanged.
@@ -437,22 +438,41 @@ engine (plus an additive `tier` column).
 
 Configuration:
 
+All theme config lives in **one file**, `configs/mappings/themes.yaml` — the global selection knobs
+and the per-theme definitions together. `active.yaml` only points at it via `mappings.themes`.
+
 ```yaml
-# configs/active.yaml
-theme_selection:
-  count_fraction: 0.5      # >= this fraction of a theme's members must be deficient to qualify
-  score_level_floor: 0.15  # single low global "deficient" floor (looser than the solo bar)
-  aggregate: mean          # mean | sum: how member scores combine into the theme score
+# configs/mappings/themes.yaml
+theme_selection:              # global selection bar for the theme tier
+  count_fraction: 0.5         # >= this fraction of a theme's members must be deficient to qualify
+  score_level_floor: 0.24     # single low global "deficient" floor (looser than the solo bar)
+  aggregate: mean             # mean | sum: how member scores combine into the theme score
+themes:
+  "Call Control":             # a theme may override the global bar for itself
+    members: [talk_time, hold_time, crt, callback_rate]
+    conversation_type: "Performance Coaching"
+    count_fraction: 0.75      # require 3-of-4 for THIS theme; falls back to global 0.5 if omitted
+```
+
+```yaml
+# configs/active.yaml — break-glass (Tier 1) defaults stay here (driven by metric_catalog, not themes)
 break_glass:
   recency_weeks: 2         # latest-weeks slice for the override (short recency window)
   worst_pct: 10            # default worst-percent cohort tail; per-metric block can override
 ```
 
 ```yaml
-# configs/mappings/metric_catalog.yaml — per-metric override flag (curated few only)
+# configs/mappings/metric_catalog.yaml — per-metric break-glass flag (curated few only)
 cancel_rate:
   break_glass: { enabled: true, worst_pct: 5 }
 ```
+
+**Per-theme `count_fraction`.** A wide theme of correlated metrics trips the 2-of-4 (global 0.5)
+bar constantly and crowds out other themes and single behaviors. Set that one theme to `0.75`
+(3-of-4) to require a broader pattern, without touching smaller themes. Do **not** raise the
+*global* `count_fraction` to fix one theme: `0.75 × 3 = 2.25` rounds up to a 3-of-3 bar on every
+3-member theme and guts the thin-tailed ones (Resolution Effectiveness, Quality Sales). The
+override is validated to `(0, 1]`; anything invalid falls back to the global default with a warning.
 
 Themes are **human-curated**: a theme is added to `themes.yaml` only by an SME. The discovery tool
 below can *propose* candidate themes, but never writes them.
