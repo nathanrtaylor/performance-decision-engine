@@ -12,6 +12,7 @@ from cde.ingestion.validate import validate_inputs
 from cde.ingestion.coaching_history import build_coaching_history
 from cde.prioritization.dampening import apply_recent_coaching_dampening
 from cde.signals.build_signals import build_signals
+from cde.signals.derived_metrics import synthesize_derived
 from cde.scoring.assemble import assemble_scores, compute_windowed_scores
 from cde.prioritization.apply import build_topic_candidates
 from cde.engine.select import select_recommendations
@@ -115,6 +116,13 @@ def main(argv=None) -> None:
 
     normalized = normalize_inputs(raw, config)
     validate_inputs(normalized, config)
+
+    # Composite/derived metrics: synthesize a 'derived' source frame from other metrics'
+    # numerator/denominator before build_signals unions it in like any other source. No-op (key
+    # omitted) when no derived metric is configured, so pre-derived behavior is unchanged.
+    derived = synthesize_derived(normalized.get("agent_metrics"), config, metric_key_col="metric")
+    if not derived.empty:
+        normalized["derived"] = derived
 
     signals = build_signals(normalized, config)
     signals.to_csv(out_dir / "signals.csv", index=False)

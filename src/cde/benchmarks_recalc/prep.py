@@ -16,6 +16,7 @@ from typing import Any, Dict, Optional, Tuple
 import pandas as pd
 
 from cde.governance.versioning import resolve_raw_export_dir
+from cde.signals.derived_metrics import synthesize_derived
 from cde.utils.logging import get_logger
 
 from .config import WINDOW_WEEKS
@@ -154,6 +155,18 @@ def prep_frames(raw: RawFrames, config: Dict[str, Any]) -> PreppedFrames:
         )
         unmapped["agent_metrics"] = int(am["metric_key"].isna().sum())
         am = am[am["metric_key"].notna()].copy()
+
+        # Composite (derived) metrics: synthesize from the RAW frame, which still holds the
+        # building-block source rows (they are unmapped, hence dropped above). Append with
+        # metric_key set to the canonical name so windowed_mean_per_agent finds them.
+        raw_am = raw.agent_metrics.copy()
+        raw_am["agent_id"] = raw_am["agent_id"].astype(str)
+        raw_am["icp_client"] = raw_am["icp_client"].astype(str).str.strip().str.lower()
+        comp = synthesize_derived(raw_am, config, metric_key_col="metric")
+        if not comp.empty:
+            comp["metric_key"] = comp["metric"]
+            am = pd.concat([am, comp], ignore_index=True)
+
         am, am_weeks = _last_n_weeks(am)
     else:
         am_weeks = []

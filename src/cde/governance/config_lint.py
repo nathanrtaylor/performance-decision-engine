@@ -159,6 +159,41 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
         if isinstance(cd, dict) and cd.get("display") is not None:
             _validate_display(f"category_defaults: '{cat}'", cd.get("display"), r.warnings)
 
+    # ---- derived (composite) metrics: structural validation ----
+    def _as_ref_list(v):
+        return v if isinstance(v, list) else ([v] if isinstance(v, dict) else [])
+
+    for n, d in metrics.items():
+        der = d.get("derived")
+        if der is None:
+            continue
+        if not isinstance(der, dict):
+            r.errors.append(f"metric_catalog: '{n}' derived block must be a mapping")
+            continue
+        if d.get("source") != "derived":
+            r.warnings.append(
+                f"metric_catalog: '{n}' has a 'derived' block but source={d.get('source')!r} "
+                f"(expected 'derived'); it will not be synthesized as a composite"
+            )
+        num_refs = _as_ref_list(der.get("numerator"))
+        den_refs = _as_ref_list(der.get("denominator"))
+        if not num_refs:
+            r.errors.append(f"metric_catalog: '{n}' derived.numerator must list at least one component")
+        if len(den_refs) != 1:
+            r.errors.append(f"metric_catalog: '{n}' derived.denominator must reference exactly one component")
+        for side, refs, default_part in (("numerator", num_refs, "numerator"),
+                                         ("denominator", den_refs, "denominator")):
+            for ref in refs:
+                if not isinstance(ref, dict) or not ref.get("metric_key"):
+                    r.errors.append(f"metric_catalog: '{n}' derived.{side} entry missing 'metric_key'")
+                    continue
+                part = str(ref.get("part", default_part)).strip().lower()
+                if part not in ("numerator", "denominator"):
+                    r.errors.append(
+                        f"metric_catalog: '{n}' derived.{side} '{ref.get('metric_key')}' has invalid "
+                        f"part {part!r} (must be 'numerator' or 'denominator')"
+                    )
+
     for tn, tb in (themes or {}).items():
         for mem in ((tb or {}).get("members") or []):
             if mem not in mnames:

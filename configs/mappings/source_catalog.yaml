@@ -89,6 +89,41 @@ source_catalog:
         null_rate_max: 0.10
 
 
+    derived:
+      # Synthetic source: composite metrics built from OTHER metrics' numerator/denominator by
+      # src/cde/signals/derived_metrics.py (injected into normalized inputs before build_signals).
+      # No extract table backs it; it is skipped when no derived metric is configured. Column
+      # bindings mirror agent_metrics so build_signals values it identically (prefer calc).
+      description: "Composite metrics synthesized from other metrics' numerator/denominator."
+      owner: analytics
+      refresh_frequency: weekly
+      status: active
+
+      schema:
+        entity_keys:
+          agent_id: agent_id
+          period: period
+          call_type: call_type
+
+        metric_key: metric
+        numerator: numerator
+        denominator: denominator
+        calculation: null
+        value: calc
+
+      computation:
+        prefer_value_column_if_present: true
+        default_calculation: null
+        calculation_handlers:
+          rate:   { formula: numerator / denominator, denominator_min: 1 }
+          avg:    { formula: numerator / denominator, denominator_min: 1 }
+
+      data_quality:
+        default_denominator_min: 10
+        freshness_days_max: 10
+        null_rate_max: 0.20
+
+
     expert_assist:
       description: "Expert Assist usage & outcomes (tall-skinny)."
       owner: product_ops
