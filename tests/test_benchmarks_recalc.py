@@ -163,6 +163,30 @@ def test_new_cohort_from_config_is_computed_without_code_change():
     assert cand.by_icp_client["acme"].value == pytest.approx(0.20)
 
 
+def test_derived_metric_recomputed_from_component_source_rows():
+    # 'enrolled' and 'sales opportunities' are raw source rows, NOT catalog metrics; sp100_c is a
+    # derived metric = enrolled.num / sales_opportunities.num. Recalc must synthesize it and produce
+    # a per-cohort candidate, proving composites flow through the recompute path.
+    enrolled = _am_rows("enrolled", "pss-verizon", [(f"p{i}", 0.20) for i in range(20)])
+    opps = _am_rows("sales opportunities", "pss-verizon", [(f"p{i}", 0.40) for i in range(20)])
+    metrics = {
+        "sp100_c": {
+            "source": "derived", "source_metric_key": "sp100_c",
+            "category": "sales", "direction": "higher_is_better", "unit": "rate",
+            "derived": {
+                "numerator": [{"metric_key": "enrolled"}],
+                "denominator": {"metric_key": "sales opportunities", "part": "numerator"},
+            },
+            "benchmark": {"type": "config"},
+        }
+    }
+    cfg = _config(metrics, {"sp100_c": {"default": 0.4}})
+    prepped = prep_frames(_raw(agent_metrics=enrolled + opps), cfg)
+    cand = recompute_all(prepped, THR)["sp100_c"]
+    # per agent enrolled.num(20)/salesopp.num(40) = 0.5 -> cohort median 0.5
+    assert cand.by_icp_client["pss-verizon"].value == pytest.approx(0.5)
+
+
 def test_absolute_default_degeneracy_kept():
     rows = _am_rows("cancellation rate", "pss-verizon", [(f"p{i}", 0.0) for i in range(30)])  # floor
     meta = {"cancel_rate": {"source": "agent_metrics", "source_metric_key": "cancellation rate",

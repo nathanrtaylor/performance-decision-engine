@@ -223,7 +223,11 @@ def recompute_tool(metric: str) -> CandidateBenchmark:
 def recompute_all(prepped: PreppedFrames, thr: RecalcThresholds) -> Dict[str, CandidateBenchmark]:
     out: Dict[str, CandidateBenchmark] = {}
     for metric, meta in prepped.metric_meta.items():
-        if metric in C.TOOL_USAGE_METRICS:
+        if meta.source == "derived":
+            # Composite metrics are rates synthesized into prepped.agent_metrics (prep.prep_frames);
+            # recompute their per-cohort benchmark with the operational recipe (median of windowed mean).
+            out[metric] = recompute_operational(prepped, metric, thr)
+        elif metric in C.TOOL_USAGE_METRICS:
             out[metric] = recompute_tool(metric)
         elif metric in C.ABSOLUTE_DEFAULT_METRICS:
             out[metric] = recompute_absolute(prepped, metric, thr)

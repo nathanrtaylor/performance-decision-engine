@@ -186,20 +186,29 @@ metric_catalog:
         type: config
 
     sp100:
-      source: agent_metrics
+      # DERIVED (composite): sp100 has no source row. It is built from two source counts,
+      # enrolled and sale_opportunity, which each carry data in the NUMERATOR column only:
+      #   sp100 = enrolled.numerator / sale_opportunity.numerator
+      # See src/cde/signals/derived_metrics.py. source_metric_key is self-referential (the label
+      # stamped on synthesized rows) so build_signals' (source, key) map resolves it.
+      source: derived
       source_metric_key: "sp100"
       display: { scale: 100, suffix: "", decimals: 1 }
       category: sales
       direction: higher_is_better
       unit: rate
-      description: "Sales, before net of cancellation, per 100 calls"
+      description: "Sales per opportunity: enrolled / sale_opportunity (both source counts)."
       required: false
       eligible_for_prioritization: true
+      derived:
+        numerator:
+          - { metric_key: "enrolled", part: numerator }
+        denominator: { metric_key: "sale_opportunity", part: numerator }
       computation_override:
         expected_calculation: rate
         denominator_min: 5
       benchmark:
-        type: config      
+        type: config
 
     crt:
       source: agent_metrics

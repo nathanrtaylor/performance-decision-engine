@@ -94,8 +94,31 @@ def apply_agent_metrics_from_catalog(cfg: Dict[str, Any], repo_root: Path) -> No
         k = spec.get("source_metric_key")
         if k:
             keys.append(str(k))
+
+    # Derived (composite) metrics build on OTHER metrics' raw source rows. Those building blocks must
+    # be extracted even though the derived metric's own source != agent_metrics. Pull their keys too.
+    for _name, spec in metrics_block.items():
+        if not isinstance(spec, dict):
+            continue
+        d = spec.get("derived")
+        if not isinstance(d, dict):
+            continue
+        refs = []
+        for side in ("numerator", "denominator"):
+            v = d.get(side)
+            if isinstance(v, list):
+                refs.extend(v)
+            elif isinstance(v, dict):
+                refs.append(v)
+        for r in refs:
+            if isinstance(r, dict) and r.get("metric_key"):
+                keys.append(str(r["metric_key"]))
+
     if not keys:
         raise ValueError("metrics_from_catalog produced no agent_metrics source_metric_key entries")
+    # Dedupe, preserving catalog order (a derived component may repeat a standalone metric's key).
+    seen: set = set()
+    keys = [k for k in keys if not (k in seen or seen.add(k))]
     params["metrics"] = keys
     params.pop("metrics_from_catalog", None)
 
