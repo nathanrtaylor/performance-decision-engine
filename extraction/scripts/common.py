@@ -143,7 +143,18 @@ def apply_icp_clients_from_active(cfg: Dict[str, Any], repo_root: Path) -> None:
     roster = loaded.get("icp_clients")
     if not roster:
         raise ValueError(f"icp_clients_from {rel} has no top-level 'icp_clients' list")
-    g["icp_clients"] = [str(c) for c in roster]
+    # active.yaml icp_clients holds DERIVED cohort labels; composite splits use 'icp_client::client'
+    # (see configs/mappings/cohort_map.yaml). The extraction filter must select on the SOURCE
+    # icp_client, so reduce each label to its BASE (before '::') and de-dup, preserving order.
+    # No-op for plain labels without '::'.
+    seen: set = set()
+    bases = []
+    for c in roster:
+        base = str(c).split("::", 1)[0]
+        if base not in seen:
+            seen.add(base)
+            bases.append(base)
+    g["icp_clients"] = bases
     g.pop("icp_clients_from", None)
 
 

@@ -14,6 +14,7 @@ mappings:
   coaching_history_map: mappings/coaching_history_map.yaml
   themes: mappings/themes.yaml   # human-curated coaching themes (auto-loads to cfg["themes"])
   core_metrics: mappings/core_metrics.yaml   # per-icp_client "core metrics this week" receipt block (auto-loads to cfg["core_metrics"])
+  cohort_map: mappings/cohort_map.yaml   # composite-cohort split rules (auto-loads to cfg["cohort_map"]); applied in normalize
 
 # ---------------------------------------------------
 # ICP Client Roster (governed cohort list)
@@ -32,6 +33,14 @@ icp_clients:
   - "pss-verizon"
   - "xbox"
   - "mcafee"
+  #- "small clients"
+  #- "small clients::hp"
+# Composite cohorts: to activate a split declared in mappings/cohort_map.yaml, add BOTH the base
+# icp_client and each derived label here (label format icp_client::client). Extraction reduces
+# labels to their base for the source filter; the engine keys on the full label. Keep the
+# benchmarks_recalc COHORTS fallback (src/cde/benchmarks_recalc/config.py) in sync. Example:
+#   - "small clients"          # residual (non-split) small-clients agents
+#   - "small clients::hp"      # client 'hp' split out (rule lives in cohort_map.yaml)
 
 # ---------------------------------------------------
 # Signal Gating

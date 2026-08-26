@@ -1,13 +1,52 @@
 from __future__ import annotations
 
-from typing import Any, Dict
+from typing import Any, Dict, List
 
 import numpy as np
 import pandas as pd
 
+from cde.utils.config import unwrap_root
 from cde.utils.logging import get_logger
 
 log = get_logger(__name__)
+
+
+def _cohort_splits(config: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Composite-cohort split rules from cfg['cohort_map'] (mappings auto-load). [] when absent."""
+    cm = unwrap_root(config.get("cohort_map") or {}, "cohort_map")
+    return list(cm.get("splits") or []) if isinstance(cm, dict) else []
+
+
+def derive_cohort(df: pd.DataFrame, splits: List[Dict[str, Any]]) -> pd.DataFrame:
+    """Overwrite ``icp_client`` with a composite cohort label per configs/mappings/cohort_map.yaml.
+
+    For each rule ``{icp_client, by: client|subclient, values?}``, rows whose ``icp_client`` equals
+    the rule's base AND whose ``by`` field is a non-blank value (restricted to ``values`` when given)
+    are relabeled ``f"{icp_client}::{value}"``. Every other row keeps its ``icp_client`` unchanged, so
+    this is a no-op when there are no rules or the frame lacks the needed columns. Emits already
+    strip/lower-normalized labels (matching build_signals' cohort normalization), so the rest of the
+    engine keys on the derived string with zero changes.
+    """
+    if not splits or df is None or df.empty or "icp_client" not in df.columns:
+        return df
+    icp = df["icp_client"].astype("string").str.strip().str.lower()
+    label = icp.copy()
+    for rule in splits:
+        base = str(rule.get("icp_client", "")).strip().lower()
+        field = rule.get("by")
+        if not base or field not in ("client", "subclient") or field not in df.columns:
+            continue
+        fld = df[field].astype("string").str.strip().str.lower()
+        match = (icp == base) & fld.notna() & (fld != "")
+        vals = rule.get("values")
+        if vals:
+            allow = {str(v).strip().lower() for v in vals}
+            match = match & fld.isin(allow)
+        # relabel matched rows -> "<icp>::<field value>"; leave the rest as-is
+        label = label.mask(match, icp.str.cat(fld, sep="::"))
+    df = df.copy()
+    df["icp_client"] = label.replace({"": pd.NA})
+    return df
 
 
 def normalize_inputs(raw, config: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
@@ -65,6 +104,13 @@ def normalize_inputs(raw, config: Dict[str, Any]) -> Dict[str, pd.DataFrame]:
                 df2["metric"] = df2["metric"].astype(str).str.strip()
 
         out[name] = df2
+
+    # Composite cohorts: overwrite icp_client with the derived label (icp_client::value) per
+    # cohort_map split rules, on every frame that carries a cohort. No-op when no rules are set.
+    splits = _cohort_splits(config)
+    if splits:
+        for name in out:
+            out[name] = derive_cohort(out[name], splits)
 
     # Optional: build engine_inputs by joining declared sources on entity keys
     join_cfg = (config.get("normalization") or {}).get("build_engine_inputs")

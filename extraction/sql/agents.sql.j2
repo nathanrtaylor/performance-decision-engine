@@ -6,6 +6,8 @@ WITH base AS (
     a.expert AS agent_name,
     a.site AS mascot,
     LOWER(a.icp_client) AS icp_client,
+    LOWER(a.client) AS client,
+    LOWER(a.subclient) AS subclient,
     a.tenure_group,
     a.coach,
     a.supervisor_id AS coach_id,
@@ -24,12 +26,14 @@ dedup AS (
     agent_id,
     agent_name,
     icp_client,
+    client,
+    subclient,
     max_by(mascot, as_of_date) AS mascot,
     max_by(tenure_group, as_of_date) AS tenure_group,
     max_by(coach, as_of_date) AS coach,
     max_by(coach_id, as_of_date) AS coach_id
   FROM base
-  GROUP BY 1,2,3,4
+  GROUP BY 1,2,3,4,5,6
 )
 
 SELECT
@@ -38,6 +42,8 @@ SELECT
   agent_name,
   mascot,
   icp_client,
+  client,
+  subclient,
   tenure_group,
   coach,
   coach_id

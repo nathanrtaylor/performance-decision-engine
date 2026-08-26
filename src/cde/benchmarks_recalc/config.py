@@ -8,10 +8,13 @@ plus the explicit sets below, matching the hand-curated conventions documented i
 from __future__ import annotations
 
 import dataclasses
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any, Dict, Optional, Tuple
 
 from cde.constants import WINDOW_WEEKS  # single source; re-exported for callers importing from here
+from cde.io.paths import repo_root
+from cde.utils.io import load_yaml
 
 # p25 floor cap for near-universal behaviors (quality + sentiment): flag only clear misses.
 QUALITY_CAP = 0.95
@@ -20,11 +23,18 @@ QUALITY_CAP = 0.95
 # scorecard tagging; recipe dispatch is now DECLARATIVE (metric_catalog recalc.recipe), not scorecard-based.
 SENTIMENT_SCORECARD = "Customer Sentiment Scorecard V1"
 
-# Default icp_client roster (lowercase canonical form used everywhere in benchmarks.yaml).
-# This is only the FALLBACK: the governed roster lives in configs/active.yaml
-# (icp_clients:) and reaches recompute via RecalcThresholds.cohorts. Keep this in
-# sync as a safety net for callers that build thresholds without a config.
-COHORTS = ("mob-at&t", "mob-verizon", "pss-at&t", "pss-at&t nac", "pss-verizon", "mcafee", "xbox")
+# icp_client roster fallback, SOURCED FROM configs/active.yaml `icp_clients` so it can never drift
+# from the governed roster -- there is no hand-maintained copy to keep in sync. Production always
+# passes the resolved config to RecalcThresholds.from_config (which reads the same roster); this
+# factory is only the safety net for callers that build thresholds without a config (tests / ad-hoc).
+# Cached so active.yaml is read at most once per process; empty tuple if it can't be read.
+@lru_cache(maxsize=1)
+def default_cohorts() -> Tuple[str, ...]:
+    try:
+        active = load_yaml(repo_root() / "configs" / "active.yaml") or {}
+        return tuple(str(c) for c in (active.get("icp_clients") or []))
+    except Exception:
+        return ()
 
 # Verdicts.
 PROPOSE = "PROPOSE"
@@ -91,9 +101,10 @@ class RecalcThresholds:
     # Shared cap for behavior p25 anchors.
     quality_cap: float = QUALITY_CAP
 
-    # Governed icp_client roster (which per-cohort benchmarks to compute). Sourced
-    # from config["icp_clients"] via from_config; defaults to the module fallback.
-    cohorts: Tuple[str, ...] = COHORTS
+    # Governed icp_client roster (which per-cohort benchmarks to compute). Sourced from
+    # config["icp_clients"] via from_config; the default_factory reads active.yaml so the no-config
+    # fallback equals the governed roster (single source of truth -- see default_cohorts).
+    cohorts: Tuple[str, ...] = field(default_factory=default_cohorts)
 
     @classmethod
     def from_config(cls, config: Optional[Dict[str, Any]] = None) -> "RecalcThresholds":

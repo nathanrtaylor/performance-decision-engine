@@ -1,5 +1,5 @@
 {
-  "compiled_at_utc": "2026-08-26T14:07:14+00:00",
+  "compiled_at_utc": "2026-08-26T19:03:15+00:00",
   "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-27_weekly_wk6",
   "items": [
     {
@@ -19,7 +19,7 @@
       "flattened": true,
       "output": "agent_metrics",
       "sql_file": "extraction/sql/agent_metrics.sql.j2",
-      "sql_sha256": "ef7a719fe44e865d4ad3de70695f1f91033419c42bf715b53aa2bec07ddcf711",
+      "sql_sha256": "9b19ad1bf92066f802b5229b2242b6360c2feed3d0a8ec7cf6c78a9f4b4a4e83",
       "strip_trailing_semicolon": true
     },
     {
@@ -38,7 +38,7 @@
       "flattened": true,
       "output": "agents",
       "sql_file": "extraction/sql/agents.sql.j2",
-      "sql_sha256": "0d39b2bdb8dc50bf735960a4264a98b2e29302d52350ba9775c9fa732cfee6e0",
+      "sql_sha256": "1fd6991ffc6d80f5f3041249c78df3126e72703d3ffcc6dbda8eae196c46d40c",
       "strip_trailing_semicolon": true
     },
     {
@@ -59,7 +59,7 @@
       "flattened": true,
       "output": "behavior_scores",
       "sql_file": "extraction/sql/behavior_scores.sql.j2",
-      "sql_sha256": "324c2bf3154e9bf614efc56e070e145ff4462186be42c82180e3283ff0a1fd43",
+      "sql_sha256": "236c302bcc6a51fff0b1912108cac57142003efe496c84af392a5179d8ab9e91",
       "strip_trailing_semicolon": true
     },
     {

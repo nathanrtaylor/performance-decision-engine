@@ -1,0 +1,30 @@
+# configs/mappings/cohort_map.yaml
+# ---------------------------------------------------------------------------------------------------
+# Composite cohort disambiguation.
+#
+# A cohort is a single lowercase string (the `icp_client` the whole engine keys on). Most icp_clients
+# ARE the cohort as-is. But some "general use" icp_clients bundle distinct clients that we want to
+# coach as separate cohorts. This file declares those splits; src/cde/ingestion/normalize.py applies
+# them at ingest by OVERWRITING `icp_client` with a derived label. Everything downstream (benchmarks,
+# priorities, break-glass, recalc, dashboards) keeps working on that one string.
+#
+# Derived label format: `icp_client::<value>` (lowercase), e.g. 'small clients' + client 'hp' -> 'small clients::hp'.
+# Rows with a blank/unmatched split field keep their icp_client unchanged (= today's behavior).
+#
+# IMPORTANT (roster): whenever you add a split whose label you want to carry its own benchmarks /
+# priorities / recalc, add that derived label to configs/active.yaml `icp_clients` (and keep the
+# benchmarks_recalc COHORTS fallback in sync). Extraction still filters the SOURCE on the BASE
+# icp_client (the part before '::'), so you do NOT add split labels to the extraction filter.
+#
+# Each split rule:
+#   icp_client: <base icp_client, lowercase, as it appears in the source>
+#   by:         client | subclient        # which field disambiguates this icp_client
+#   values:     [<v>, ...]                # OPTIONAL allow-list: only these values split out (label
+#                                         # icp_client::<v>); others keep the base. Omit to split
+#                                         # every non-blank value of `by`.
+# ---------------------------------------------------------------------------------------------------
+cohort_map:
+  splits:
+    - icp_client: "small clients"
+      by: client
+      values: ["hp"]        # -> cohort 'small clients::hp'; all other small-clients agents stay 'small clients'

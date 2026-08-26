@@ -35,6 +35,8 @@ outputs:
       - period
       - metric
       - icp_client
+      - client
+      - subclient
       - site
       - numerator
       - denominator
@@ -57,6 +59,8 @@ outputs:
       - agent_id
       - mascot
       - icp_client
+      - client
+      - subclient
       - tenure_group
       - coach
       - coach_id

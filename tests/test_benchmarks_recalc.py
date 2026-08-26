@@ -138,10 +138,10 @@ def test_operational_median_and_cohort_sufficiency():
 # ---------------------------------------------------------------------------------------------------
 
 def test_cohorts_default_and_from_config_override():
-    # Absent config -> the module default roster.
-    assert RecalcThresholds().cohorts == C.COHORTS
-    assert RecalcThresholds.from_config({}).cohorts == C.COHORTS
-    assert RecalcThresholds.from_config(None).cohorts == C.COHORTS
+    # Absent config -> the fallback roster, which is sourced from active.yaml (single source of truth).
+    assert RecalcThresholds().cohorts == C.default_cohorts()
+    assert RecalcThresholds.from_config({}).cohorts == C.default_cohorts()
+    assert RecalcThresholds.from_config(None).cohorts == C.default_cohorts()
     # active.yaml icp_clients overrides the roster (top-level, not in benchmark_recalc).
     thr = RecalcThresholds.from_config({"icp_clients": ["mob-verizon", "acme"]})
     assert thr.cohorts == ("mob-verizon", "acme")
@@ -153,7 +153,7 @@ def test_cohorts_default_and_from_config_override():
 
 
 def test_new_cohort_from_config_is_computed_without_code_change():
-    # A cohort present only in config (not in C.COHORTS) must get a per-cohort benchmark,
+    # A cohort present only in config (not in the default roster) must get a per-cohort benchmark,
     # proving the roster no longer needs a source edit to onboard a client.
     rows = _am_rows("client transfers", "acme", [(f"a{i}", 0.20) for i in range(20)])
     cfg = _config({"transfer_rate": _op_meta("transfer_rate", "client transfers")},

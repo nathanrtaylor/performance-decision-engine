@@ -77,16 +77,6 @@ def test_missing_recalc_recipe_is_warning(cfg):
     assert any("no recalc.recipe" in w for w in report.warnings)
 
 
-def test_cohorts_fallback_must_match_active(cfg):
-    import copy
-
-    c = copy.deepcopy(cfg)
-    c["icp_clients"] = list(c.get("icp_clients") or []) + ["ghost-cohort"]  # active gains a cohort
-    report = lint_config(c)
-    assert not report.ok()
-    assert any("COHORTS fallback" in e for e in report.errors)
-
-
 def test_benchmarks_cohort_not_in_roster_is_error(cfg):
     import copy
 

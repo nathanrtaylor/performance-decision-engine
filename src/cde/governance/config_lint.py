@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Dict, List
 
-from cde.benchmarks_recalc.config import COHORTS  # fallback roster; validated == active.yaml icp_clients
 
 VALID_DIRECTIONS = {"higher_is_better", "lower_is_better"}
 # Mirrors benchmarks_recalc.config.RECIPE_SECTION keys + "skip" (kept local to avoid coupling
@@ -235,13 +234,11 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
                 )
 
     # ---- ROSTER single-source consistency (active.yaml icp_clients is canonical) ----
+    # active.yaml `icp_clients` is THE roster; the recalc fallback derives from it
+    # (benchmarks_recalc.config.default_cohorts), so there's no separate copy to drift. We still
+    # validate that every by_icp_client key resolves to a roster cohort.
     roster = list(cfg.get("icp_clients") or [])
     roster_set = set(roster)
-    if roster_set and set(COHORTS) != roster_set:
-        r.errors.append(
-            f"icp_clients: benchmarks_recalc.config.COHORTS fallback {sorted(set(COHORTS))} "
-            f"!= active.yaml icp_clients {sorted(roster_set)} (keep the fallback in sync)"
-        )
     if roster_set:
         for m, b in (benchmarks or {}).items():
             for coh in ((b or {}).get("by_icp_client") or {}) if isinstance(b, dict) else {}:

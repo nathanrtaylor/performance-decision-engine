@@ -16,6 +16,8 @@ CAST(date_trunc('{{ grain }}', CAST(a."date" AS TIMESTAMP)) AS DATE) AS period,
 {% endif %}
     LOWER(a.metric) AS metric,
     a.icp_client,
+    LOWER(a.client) AS client,
+    LOWER(a.subclient) AS subclient,
     a.site,
     SUM(a.numerator)   AS numerator,
     SUM(a.denominator) AS denominator
@@ -32,7 +34,7 @@ CAST(date_trunc('{{ grain }}', CAST(a."date" AS TIMESTAMP)) AS DATE) AS period,
   AND LOWER(a.icp_client) IN (
     {% for c in icp_clients %}'{{ c | lower }}'{% if not loop.last %},{% endif %}{% endfor %}
   )
-  GROUP BY 1,2,3,4,5
+  GROUP BY 1,2,3,4,5,6,7
 )
 
 SELECT
@@ -41,6 +43,8 @@ SELECT
   'all' as call_type,
   metric,
   icp_client,
+  client,
+  subclient,
   site,
   CAST(numerator AS DOUBLE)   AS numerator,
   CAST(denominator AS DOUBLE) AS denominator,
