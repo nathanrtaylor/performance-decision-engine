@@ -41,8 +41,8 @@ dedup AS (
     CAST(b."created_at" AS DATE)             AS evt_date,
     b.template_questions_name                AS scorecard_name,
     b.template_questions_phrase              AS behavior_raw,
-    MAX(CAST(b.obtainedscore AS DOUBLE))     AS obtainedscore,
-    MAX(CAST(b.totalscore AS DOUBLE))        AS totalscore
+    MAX(CAST(b.response_obtainedscore AS DOUBLE))     AS response_obtainedscore,
+    MAX(CAST(b.template_questions_score AS DOUBLE))        AS template_questions_score
   FROM {{ source_schema }}.{{ observe_table }} b
   JOIN roster r
     ON r.agent_id = b.partner_agent_id
@@ -87,11 +87,11 @@ SELECT
          END
     ELSE d.behavior_raw
   END AS behavior,
-  SUM(COALESCE(d.obtainedscore, 0.0)) AS numerator,
-  SUM(COALESCE(d.totalscore, 0.0))    AS denominator,
+  SUM(COALESCE(d.response_obtainedscore, 0.0)) AS numerator,
+  SUM(COALESCE(d.template_questions_score, 0.0))    AS denominator,
   CASE
-    WHEN SUM(COALESCE(d.totalscore, 0.0)) = 0 THEN NULL
-    ELSE SUM(COALESCE(d.obtainedscore, 0.0)) / SUM(COALESCE(d.totalscore, 0.0))
+    WHEN SUM(COALESCE(d.template_questions_score, 0.0)) = 0 THEN NULL
+    ELSE SUM(COALESCE(d.response_obtainedscore, 0.0)) / SUM(COALESCE(d.template_questions_score, 0.0))
   END AS calc
 FROM dedup d
 

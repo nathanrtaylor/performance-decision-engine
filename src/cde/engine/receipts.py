@@ -128,6 +128,11 @@ def build_receipts(
     # Content hash of the resolved config, stamped top-level for per-decision traceability.
     config_hash = meta.get("config_hash")
 
+    # Per-metric display specs (metric_catalog `display`): used both for the narrative why-blocks
+    # (value/benchmark rendered on the metric's own scale, e.g. behaviors as %) and, below, to
+    # decorate per-metric records with *_display strings.
+    dmap = display_map(config)
+
     receipts = []
     for _, r in recs.iterrows():
         agent_id = r["agent_id"]
@@ -153,12 +158,12 @@ def build_receipts(
         }
 
         if tier == "theme":
-            receipts.append(_theme_receipt(base, r, selection_detail, trend_idx))
+            receipts.append(_theme_receipt(base, r, selection_detail, trend_idx, dmap))
         elif tier == "break_glass":
-            receipts.append(_break_glass_receipt(base, r, trend_idx))
+            receipts.append(_break_glass_receipt(base, r, trend_idx, dmap))
         else:
             n_candidates = cand_counts.get((agent_id, period, call_type), 1)
-            receipts.append(_single_receipt(base, r, comps, trend_idx, n_candidates))
+            receipts.append(_single_receipt(base, r, comps, trend_idx, n_candidates, dmap))
 
     # Abstention receipts (explicit, explained non-recommendations)
     if has_abstentions:
@@ -167,7 +172,6 @@ def build_receipts(
 
     # Presentation only: attach per-metric display strings (value/benchmark/gap) alongside the raw
     # numbers on every per-metric record, per configs/mappings/metric_catalog.yaml `display`.
-    dmap = display_map(config)
     if dmap:
         for rec in receipts:
             _decorate_receipt_display(rec, dmap)
@@ -240,7 +244,8 @@ def _excluded_for(excluded_signals, agent_id, period, call_type):
     return ex.to_dict(orient="records") if not ex.empty else []
 
 
-def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, trend_idx: Dict[Any, Dict[str, Any]], n_candidates: int = 1) -> Dict[str, Any]:
+def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, trend_idx: Dict[Any, Dict[str, Any]], n_candidates: int = 1, dmap: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    spec = (dmap or {}).get(r.get("metric"))
     if comps is not None and not comps.empty:
         comp_rows = comps[
             (comps["agent_id"] == base["agent_id"])
@@ -277,19 +282,19 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, tre
 
     if above:
         narrative = {
-            "why_this": narrative_reinforcement_why_this(r),
+            "why_this": narrative_reinforcement_why_this(r, spec=spec),
             "why_now": narrative_reinforcement_why_now(
                 r, trend_8w=trend.get("trend_8w"), recency_shift=trend.get("recency_shift"),
-                direction=direction, n_excluded=n_excluded, sole_signal=sole_signal,
+                direction=direction, n_excluded=n_excluded, sole_signal=sole_signal, spec=spec,
             ),
             "why_not_others": narrative_reinforcement_why_not(competitors, n_excluded, sole_signal),
         }
     else:
         narrative = {
-            "why_this": narrative_why_this(r),
+            "why_this": narrative_why_this(r, spec=spec),
             "why_now": narrative_why_now(
                 r, trend_8w=trend.get("trend_8w"), recency_shift=trend.get("recency_shift"),
-                direction=direction,
+                direction=direction, spec=spec,
             ),
             "why_not_others": narrative_why_not(competitors),
         }
@@ -304,7 +309,7 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, tre
     }
 
 
-def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame], trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
+def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame], trend_idx: Dict[Any, Dict[str, Any]], dmap: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     theme = base["recommended_topic"]
     drivers = []
     if selection_detail is not None and not selection_detail.empty:
@@ -359,7 +364,7 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
         "competing_topics": competing_topics,
         "narrative": {
             "why_this": narrative_theme_why_this(theme, drivers, n_deficient, n_members),
-            "why_now": narrative_theme_why_now(drivers),
+            "why_now": narrative_theme_why_now(drivers, dmap),
             "why_not_others": narrative_theme_why_not(theme, n_deficient, n_members, alt_topic, alt_metric),
         },
     }
@@ -404,7 +409,8 @@ def _abstention_receipt(
     }
 
 
-def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, trend_idx: Dict[Any, Dict[str, Any]]) -> Dict[str, Any]:
+def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, trend_idx: Dict[Any, Dict[str, Any]], dmap: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    spec = (dmap or {}).get(r.get("metric"))
     cohort_pct = r.get("cohort_pct")
     trend = _trend_for(trend_idx, base["agent_id"], base["period"], base["call_type"], r.get("metric"))
     driver = {
@@ -423,12 +429,13 @@ def _break_glass_receipt(base: Dict[str, Any], r: pd.Series, trend_idx: Dict[Any
         "drivers": [driver],
         "competing_topics": [],
         "narrative": {
-            "why_this": narrative_break_glass(r),
+            "why_this": narrative_break_glass(r, spec=spec),
             "why_now": narrative_break_glass_why_now(
                 r,
                 trend_8w=trend.get("trend_8w"),
                 recency_shift=trend.get("recency_shift"),
                 direction=trend.get("direction"),
+                spec=spec,
             ),
             "why_not_others": "Break-glass override supersedes theme and single-behavior selection.",
         },

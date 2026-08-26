@@ -4,6 +4,8 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
+from cde.utils.metric_format import format_value
+
 # Trend/recency slopes below this magnitude are treated as "flat".
 _EPS = 1e-6
 
@@ -11,14 +13,14 @@ _EPS = 1e-6
 # ---------------------------------------------------------------------------
 # why this
 # ---------------------------------------------------------------------------
-def narrative_why_this(rec_row: pd.Series) -> str:
+def narrative_why_this(rec_row: pd.Series, spec: Optional[Dict[str, Any]] = None) -> str:
     metric = rec_row.get("metric")
     value = rec_row.get("value")
     benchmark = rec_row.get("benchmark")
     band = _percentile_band(rec_row.get("level_score"))
     return (
         f"Selected because '{metric}' is the strongest opportunity for the chosen topic: "
-        f"it averages {_fmt(value)} against a benchmark of {_fmt(benchmark)}, leaving this "
+        f"it averages {_fmt(value, spec)} against a benchmark of {_fmt(benchmark, spec)}, leaving this "
         f"agent {band}."
     )
 
@@ -31,14 +33,15 @@ def narrative_why_now(
     trend_8w: Any = None,
     recency_shift: Any = None,
     direction: Any = None,
+    spec: Optional[Dict[str, Any]] = None,
 ) -> str:
     metric = rec_row.get("metric")
     value = rec_row.get("value")
     benchmark = rec_row.get("benchmark")
     band = _percentile_band(rec_row.get("level_score"))
     return (
-        f"Right now, {metric} averages {_fmt(value)} against a benchmark of "
-        f"{_fmt(benchmark)}, leaving this agent {band}. "
+        f"Right now, {metric} averages {_fmt(value, spec)} against a benchmark of "
+        f"{_fmt(benchmark, spec)}, leaving this agent {band}. "
         f"{_trend_phrase(trend_8w, recency_shift, direction)}"
     )
 
@@ -60,13 +63,13 @@ def narrative_why_not(competitors: List[Dict[str, Any]]) -> str:
 # ---------------------------------------------------------------------------
 # reinforcement (expert is already at/above benchmark on the chosen behavior)
 # ---------------------------------------------------------------------------
-def narrative_reinforcement_why_this(rec_row: pd.Series) -> str:
+def narrative_reinforcement_why_this(rec_row: pd.Series, spec: Optional[Dict[str, Any]] = None) -> str:
     metric = rec_row.get("metric")
     value = rec_row.get("value")
     benchmark = rec_row.get("benchmark")
     return (
         f"'{metric}' is the recommended focus, but this expert is already at or above benchmark "
-        f"on it ({_fmt(value)} vs {_fmt(benchmark)}), so there is no performance gap here; treat "
+        f"on it ({_fmt(value, spec)} vs {_fmt(benchmark, spec)}), so there is no performance gap here; treat "
         f"it as reinforcement of a strength rather than a correction."
     )
 
@@ -78,13 +81,14 @@ def narrative_reinforcement_why_now(
     direction: Any = None,
     n_excluded: int = 0,
     sole_signal: bool = False,
+    spec: Optional[Dict[str, Any]] = None,
 ) -> str:
     metric = rec_row.get("metric")
     value = rec_row.get("value")
     benchmark = rec_row.get("benchmark")
     base = (
-        f"This is reinforcement rather than an urgent gap: {metric} averages {_fmt(value)} against a "
-        f"benchmark of {_fmt(benchmark)}, at or above the standard. "
+        f"This is reinforcement rather than an urgent gap: {metric} averages {_fmt(value, spec)} against a "
+        f"benchmark of {_fmt(benchmark, spec)}, at or above the standard. "
         f"{_reinforcement_trend_clause(trend_8w, recency_shift, direction)}"
     )
     if sole_signal:
@@ -122,17 +126,18 @@ def narrative_theme_why_this(theme: str, drivers: List[Dict[str, Any]], n_defici
     )
 
 
-def narrative_theme_why_now(drivers: List[Dict[str, Any]]) -> str:
+def narrative_theme_why_now(drivers: List[Dict[str, Any]], dmap: Optional[Dict[str, Dict[str, Any]]] = None) -> str:
     if not drivers:
         return "Recommended now because multiple related behaviors are underperforming concurrently."
     # Rank by percentile deficit (internal, not printed) to name the most pronounced member.
     worst = max(drivers, key=lambda d: _fmt_num(d.get("level_score")))
     band = _percentile_band(worst.get("level_score"))
     trend = _trend_phrase(worst.get("trend_8w"), worst.get("recency_shift"), worst.get("direction"))
+    spec = (dmap or {}).get(worst.get("metric"))
     return (
         f"Recommended now: {len(drivers)} related behaviors are underperforming together. "
-        f"The most pronounced, {worst.get('metric')}, averages {_fmt(worst.get('value'))} "
-        f"against a benchmark of {_fmt(worst.get('benchmark'))}, leaving it {band}. {trend}"
+        f"The most pronounced, {worst.get('metric')}, averages {_fmt(worst.get('value'), spec)} "
+        f"against a benchmark of {_fmt(worst.get('benchmark'), spec)}, leaving it {band}. {trend}"
     )
 
 
@@ -179,7 +184,7 @@ def narrative_abstention(reason: str, best_topic: Any = None, best_priority_scor
 # ---------------------------------------------------------------------------
 # break-glass
 # ---------------------------------------------------------------------------
-def narrative_break_glass(row: Any) -> str:
+def narrative_break_glass(row: Any, spec: Optional[Dict[str, Any]] = None) -> str:
     metric = row.get("metric")
     cohort_pct = row.get("cohort_pct")
     value = row.get("value")
@@ -187,7 +192,7 @@ def narrative_break_glass(row: Any) -> str:
     pct_txt = _cohort_pct_text(cohort_pct)
     return (
         f"Break-glass override: agent is in the worst cohort tail ({pct_txt}) of its ICP_Client "
-        f"group for '{metric}' and below benchmark (value={_fmt(value)}, benchmark={_fmt(benchmark)}). "
+        f"group for '{metric}' and below benchmark (value={_fmt(value, spec)}, benchmark={_fmt(benchmark, spec)}). "
         f"This critical single behavior takes precedence over any theme."
     )
 
@@ -197,6 +202,7 @@ def narrative_break_glass_why_now(
     trend_8w: Any = None,
     recency_shift: Any = None,
     direction: Any = None,
+    spec: Optional[Dict[str, Any]] = None,
 ) -> str:
     metric = row.get("metric")
     value = row.get("value")
@@ -204,7 +210,7 @@ def narrative_break_glass_why_now(
     pct_txt = _cohort_pct_text(row.get("cohort_pct"))
     base = (
         f"A flagged critical metric is severely deficient right now: {metric} sits at "
-        f"{_fmt(value)} against a benchmark of {_fmt(benchmark)}, in the worst cohort tail "
+        f"{_fmt(value, spec)} against a benchmark of {_fmt(benchmark, spec)}, in the worst cohort tail "
         f"({pct_txt}) of its ICP_Client group."
     )
     # Only append a trend clause when we actually have trend data for this metric.
@@ -310,7 +316,18 @@ def _cohort_pct_text(cohort_pct: Any) -> str:
         return "top"
 
 
-def _fmt(x: Any) -> str:
+def _fmt(x: Any, spec: Optional[Dict[str, Any]] = None) -> str:
+    """Format a metric value for narrative text.
+
+    When a display ``spec`` is supplied (from metric_catalog ``display`` via
+    ``metric_format.display_map``), the value is scaled/suffixed/rounded exactly like the
+    per-metric records elsewhere in the receipt (e.g. behaviors as ``71%``, times as ``1,410``).
+    Falls back to raw 3-decimal formatting when no spec exists for the metric.
+    """
+    if spec:
+        s = format_value(x, spec)
+        if s is not None:
+            return s
     try:
         if x is None or (isinstance(x, float) and pd.isna(x)):
             return "NA"
