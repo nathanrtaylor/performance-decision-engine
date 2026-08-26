@@ -17,6 +17,26 @@ priorities:
   # Optional: call type overrides (not used if call_type_mode is disabled)
   by_call_type: {}
 
+  # Optional: per-cohort (icp_client) weight overrides. Keys are icp_client names, matched
+  # CASE-INSENSITIVELY (source data uses 'MOB-AT&T'; write them lowercase here, like benchmarks).
+  # Within a cohort, `by_metric` beats `by_category`; anything not overridden falls back to the
+  # global by_category / by_metric above. Resolution order (first match wins):
+  #   by_icp_client[cohort].by_metric[metric] -> by_icp_client[cohort].by_category[category]
+  #   -> by_call_type[ct][metric] -> by_metric[metric] -> by_category[category] -> default
+  by_icp_client: {}
+  # Example (delete the `{}` above and uncomment to use):
+  # by_icp_client:
+  #   pss-verizon:                 # lean this cohort harder into selling
+  #     by_category:
+  #       sell: 1.3
+  #       advanced_discovery: 1.1
+  #     by_metric:
+  #       nsp100: 1.5              # push net sales specifically for pss-verizon
+  #   mob-at&t:                    # de-emphasize sell for an efficiency-focused cohort
+  #     by_category:
+  #       sell: 0.5
+  #       serve: 1.0
+
   # Deterministic tie-break preferences (optional)
   tie_breakers:
     prefer_categories_in_order: [sell, advanced_discovery, tool_usage, solve, serve, business, quality_behavior]

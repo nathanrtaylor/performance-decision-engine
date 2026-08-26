@@ -199,8 +199,12 @@ def build_topic_candidates(signals: pd.DataFrame, scores: pd.DataFrame, config: 
     # Priority score = the already-composed multi-axis score_total (scoring/assemble.py) scaled by
     # versioned business weights. Composition lives in ONE place; here we only apply governance
     # emphasis (category/metric weight, optional topic weight). No re-weighting of the axes.
+    # icp_client (carried through from scores_windowed) enables per-cohort priority overrides;
+    # absent -> None -> the global weight chain, unchanged.
+    icp_list = df["icp_client"].tolist() if "icp_client" in df.columns else [None] * len(df)
     df["metric_weight"] = [
-        float(get_metric_weight(m, ct, config)) for m, ct in zip(df["metric"].tolist(), df["call_type"].tolist())
+        float(get_metric_weight(m, ct, config, icp_client=icp))
+        for m, ct, icp in zip(df["metric"].tolist(), df["call_type"].tolist(), icp_list)
     ]
     df["topic_weight"] = [
         float(get_topic_weight(t, ct, config)) for t, ct in zip(df["topic"].tolist(), df["call_type"].tolist())

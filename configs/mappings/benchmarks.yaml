@@ -86,7 +86,7 @@ benchmarks:
       pss-at&t: 0.013
       pss-verizon: 0.028
   sp100:
-    default: 0.04651       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    default: 0.05651       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
     by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
       mob-at&t: 0.04082
       mob-verizon: 0.03977
@@ -155,11 +155,11 @@ benchmarks:
   ask_for_the_sale:
     default: 0.044
   ask_to_send_link_to_enroll:
-    default: 0.469
+    default: 0.044
   assess_the_account:
     default: 0.006
   celebrate_enrollment:
-    default: 0.466
+    default: 0.044
   core_benefits:
     default: 0.012
   discovery_questions:

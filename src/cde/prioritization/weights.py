@@ -13,20 +13,48 @@ def _metric_category(metric: str, config: Dict[str, Any]) -> Optional[str]:
     return meta.get("category")
 
 
-def get_metric_weight(metric: str, call_type: Optional[str], config: Dict[str, Any]) -> float:
+def _icp_client_block(pri: Dict[str, Any], icp_client: Optional[str]) -> Optional[Dict[str, Any]]:
+    """The `priorities.by_icp_client[<cohort>]` override block for this agent's cohort, if any.
+
+    Matched CASE-INSENSITIVELY (source data uses 'MOB-AT&T', configs are lowercase) -- same
+    convention as benchmarks.get_benchmark_value.
+    """
+    if not icp_client:
+        return None
+    block = pri.get("by_icp_client") or {}
+    if not block:
+        return None
+    key = str(icp_client).strip().lower()
+    for k, v in block.items():
+        if str(k).strip().lower() == key:
+            return v or {}
+    return None
+
+
+def get_metric_weight(
+    metric: str,
+    call_type: Optional[str],
+    config: Dict[str, Any],
+    icp_client: Optional[str] = None,
+) -> float:
     """
     Resolve the versioned business weight for a metric.
 
     The governed priorities file (configs/priorities/*.yaml) expresses emphasis at the
-    *category* level, with optional per-metric and per-call-type overrides:
+    *category* level, with optional per-metric, per-call-type, and per-cohort overrides:
 
         priorities:
           by_category:   {business: 1.0, tool_usage: 0.6, quality_behavior: 0.3}
-          by_metric:     {transfer_rate: 1.2}          # optional override
+          by_metric:     {transfer_rate: 1.2}          # optional global per-metric override
           by_call_type:  {claims: {transfer_rate: 1.3}}  # optional, only if call types enabled
+          by_icp_client:                                 # optional per-cohort overrides
+            "pss-verizon":
+              by_category: {sell: 1.2}                   # override a category weight for this cohort
+              by_metric:   {nsp100: 1.5}                 # override a metric weight for this cohort
 
-    Resolution order (first match wins):
-      by_call_type[call_type][metric] -> by_metric[metric]
+    Resolution order (first match wins). Cohort overrides are the most specific:
+      by_icp_client[icp].by_metric[metric] -> by_icp_client[icp].by_category[category]
+      -> by_call_type[call_type][metric] -> by_metric[metric]
       -> by_category[metric_category] -> priorities.default (0.0)
 
     Note: the historical `priorities.weights.global`/`.by_call_type` shape is still honored
@@ -38,6 +66,17 @@ def get_metric_weight(metric: str, call_type: Optional[str], config: Dict[str, A
     by_ct = pri.get("by_call_type") or {}
     by_cat = pri.get("by_category") or {}
     default_w = float(pri.get("default", 0.0))
+    cat = _metric_category(metric, config)
+
+    # 0) cohort (icp_client) overrides -- most specific; metric beats category within the cohort
+    icp_block = _icp_client_block(pri, icp_client)
+    if icp_block:
+        icp_by_metric = icp_block.get("by_metric") or {}
+        if metric in icp_by_metric:
+            return float(icp_by_metric[metric])
+        icp_by_cat = icp_block.get("by_category") or {}
+        if cat and cat in icp_by_cat:
+            return float(icp_by_cat[cat])
 
     # 1) call-type-specific per-metric override
     if call_type and call_type in by_ct and isinstance(by_ct[call_type], dict) and metric in by_ct[call_type]:
@@ -48,7 +87,6 @@ def get_metric_weight(metric: str, call_type: Optional[str], config: Dict[str, A
         return float(by_metric[metric])
 
     # 3) category weight (the primary lever)
-    cat = _metric_category(metric, config)
     if cat and cat in by_cat:
         return float(by_cat[cat])
 

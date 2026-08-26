@@ -143,6 +143,7 @@ def aggregate_scores_window(
     """
     cols_out = [
         "agent_id",
+        "icp_client",
         "call_type",
         "metric",
         "window_start",
@@ -324,6 +325,10 @@ def aggregate_scores_window(
         agg["direction"] = gb["direction"].first().reindex(agg.index).fillna("higher_is_better")
     else:
         agg["direction"] = "higher_is_better"
+
+    # icp_client carried through (per-agent, constant within the window) so downstream priority
+    # weighting can apply per-cohort overrides without re-joining the signals table.
+    agg["icp_client"] = gb["icp_client"].first().reindex(agg.index) if "icp_client" in df.columns else pd.NA
 
     agg["window_start"] = window_start
     agg["window_end"] = window_end
