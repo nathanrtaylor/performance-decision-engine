@@ -1,5 +1,5 @@
 {
-  "compiled_at_utc": "2026-08-25T23:42:50+00:00",
+  "compiled_at_utc": "2026-08-26T14:07:14+00:00",
   "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-27_weekly_wk6",
   "items": [
     {
@@ -59,7 +59,7 @@
       "flattened": true,
       "output": "behavior_scores",
       "sql_file": "extraction/sql/behavior_scores.sql.j2",
-      "sql_sha256": "b5caa3312e54adda09fdc11c9d3036379e9a08977521aa3b647553cb52703934",
+      "sql_sha256": "324c2bf3154e9bf614efc56e070e145ff4462186be42c82180e3283ff0a1fd43",
       "strip_trailing_semicolon": true
     },
     {

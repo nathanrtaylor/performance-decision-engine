@@ -760,7 +760,7 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of the expert asking to send the enrollment link."
       required: false
-      eligible_for_prioritization: true
+      eligible_for_prioritization: false
       computation_override:
         expected_calculation: score
       benchmark:
@@ -788,7 +788,7 @@ metric_catalog:
       unit: score
       description: "AI-scored detection of the expert celebrating the enrollment."
       required: false
-      eligible_for_prioritization: true
+      eligible_for_prioritization: false
       computation_override:
         expected_calculation: score
       benchmark:

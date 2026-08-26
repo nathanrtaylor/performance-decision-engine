@@ -86,3 +86,55 @@
 - deferred (manual merge from proposed_benchmarks.yaml):
   - transfer_rate [mcafee] (new cohort split - manual merge)
   - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-26 09:26 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - transition_statement [default]: 0.751 -> 0.117
+  - make_an_offer [default]: 0.718 -> 0.313
+  - demonstrate_professionalism_and_courtesy [default]: 0.733 -> 0.95
+  - appropriate_product_positioning_language [default]: 0.728 -> 0.95
+  - positive_and_helpful_tone [default]: 0.728 -> 0.95
+  - manage_call_efficiently [default]: 0.728 -> 0.9
+  - actively_listen [default]: 0.728 -> 0.929
+  - confirm_caller_and_account_information [default]: 0.731 -> 0.941
+  - provide_assurance [default]: 0.749 -> 0.411
+  - consistent_closing [default]: 0.732 -> 0.196
+  - complete_product_scope_expectations [default]: 0.728 -> 0.108
+  - ask_effective_questions [default]: 0.728 -> 0.862
+  - clarify_product_misunderstanding [default]: 0.733 -> 0.204
+  - recap_resolution [default]: 0.723 -> 0.117
+  - test_resolution [default]: 0.736 -> 0.09
+  - protect_customer_information [default]: 0.723 -> 0.918
+  - tailor_products_based_on_customer_responses [default]: 0.728 -> 0.07
+  - customer_frustration_sentiment [default]: 0.695 -> 0.584
+  - customer_complaint_relevance_sentiment [default]: 0.705 -> 0.934
+  - customer_complaint_relevance_sentiment [mob-verizon]: 0.705 -> 0.868
+  - customer_complaint_relevance_sentiment [pss-verizon]: 0.705 -> 0.931
+  - expert_recap_resolution_sentiment [default]: 0.705 -> 0.121
+  - expert_recap_resolution_sentiment [mob-verizon]: 0.705 -> 0.227
+  - expert_recap_resolution_sentiment [pss-verizon]: 0.705 -> 0.104
+  - customer_score_positive_sentiment [default]: 0.705 -> 0.226
+  - customer_score_positive_sentiment [mob-verizon]: 0.705 -> 0.278
+  - customer_score_positive_sentiment [pss-verizon]: 0.705 -> 0.228
+  - expert_listening_sentiment [default]: 0.705 -> 0.749
+  - expert_listening_sentiment [mob-verizon]: 0.705 -> 0.867
+  - customer_complaint_resolution_time_sentiment [default]: 0.703 -> 0.95
+  - customer_complaint_vague_language_sentiment [default]: 0.705 -> 0.795
+  - expert_lack_of_resolution_confidence_sentiment [default]: 0.704 -> 0.95
+  - customer_escalation_sentiment [default]: 0.704 -> 0.95
+  - customer_repetition_sentiment [default]: 0.704 -> 0.95
+  - ask_for_the_sale [default]: 0.477 -> 0.044
+  - assess_the_account [default]: 0.476 -> 0.006
+  - core_benefits [default]: 0.463 -> 0.012
+  - discovery_questions [default]: 0.471 -> 0.133
+  - greeting [default]: 0.458 -> 0.8
+  - price [default]: 0.463 -> 0.139
+  - provide_empathy [default]: 0.449 -> 0.504
+  - provide_reassurance [default]: 0.487 -> 0.76
+  - confirm_resolution_ad [default]: 0.463 -> 0.537
+  - transition_statement_ad [default]: 0.486 -> 0.316
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)

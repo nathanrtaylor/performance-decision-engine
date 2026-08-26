@@ -110,72 +110,72 @@ benchmarks:
   # (enroll_with_consent, provide_self_service_options, read_t_and_c_s) remain benchmark.type:
   # distribution pending opportunity-gating.
   demonstrate_professionalism_and_courtesy:
-    default: 0.733
+    default: 0.95
   act_as_representative_of_our_brand:
     default: 0.728
   appropriate_product_positioning_language:
-    default: 0.728
+    default: 0.95
   build_confidence_through_language:
     default: 0.728
   clarify_product_misunderstanding:
-    default: 0.733
+    default: 0.204
   actively_listen:
-    default: 0.728
+    default: 0.929
   positive_and_helpful_tone:
-    default: 0.728
+    default: 0.95
   confirm_caller_and_account_information:
-    default: 0.731
+    default: 0.941
   manage_call_efficiently:
-    default: 0.728
+    default: 0.9
   ask_effective_questions:
-    default: 0.728
+    default: 0.862
   protect_customer_information:
-    default: 0.723
+    default: 0.918
   transition_statement:
-    default: 0.751
+    default: 0.117
   complete_product_scope_expectations:
-    default: 0.728
+    default: 0.108
   provide_assurance:
-    default: 0.749
+    default: 0.411
   make_an_offer:
-    default: 0.718
+    default: 0.313
   test_resolution:
-    default: 0.736
+    default: 0.09
   consistent_closing:
-    default: 0.732
+    default: 0.196
   tailor_products_based_on_customer_responses:
-    default: 0.728
+    default: 0.07
   recap_resolution:
-    default: 0.723
+    default: 0.117
 
   # ---- Advanced Discovery Call Flow V1 behaviors (Verizon proactive-sell scorecard) ----
   # AI-scored PASS-RATES (value = calc, 0-1; higher = better). Seeded defaults are each behavior's p25
   # of the agent-week pass-rate from the 2026-08-27 extract (bottom-quartile floor, same convention as
   # the quality behaviors above). Re-run `recalculate-benchmarks` once a few weeks accumulate to firm up.
   ask_for_the_sale:
-    default: 0.477
+    default: 0.044
   ask_to_send_link_to_enroll:
     default: 0.469
   assess_the_account:
-    default: 0.476
+    default: 0.006
   celebrate_enrollment:
     default: 0.466
   core_benefits:
-    default: 0.463
+    default: 0.012
   discovery_questions:
-    default: 0.471
+    default: 0.133
   greeting:
-    default: 0.458
+    default: 0.8
   price:
-    default: 0.463
+    default: 0.139
   provide_empathy:
-    default: 0.449
+    default: 0.504
   provide_reassurance:
-    default: 0.487
+    default: 0.76
   confirm_resolution_ad:
-    default: 0.463
+    default: 0.537
   transition_statement_ad:
-    default: 0.486
+    default: 0.316
 
   # ---- sentiment behaviors (Customer Sentiment Scorecard V1 / HEROES Auto QA - VZW) ----
   # AI-scored PASS-RATES (value = calc = score/opportunity, 0-1; higher = better). Anchored at each
@@ -188,41 +188,41 @@ benchmarks:
   # All 12 are higher_is_better in metric_catalog (calc = score/opportunity is already a pass-rate, even for
   # the negatively-framed questions, so a higher share = better); these p25 floors match that direction.
   customer_frustration_sentiment:
-    default: 0.695
+    default: 0.584
   customer_complaint_relevance_sentiment:
-    default: 0.705
+    default: 0.934
     by_icp_client:
-      mob-verizon: 0.705
-      pss-verizon: 0.705
+      mob-verizon: 0.868
+      pss-verizon: 0.931
   expert_recap_resolution_sentiment:
-    default: 0.705
+    default: 0.121
     by_icp_client:
-      mob-verizon: 0.705
-      pss-verizon: 0.705
+      mob-verizon: 0.227
+      pss-verizon: 0.104
   customer_retention_risk_sentiment:
     default: 0.704       # raw p25 at ceiling (1.0) -> near-universal floor; no cohort split
   customer_score_positive_sentiment:
-    default: 0.705
+    default: 0.226
     by_icp_client:
-      mob-verizon: 0.705
-      pss-verizon: 0.705
+      mob-verizon: 0.278
+      pss-verizon: 0.228
   customer_score_negative_sentiment:
     default: 0.705      # mob 0.704 vs pss 0.739 (delta 0.035) -> below split threshold, single default
   expert_listening_sentiment:
-    default: 0.705
+    default: 0.749
     by_icp_client:
-      mob-verizon: 0.705
+      mob-verizon: 0.867
       pss-verizon: 0.705
   customer_complaint_resolution_time_sentiment:
-    default: 0.703       # near-universal floor
+    default: 0.95       # near-universal floor
   customer_complaint_vague_language_sentiment:
-    default: 0.705      # mob 0.791 vs pss 0.776 (delta 0.015) -> single default
+    default: 0.795      # mob 0.791 vs pss 0.776 (delta 0.015) -> single default
   expert_lack_of_resolution_confidence_sentiment:
-    default: 0.704       # near-universal floor
+    default: 0.95       # near-universal floor
   customer_escalation_sentiment:
-    default: 0.704       # near-universal floor
+    default: 0.95       # near-universal floor
   customer_repetition_sentiment:
-    default: 0.704       # near-universal floor
+    default: 0.95       # near-universal floor
 
   # ---- tool-usage metrics: sources currently disabled (no data to cohort-split) ----
   guided_flow_adoption:

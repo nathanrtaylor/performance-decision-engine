@@ -61,12 +61,13 @@ themes:
     # 3-member themes (Resolution Effectiveness, Quality Sales) and guts them.
     count_fraction: 0.75
 
-  "Resolution Effectiveness":
-    members:
-      - resolution_rate
-      - one_call_resolution
-      - transfer_rate
-    conversation_type: "Performance Correction"
+  #"Resolution Effectiveness":
+  #  members:
+  #    - resolution_rate
+  #    - one_call_resolution
+  #    - transfer_rate
+  #  conversation_type: "Performance Correction"
+  #  count_fraction: 0.75
 
   #"Customer Sentiment":
   #  members:
@@ -80,5 +81,5 @@ themes:
     members:
       - sp100
       - cancel_rate
-      - transition_statement
-    conversation_type: "Quality Coaching"  
+      - transition_statement_ad
+    conversation_type: "Performance Coaching"  

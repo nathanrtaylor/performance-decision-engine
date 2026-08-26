@@ -10,14 +10,20 @@
 -- inflating numerator/denominator ~100-300x and re-weighting the weekly rate by
 -- metric-count instead of opportunity. A DISTINCT semi-join filters without multiplying.
 --
--- DEDUP: the AutoQA evaluations table (l3_asurion_observe_autoqa_evaluations) carries duplicate
--- rows per call -- the same (agent, meeting, behavior) evaluation appears more than once, which
--- inflates SUM(score)/SUM(opportunity) opportunity counts (observed ~15-40x vs the prior source).
--- The `dedup` CTE collapses to ONE row per (agent, event-date, scorecard, behavior, meeting_id)
--- BEFORE the weekly SUM, so each call contributes its opportunity exactly once. meeting_id is used
--- ONLY as a dedup key here; it is deliberately NOT emitted. (MAX assumes the duplicate rows for a
--- given meeting/behavior are identical; if evaluations can genuinely differ per meeting, switch to a
--- row_number() "pick one" on a deterministic ordering column instead.)
+-- SCORE COLUMNS: use response_obtainedscore / template_questions_score (the per-question response
+-- score and its max). The earlier obtainedscore / totalscore columns were scorecard-level totals,
+-- which both inflated denominators ~15-40x AND returned wrong pass-rates (recap-resolution read ~0.73
+-- vs the true ~0.20). Switching to these per-question columns restored pass-rates to the historical
+-- scale and brought denominators back to the pre-migration range.
+--
+-- DEDUP: the AutoQA evaluations table also carries duplicate rows per call -- the same
+-- (agent, meeting, behavior) evaluation can appear more than once. The `dedup` CTE collapses to ONE
+-- row per (agent, event-date, scorecard, behavior, meeting_id) BEFORE the weekly SUM so each call
+-- contributes once. meeting_id is a dedup key only; it is NOT emitted. (MAX assumes the duplicate
+-- rows for a given meeting/behavior are identical; if evaluations can genuinely differ per meeting,
+-- switch to a row_number() "pick one" on a deterministic ordering column.) NOTE: with the correct
+-- score columns the residual duplication is modest -- run the with/without-dedup diagnostic
+-- (extraction/sql/diagnostics/) to confirm it still earns its keep before removing it.
 --
 -- Cohort (icp_client) is NOT emitted here; it is attached downstream in build_signals by
 -- merging agents.csv on (agent_id, week_ending) -- the single canonical roster/cohort
