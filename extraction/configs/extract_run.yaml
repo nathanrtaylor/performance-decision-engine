@@ -84,12 +84,42 @@ outputs:
       epm_table: "expert_performance_metrics"
       observe_table: "l3_asurion_observe_autoqa_evaluations"
 
-      # governed list of scorecards (template_questions_name)
+      # governed list of scorecards (template_questions_name). Advanced Discovery Call Flow V1 is
+      # extracted separately (extraction/sql/advanced_discovery.sql.j2) under the present-count model;
+      # it does NOT belong here (score/opportunity is the right model for these three).
       observe_scorecards:
         - "HEROES Auto Scorecard"
         - "HEROES Auto QA Reporting - VZW"
         - "Customer Sentiment Scorecard V1"
-        - "Advanced Discovery Call Flow V1"
+
+  # Advanced Discovery Call Flow V1 -- its own source/query. All 12 AD behaviors populate the
+  # `response_recommendation_advancedevidences_operator` status, so pass-rate = # calls where the
+  # behavior was Is_Present / distinct calls the scorecard ran (COUNT DISTINCT meeting_id). The
+  # HEROES/sentiment scorecards do NOT populate that operator uniformly, so they stay on the
+  # score/opportunity ratio in behavior_scores above. Emits the same shape as behavior_scores.
+  advanced_discovery:
+    sql_file: "extraction/sql/advanced_discovery.sql.j2"
+    output_file: "advanced_discovery.csv"
+    require_rows: true
+    expected_columns:
+      - agent_id
+      - period
+      - call_type
+      - scorecard_name
+      - behavior
+      - numerator
+      - denominator
+      - calc
+    params:
+      epm_table: "expert_performance_metrics"
+      observe_table: "l3_asurion_observe_autoqa_evaluations"
+      ad_scorecard: "Advanced Discovery Call Flow V1"
+
+      # numerator = # calls where this status column reads present_value; denominator = distinct
+      # calls the scorecard ran (COUNT DISTINCT meeting_id). Parameterized so the exact column/value
+      # can be tuned without touching the SQL.
+      presence_col: "response_recommendation_advancedevidences_operator"
+      present_value: "Is_Present"
 
   # Coaching history feeds recency dampening (soft-suppress recently-coached topics).
   coaching_history:

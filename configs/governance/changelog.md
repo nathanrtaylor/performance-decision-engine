@@ -138,3 +138,31 @@
 - deferred (manual merge from proposed_benchmarks.yaml):
   - transfer_rate [mcafee] (new cohort split - manual merge)
   - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-27 10:08 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - hold_time [xbox]: 30 -> 33.86
+  - nsp100 [default]: 0.02486 -> 0.02914
+  - nsp100 [mob-verizon]: 0.02533 -> 0.02938
+  - nsp100 [pss-at&t]: 0.013 -> 0.01473
+  - nsp100 [pss-verizon]: 0.028 -> 0.03381
+  - sp100 [default]: 0.05651 -> 0.08008
+  - sp100 [mob-at&t]: 0.04082 -> 0.0656
+  - sp100 [mob-verizon]: 0.03977 -> 0.09402
+  - sp100 [pss-at&t]: 0.036 -> 0.08846
+  - sp100 [pss-verizon]: 0.048 -> 0.07698
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-27 10:23 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - ask_to_send_link_to_enroll [default]: 0.044 -> 0.005
+  - celebrate_enrollment [default]: 0.044 -> 0.01
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)

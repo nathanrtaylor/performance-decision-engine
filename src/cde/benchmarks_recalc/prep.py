@@ -44,6 +44,7 @@ class RawFrames:
     agents: Optional[pd.DataFrame]
     agent_metrics: Optional[pd.DataFrame]
     behavior_scores: Optional[pd.DataFrame]
+    advanced_discovery: Optional[pd.DataFrame]   # split-out AD source; same shape as behavior_scores
     raw_dir: Path
     snapshot_id: str
 
@@ -142,6 +143,7 @@ def load_latest_extract(
         agents=_read_csv(rd / "agents.csv"),
         agent_metrics=_read_csv(rd / "agent_metrics.csv"),
         behavior_scores=_read_csv(rd / "behavior_scores.csv"),
+        advanced_discovery=_read_csv(rd / "advanced_discovery.csv"),
         raw_dir=rd,
         snapshot_id=_resolve_snapshot_id(rd),
     )
@@ -189,16 +191,30 @@ def prep_frames(raw: RawFrames, config: Dict[str, Any]) -> PreppedFrames:
     else:
         am_weeks = []
 
-    # -- behavior_scores: map canonical key, join cohort from agents, window --
-    bs = raw.behavior_scores.copy() if raw.behavior_scores is not None else pd.DataFrame()
+    # -- behavior pass-rates: behavior_scores (score/opportunity) + advanced_discovery (present-count)
+    #    are both tall behavior pass-rate tables scored on the same windowed-mean grain, so they are
+    #    pooled into one frame here. Keys are mapped SOURCE-AWARE ((source, behavior) -> canonical
+    #    metric, mirroring build_signals) because AD metrics declare source: advanced_discovery.
+    bs_parts = []
+    for src_name, frame in (("behavior_scores", raw.behavior_scores),
+                            ("advanced_discovery", raw.advanced_discovery)):
+        if frame is not None and not frame.empty:
+            f = frame.copy()
+            f["__source"] = src_name
+            bs_parts.append(f)
+    bs = pd.concat(bs_parts, ignore_index=True) if bs_parts else pd.DataFrame()
     behavior_scorecards: Dict[str, str] = {}
     if not bs.empty:
         bs["agent_id"] = bs["agent_id"].astype(str)
-        bs["metric_key"] = bs["behavior"].astype(str).str.strip().map(
-            lambda k: key_map.get(("behavior_scores", k))
-        )
-        unmapped["behavior_scores"] = int(bs["metric_key"].isna().sum())
-        bs = bs[bs["metric_key"].notna()].copy()
+        bs["metric_key"] = [
+            key_map.get((src, str(k).strip()))
+            for src, k in zip(bs["__source"], bs["behavior"])
+        ]
+        for src_name in ("behavior_scores", "advanced_discovery"):
+            m = bs["__source"] == src_name
+            if m.any():
+                unmapped[src_name] = int(bs.loc[m, "metric_key"].isna().sum())
+        bs = bs[bs["metric_key"].notna()].drop(columns="__source").copy()
 
         # cohort join from agents on (agent_id, week_ending) -- behavior_scores has no icp_client
         if raw.agents is not None and not raw.agents.empty:

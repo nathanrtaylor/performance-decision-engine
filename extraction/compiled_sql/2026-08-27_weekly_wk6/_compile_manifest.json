@@ -1,5 +1,5 @@
 {
-  "compiled_at_utc": "2026-08-26T19:03:15+00:00",
+  "compiled_at_utc": "2026-08-27T14:59:02+00:00",
   "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-27_weekly_wk6",
   "items": [
     {
@@ -19,7 +19,7 @@
       "flattened": true,
       "output": "agent_metrics",
       "sql_file": "extraction/sql/agent_metrics.sql.j2",
-      "sql_sha256": "9b19ad1bf92066f802b5229b2242b6360c2feed3d0a8ec7cf6c78a9f4b4a4e83",
+      "sql_sha256": "90bff9a276c87c2341027134adceb41660e66b90120c6d976abd9e5750557aff",
       "strip_trailing_semicolon": true
     },
     {
@@ -38,7 +38,7 @@
       "flattened": true,
       "output": "agents",
       "sql_file": "extraction/sql/agents.sql.j2",
-      "sql_sha256": "1fd6991ffc6d80f5f3041249c78df3126e72703d3ffcc6dbda8eae196c46d40c",
+      "sql_sha256": "ecdf4897590d95e412538ccff051560bf97d3f58eb7579d0f7717f864587e9ea",
       "strip_trailing_semicolon": true
     },
     {
@@ -59,7 +59,30 @@
       "flattened": true,
       "output": "behavior_scores",
       "sql_file": "extraction/sql/behavior_scores.sql.j2",
-      "sql_sha256": "236c302bcc6a51fff0b1912108cac57142003efe496c84af392a5179d8ab9e91",
+      "sql_sha256": "0b94ad6b1378ef4781e271ad83ca2187e6f5ee628d7cabad48940244a1d38c76",
+      "strip_trailing_semicolon": true
+    },
+    {
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-27_weekly_wk6\\advanced_discovery.sql",
+      "context_keys": [
+        "ad_scorecard",
+        "end_date",
+        "epm_table",
+        "extraction_ts_utc",
+        "grain",
+        "icp_clients",
+        "observe_table",
+        "presence_col",
+        "present_value",
+        "run_id",
+        "source_schema",
+        "start_date",
+        "use_pay_calendar"
+      ],
+      "flattened": true,
+      "output": "advanced_discovery",
+      "sql_file": "extraction/sql/advanced_discovery.sql.j2",
+      "sql_sha256": "652188620e986201067166a81d8a252cba754ea50c516a9cb8d76d4860532f7b",
       "strip_trailing_semicolon": true
     },
     {
