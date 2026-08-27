@@ -89,6 +89,40 @@ source_catalog:
         null_rate_max: 0.10
 
 
+    advanced_discovery:
+      # Split out of behavior_scores: Advanced Discovery Call Flow V1 behaviors, scored by the
+      # present-COUNT model (numerator = # calls where the behavior was Is_Present; denominator =
+      # distinct calls the scorecard ran). Same tall-skinny contract as behavior_scores, so
+      # build_signals values it identically (pass-RATE, value = calc 0-1). Backed by
+      # extraction/sql/advanced_discovery.sql.j2 -> data/raw/weekly/advanced_discovery.csv.
+      description: "Advanced Discovery behaviors (present-count pass-rates)."
+      owner: analytics
+      refresh_frequency: weekly
+      status: active
+
+      schema:
+        entity_keys:
+          agent_id: agent_id
+          period: period
+          call_type: call_type
+
+        metric_key: behavior
+        numerator: numerator
+        denominator: denominator
+        calculation: null
+        value: calc
+
+      computation:
+        prefer_value_column_if_present: true
+        default_calculation: score
+        calculation_handlers:
+          score: { formula: numerator }
+
+      data_quality:
+        freshness_days_max: 10
+        null_rate_max: 0.10
+
+
     derived:
       # Synthetic source: composite metrics built from OTHER metrics' numerator/denominator by
       # src/cde/signals/derived_metrics.py (injected into normalized inputs before build_signals).

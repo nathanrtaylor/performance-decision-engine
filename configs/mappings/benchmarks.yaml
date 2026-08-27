@@ -52,7 +52,7 @@ benchmarks:
       "pss-at&t nac": 43
       pss-verizon: 100
       mcafee: 9.949
-      xbox: 30
+      xbox: 33.86
   callback_rate:
     default: 0.265
     by_icp_client:      # only PSS cohorts have sufficient callback data
@@ -78,20 +78,20 @@ benchmarks:
 
   # ---- sales: cohort-aware where a real distribution exists ----
   nsp100:
-    default: 0.02486       # net sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    default: 0.02914       # net sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
     by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
       mob-at&t: 0.02733
-      mob-verizon: 0.02533
+      mob-verizon: 0.02938
       mcafee: 0.072
-      pss-at&t: 0.013
-      pss-verizon: 0.028
+      pss-at&t: 0.01473
+      pss-verizon: 0.03381
   sp100:
-    default: 0.05651       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
+    default: 0.08008       # gross sales PER CALL. PSS median is 0 (floor) -> absolute stretch target.
     by_icp_client:      # MOB cohorts have a real sales distribution -> cohort medians.
-      mob-at&t: 0.04082
-      mob-verizon: 0.03977
-      pss-verizon: 0.048
-      pss-at&t: 0.036
+      mob-at&t: 0.0656
+      mob-verizon: 0.09402
+      pss-verizon: 0.07698
+      pss-at&t: 0.08846
       "pss-at&t nac": 0.022
       mcafee: 0.11   
 
@@ -155,11 +155,11 @@ benchmarks:
   ask_for_the_sale:
     default: 0.044
   ask_to_send_link_to_enroll:
-    default: 0.044
+    default: 0.005
   assess_the_account:
     default: 0.006
   celebrate_enrollment:
-    default: 0.044
+    default: 0.01
   core_benefits:
     default: 0.012
   discovery_questions:

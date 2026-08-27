@@ -76,21 +76,11 @@ SELECT
   -- The AutoQA source prefixes HEROES behavior names per scorecard ('_Foo' on the AT&T-family
   -- Auto Scorecard, 'N~Foo' on the Verizon QA scorecard) and varies '&'/'and'. Normalize the two
   -- HEROES scorecards to the canonical clean name so each cohort feeds ONE metric_catalog behavior
-  -- (matching is by behavior string, scorecard-agnostic).
-  --
-  -- Advanced Discovery is a distinct Verizon proactive-sell flow: TRIM its names (source has trailing
-  -- spaces on 'Greeting '/'Transition Statement '), and namespace the two behaviors whose names collide
-  -- with HEROES ('Confirm Resolution', 'Transition Statement') with an ' (Advanced Discovery)' suffix so
-  -- the proactive-sell context maps to its own metrics instead of blending into the reactive HEROES ones.
+  -- (matching is by behavior string, scorecard-agnostic). Advanced Discovery Call Flow V1 is
+  -- extracted separately (extraction/sql/advanced_discovery.sql.j2) and no longer flows through here.
   CASE
     WHEN d.scorecard_name IN ('HEROES Auto Scorecard', 'HEROES Auto QA Reporting - VZW')
     THEN replace(TRIM(regexp_replace(regexp_replace(d.behavior_raw, '^\s*(\d+~|_)', ''), '\s*:\s*$', '')), ' & ', ' and ')
-    WHEN d.scorecard_name = 'Advanced Discovery Call Flow V1'
-    THEN CASE TRIM(regexp_replace(d.behavior_raw, '\s*:\s*$', ''))
-           WHEN 'Confirm Resolution'   THEN 'Confirm Resolution (Advanced Discovery)'
-           WHEN 'Transition Statement' THEN 'Transition Statement (Advanced Discovery)'
-           ELSE TRIM(regexp_replace(d.behavior_raw, '\s*:\s*$', ''))
-         END
     ELSE d.behavior_raw
   END AS behavior,
   SUM(COALESCE(d.response_obtainedscore, 0.0)) AS numerator,
