@@ -61,6 +61,27 @@ def _metric_denom_min(config: Dict[str, Any], default: float) -> Dict[str, float
     return out
 
 
+def _pooled_metrics(config: Dict[str, Any]) -> set:
+    """
+    Metrics whose windowed level is a denominator-weighted POOLED rate (Σnum/Σden over the window)
+    instead of the default mean of weekly gaps. Opt in per metric via
+    metric_catalog.metrics.*.computation_override.window_aggregation == "pooled".
+
+    Pooling correctly nets a week's numerator against sales that occurred in OTHER weeks of the
+    window (e.g. cancellations arriving after the sale period), which the mean-of-weekly-rate level
+    understates when the same-week denominator is null.
+    """
+    mc = (config or {}).get("metric_catalog") or {}
+    mc = mc.get("metric_catalog", mc) if isinstance(mc, dict) else {}
+    metrics = mc.get("metrics") or {}
+    out = set()
+    for m, meta in metrics.items():
+        agg = ((meta or {}).get("computation_override") or {}).get("window_aggregation")
+        if str(agg).strip().lower() == "pooled":
+            out.add(m)
+    return out
+
+
 def _merge_config(config: Dict[str, Any]) -> Dict[str, Any]:
     temporal = (config or {}).get("temporal", {}) if isinstance(config, dict) else {}
     merged = dict(DEFAULT_TEMPORAL_CONFIG)
@@ -301,6 +322,13 @@ def aggregate_scores_window(
     else:
         agg["denom_8w"] = np.nan
 
+    # total numerator over the window (for pooled-rate metrics; see the pooled override below)
+    if "numerator" in df.columns:
+        df["numerator"] = _safe_numeric(df["numerator"])
+        agg["num_8w"] = df.groupby(group_keys, dropna=False)["numerator"].sum(min_count=1).reindex(agg.index)
+    else:
+        agg["num_8w"] = np.nan
+
     # volume factor: saturating credit for total sample vs each metric's floor; 1.0 when no denom
     metrics_idx = agg.index.get_level_values("metric")
     vt = np.array([denom_min_by_metric.get(m, denom_default) for m in metrics_idx], dtype=float) * volume_target_weeks
@@ -325,6 +353,23 @@ def aggregate_scores_window(
         agg["direction"] = gb["direction"].first().reindex(agg.index).fillna("higher_is_better")
     else:
         agg["direction"] = "higher_is_better"
+
+    # Pooled-rate override: for opted-in metrics, replace the mean-of-weekly-gap level with the
+    # denominator-weighted pooled gap over the window. level_8w keeps its "value - benchmark"
+    # meaning (downstream reconstructs value = level_8w + benchmark_8w), just using the pooled rate
+    # Σnum/Σden instead of the mean of weekly rates. Where there is no in-window denominator
+    # (denom_8w 0/NaN), the pooled rate is undefined -> NaN -> fillna(0.0) below (neutral, no signal).
+    pooled_metrics = _pooled_metrics(config)
+    if pooled_metrics:
+        # metric is an index level here (agg is not reset_index'd until below), matching vol_factor above.
+        is_pooled = agg.index.get_level_values("metric").isin(pooled_metrics)
+        den = pd.to_numeric(agg["denom_8w"], errors="coerce")
+        num = pd.to_numeric(agg["num_8w"], errors="coerce")
+        bench = pd.to_numeric(agg["benchmark_8w"], errors="coerce")
+        pooled_rate = num.where(den > 0) / den.where(den > 0)
+        # NaN (no in-window denominator) -> 0.0 (neutral, no signal), matching the level_8w.fillna above.
+        pooled_level = (pooled_rate - bench).fillna(0.0)
+        agg["level_8w"] = np.where(is_pooled, pooled_level.to_numpy(), agg["level_8w"].to_numpy())
 
     # icp_client carried through (per-agent, constant within the window) so downstream priority
     # weighting can apply per-cohort overrides without re-joining the signals table.

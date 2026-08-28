@@ -188,3 +188,17 @@
 - coaching_history_map: "Show Compassion" dampening repointed
   "Strengthen Empathy Statements" -> "Show Compassion" (aligns with the new metric's topic).
 - follow-up: re-run recalculate-benchmarks (recipe `quality`) to firm up floors as weeks accumulate.
+
+## 2026-08-28 — cancel_rate: pooled windowing + benchmark recalibration
+- snapshot: 2026-08-27_weekly_wk6
+- metric_catalog: cancel_rate.computation_override.window_aggregation = pooled. The windowed level
+  is now Sum(cancellations)/Sum(sales) over the window instead of the mean of weekly rates, so
+  cancellations that arrive in a week with no new sale (denominator null) net against sales from
+  other weeks rather than reading 0%. Fixes a systematic understatement (~115 -> ~2,793 agents with
+  a measurable cancel rate on the latest snapshot).
+- benchmarks: cancel_rate recalibrated to the pooled scale (PROVISIONAL, cohort p75 of the pooled
+  windowed rate):
+  - cancel_rate [default]: 0.111 -> 0.30
+  - cancel_rate [mob-verizon]: 0.35 ; [pss-verizon]: 0.33 ; [mob-at&t]: 0.29 ; [mcafee]: 0.27 ; [pss-at&t]: 0.14
+- follow-up: confirm the cancel_rate floors via `recalculate-benchmarks` before treating as final.
+- known limitation: trend/recency for cancel_rate still derive from weekly gaps (level is the fix).
