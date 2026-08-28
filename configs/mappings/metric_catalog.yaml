@@ -153,7 +153,31 @@ metric_catalog:
       # carrying this block are override-eligible; recency_weeks inherits active.yaml.
       break_glass:
         enabled: true
-        worst_pct: 5  
+        worst_pct: 5
+
+    nps:
+      recalc: { recipe: absolute, bound: { kind: ceiling, at: 100 } }   # 0-100 scale; median at ceiling
+      source: agent_metrics
+      source_metric_key: "nps"
+      display: { scale: 1, suffix: "", decimals: 0 }
+      category: serve
+      direction: higher_is_better
+      unit: rate
+      description: "Net Promoter Sore, survey based scoring"
+      required: false
+      eligible_for_prioritization: false
+      computation_override:
+        expected_calculation: rate
+        denominator_min: 5
+      benchmark:
+        type: config
+      # break_glass: a Tier-1 override metric. Over the latest break_glass.recency_weeks
+      # weeks, an agent in the worst `worst_pct`% of its ICP_Client cohort AND below
+      # benchmark is coached on this metric directly, overriding any theme. Only metrics
+      # carrying this block are override-eligible; recency_weeks inherits active.yaml.
+      break_glass:
+        enabled: false
+        worst_pct: 5        
 
     expert_5star:
       recalc: { recipe: absolute, bound: { kind: ceiling, at: 5 } }   # 1-5 scale; median at ceiling

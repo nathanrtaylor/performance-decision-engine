@@ -198,3 +198,34 @@ def test_scoping_skipped_without_agent_cohort_map():
     # NOT dropped — preserves the 2-arg call contract used elsewhere.
     cands, _ = build_theme_candidates(_SW_COHORT, _CFG_COHORT)
     assert set(cands["theme"]) == {"Sales", "Anywhere"}
+
+
+# ---- per-theme display label (`topic:`) ---------------------------------
+
+def test_display_topic_defaults_to_theme_name():
+    # No `topic:` => display_topic mirrors the internal theme name (backward compat).
+    sw = _sw([("m1", 0.4), ("m2", 0.3), ("m3", 0.0)])
+    cands, _ = build_theme_candidates(sw, CFG)
+    row = cands[cands["theme"] == "Theme A"].iloc[0]
+    assert row["display_topic"] == "Theme A"
+
+
+def test_shared_display_topic_computes_themes_separately():
+    # Two distinct themes share one display label but aggregate independently:
+    # each keeps its own internal `theme` key, n_deficient, and members.
+    cfg = {
+        "themes": {"themes": {
+            "Efficient Experience - NPS": {"members": ["m1", "m2"], "topic": "Efficient Experience"},
+            "Efficient Experience - AHT": {"members": ["m3", "m4", "m5"], "topic": "Efficient Experience"},
+        }},
+        "theme_selection": {"count_fraction": 0.5, "score_level_floor": 0.15, "aggregate": "mean"},
+    }
+    # NPS: 2-of-2 deficient; AHT: 2-of-3 deficient. Both qualify, both display the same label.
+    sw = _sw([("m1", 0.4), ("m2", 0.4), ("m3", 0.4), ("m4", 0.4), ("m5", 0.0)])
+    cands, _ = build_theme_candidates(sw, cfg)
+    assert set(cands["theme"]) == {"Efficient Experience - NPS", "Efficient Experience - AHT"}
+    assert set(cands["display_topic"]) == {"Efficient Experience"}  # both share the label
+    nps = cands[cands["theme"] == "Efficient Experience - NPS"].iloc[0]
+    aht = cands[cands["theme"] == "Efficient Experience - AHT"].iloc[0]
+    assert nps["n_deficient"] == 2 and nps["n_members"] == 2   # computed separately
+    assert aht["n_deficient"] == 2 and aht["n_members"] == 3

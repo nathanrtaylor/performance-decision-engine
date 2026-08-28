@@ -310,7 +310,12 @@ def _single_receipt(base: Dict[str, Any], r: pd.Series, comps: pd.DataFrame, tre
 
 
 def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optional[pd.DataFrame], trend_idx: Dict[Any, Dict[str, Any]], dmap: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-    theme = base["recommended_topic"]
+    theme = base["recommended_topic"]           # display label (may be shared across themes)
+    # selection_detail is keyed on the INTERNAL theme name; the rec carries it as theme_key.
+    # Fall back to the display label for backward compatibility (topic == theme name).
+    theme_key = r.get("theme_key")
+    if _is_missing(theme_key):
+        theme_key = theme
     drivers = []
     if selection_detail is not None and not selection_detail.empty:
         det = selection_detail[
@@ -318,7 +323,7 @@ def _theme_receipt(base: Dict[str, Any], r: pd.Series, selection_detail: Optiona
             & (selection_detail["agent_id"] == base["agent_id"])
             & (selection_detail["period"] == base["period"])
             & (selection_detail["call_type"] == base["call_type"])
-            & (selection_detail["theme"] == theme)
+            & (selection_detail["theme"] == theme_key)
             & (selection_detail["deficient"] == True)  # noqa: E712
         ].sort_values("level_score", ascending=False)
         for _, d in det.iterrows():

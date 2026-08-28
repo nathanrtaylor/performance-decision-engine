@@ -43,7 +43,7 @@ _KEYS = ["agent_id", "period", "call_type"]
 
 _CANDIDATE_COLS = [
     "agent_id", "period", "call_type",
-    "theme", "conversation_type",
+    "theme", "display_topic", "conversation_type",
     "theme_score", "n_members", "n_deficient",
     "members", "deficient_metrics",
 ]
@@ -101,6 +101,10 @@ def _load_themes(config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
             # Optional per-theme cohort allow-list; None => applies to ALL cohorts.
             # Applied in build_theme_candidates once the agent->cohort map is known.
             "cohorts": _normalize_cohorts(spec.get("cohorts")),
+            # Optional display label; None => the theme name is used as the topic.
+            # Multiple themes may share a `topic` to present as one coaching label
+            # while being computed separately (pair with `cohorts` for per-cohort variants).
+            "topic": spec.get("topic"),
         }
     return out
 
@@ -291,9 +295,13 @@ def build_theme_candidates(
     theme_members = {name: sorted(spec["members"]) for name, spec in themes.items()}
     # Per-theme qualification bar: explicit spec.count_fraction, else global frac.
     theme_frac = {name: _resolve_count_fraction(name, spec, frac) for name, spec in themes.items()}
+    # Display label: explicit spec.topic, else the internal theme name. Pure passthrough —
+    # aggregation stays keyed on the internal theme name so same-labeled themes compute apart.
+    theme_topic = {name: (spec.get("topic") or name) for name, spec in themes.items()}
     agg["n_members"] = agg["theme"].map(theme_size).astype(int)
     agg["members"] = agg["theme"].map(theme_members)
     agg["count_fraction"] = agg["theme"].map(theme_frac).astype(float)
+    agg["display_topic"] = agg["theme"].map(theme_topic)
     agg["conversation_type"] = agg["theme"].map(
         lambda t: _conversation_type_for_theme(themes.get(t, {}), config)
     )

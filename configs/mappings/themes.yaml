@@ -41,6 +41,13 @@ themes:
   #     in its "small clients::hp" split. OMIT the field (default) => the theme
   #     applies to ALL cohorts, unchanged. Each listed label must be in
   #     active.yaml `icp_clients` (config_lint errors otherwise).
+  #   * A theme may set an OPTIONAL `topic:` DISPLAY LABEL (defaults to the theme
+  #     name). Two themes may share the same `topic:` to surface under one coaching
+  #     label while being COMPUTED SEPARATELY — pair with `cohorts:` for cohort-
+  #     specific variants of the same concept (e.g. an "Efficient Experience — ERP"
+  #     theme scoped to pss-verizon and an "Efficient Experience — NPS" theme scoped
+  #     to the rest, both `topic: "Efficient Experience"`). The theme KEY (the YAML
+  #     name) still must be unique; only the displayed topic is shared.
   #   * Among qualifying themes, the highest combined score wins.
   #   * A break-glass single (metric_catalog break_glass flag) can still
   #     override a theme; an ordinary single is the fallback when no theme
@@ -91,6 +98,40 @@ themes:
       - transition_statement_ad
     conversation_type: "Performance Coaching"
     # Optional cohort scoping (omit => all cohorts). Example: restrict to Verizon:
-    #cohorts:
+    cohorts:
     #  - "mob-verizon"
-    #  - "pss-verizon"
+      - "pss-verizon"
+      - "pss-at&t"
+      - "mob-at&t"
+      - "mob-verizon"
+
+  "Efficient Experience - ERP":
+    topic: "Efficient Experience"
+    members: 
+      - erp
+      - crt
+    conversation_type: "Performance Coaching"
+    count_fraction: 1
+    cohorts:
+      - "pss-verizon"
+
+  "Efficient Experience - NPS":
+    topic: "Efficient Experience"
+    members: 
+      - nps
+      - crt
+    conversation_type: "Performance Coaching"
+    count_fraction: 1
+    cohorts:
+      - "pss-at&t"
+
+  "Efficient Experience - talk time":
+    topic: "Efficient Experience"
+    members: 
+      - nps
+      - talk_time
+    conversation_type: "Performance Coaching"
+    count_fraction: 1
+    cohorts:
+      - "mob-verizon"
+      - "mob-at&t"

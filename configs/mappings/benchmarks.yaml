@@ -100,6 +100,8 @@ benchmarks:
     default: 0.111       # median is 0 across all cohorts (floor); a relative bar isn't usable.
   erp:
     default: 90         # 0-100 scale; cohort median is 100 (ceiling) -> absolute sub-max target.
+  nps:
+    default: 90  
   expert_5star:
     default: 4.5        # 1-5 scale; uniform across cohorts at 5.0 (ceiling) -> absolute sub-max target.
 

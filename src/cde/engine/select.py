@@ -66,7 +66,10 @@ def _theme_to_recs(theme_top: pd.DataFrame, displaced: pd.DataFrame | None = Non
         "agent_id": theme_top["agent_id"],
         "period": theme_top["period"],
         "call_type": theme_top["call_type"],
-        "topic": theme_top["theme"],           # theme name occupies the topic slot
+        # Display label occupies the topic slot (defaults to the theme name); the internal
+        # theme name is carried as `theme_key` so receipts can still join member drivers.
+        "topic": theme_top["display_topic"],
+        "theme_key": theme_top["theme"],
         "conversation_type": theme_top["conversation_type"],
         "priority_score": theme_top["theme_score"].astype(float),
         "tier": "theme",
@@ -146,9 +149,12 @@ def select_recommendations(
         else pd.DataFrame()
     )
 
-    # Singles only where neither Tier 1 nor Tier 2 claimed the agent.
-    claimed = pd.concat([_key_index(bg_top), _key_index(theme_top)], ignore_index=True) \
-        if (not bg_top.empty or not theme_top.empty) else pd.DataFrame(columns=_KEYS)
+    # Singles only where neither Tier 1 nor Tier 2 claimed the agent. Concat only the
+    # NON-empty key indexes: an empty (object-dtype) frame would upcast the datetime
+    # `period` column to object and break the anti-join merge (e.g. a theme is selected
+    # but no break-glass tripped).
+    claimed_parts = [ki for ki in (_key_index(bg_top), _key_index(theme_top)) if not ki.empty]
+    claimed = pd.concat(claimed_parts, ignore_index=True) if claimed_parts else pd.DataFrame(columns=_KEYS)
     singles_kept = _anti_join(singles, claimed)
 
     recs = pd.concat(

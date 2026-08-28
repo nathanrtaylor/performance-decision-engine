@@ -12,7 +12,7 @@ topic_map:
     # ===== Business outcomes
     transfer_rate: "Reduce Client Transfer Rate"
     resolution_rate: "Improve Resolution Rate"
-    cancel_rate: "Reduce Cancel Rate"
+    cancel_rate: "Cancel Rate Reduction"
     one_call_resolution: "Improve One Call Resolution"
     hold_time: "Reduce Hold Time"
     talk_time: "Reduce Talk Time"

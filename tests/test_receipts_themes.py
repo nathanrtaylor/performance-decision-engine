@@ -113,6 +113,42 @@ def test_receipts_cover_all_tiers_with_provenance():
     assert text.count("\n") == len(receipts)
 
 
+def test_theme_display_label_receipt_resolves_drivers():
+    # A theme whose internal name differs from its display `topic:` still resolves its
+    # member drivers (join on theme_key) and narrates under the display label.
+    import copy
+
+    cfg = copy.deepcopy(CFG)
+    cfg["themes"] = {"themes": {
+        "Efficient Experience - NPS": {
+            "members": ["m1", "m2", "m3"],
+            "conversation_type": "Performance Coaching",
+            "topic": "Efficient Experience",
+        },
+    }}
+    cands = _candidates([("THEME", "Some Single Topic", 0.9)])
+    sw = pd.DataFrame(_sw_rows("THEME", [("m1", 0.4), ("m2", 0.3), ("m3", 0.0)]))
+    es = pd.DataFrame(
+        [("THEME", P2, "cancel_rate", 0.12, 0.12, 0.0, "lower_is_better", "mob-verizon")],
+        columns=["agent_id", "period", "metric", "value", "benchmark", "gap", "direction", "icp_client"],
+    )
+    es["call_type"] = "all"
+
+    recs, detail = select_recommendations(cands, es, sw, cfg)
+    # The rec's topic is the display label; internal name is carried as theme_key.
+    trow = recs[recs["agent_id"] == "THEME"].iloc[0]
+    assert trow["topic"] == "Efficient Experience"
+    assert trow["theme_key"] == "Efficient Experience - NPS"
+
+    receipts = build_receipts(recs, cands, es, sw, cfg, selection_detail=detail)
+    th = {r["agent_id"]: r for _, r in receipts.iterrows()}["THEME"]
+    assert th["tier"] == "theme"
+    assert th["recommended_topic"] == "Efficient Experience"      # display label
+    assert len(th["drivers"]) == 2                                 # m1, m2 resolved via theme_key
+    assert set(th["theme_membership"]["deficient_metrics"]) == {"m1", "m2"}
+    assert "Efficient Experience" in th["narrative"]["why_this"]   # narrates under the display label
+
+
 def test_abstention_receipts_appended():
     cands, es, sw, recs, detail = _setup()
     abstentions = pd.DataFrame([
