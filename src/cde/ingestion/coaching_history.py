@@ -11,6 +11,31 @@ from cde.utils.logging import get_logger
 log = get_logger(__name__)
 
 
+def _filter_coaching_types(df: pd.DataFrame, count_types: set) -> pd.DataFrame:
+    """
+    Restrict coaching events to an allow-list of ``coaching_type`` values (case-insensitive).
+
+    Only these coaching types count as "coached" for dampening — e.g. restrict to ADAPT so
+    that only structured ADAPT coaching suppresses re-coaching, while informal types (huddles,
+    "In The Game", etc.) do not. The allow-list is expandable via
+    coaching_history_map.count_types.
+
+    An empty allow-list means ALL types count (backward compatible). If the allow-list is set
+    but the frame has no ``coaching_type`` column, the filter is skipped with a warning (it
+    cannot be enforced), mirroring the defensive count_status handling.
+    """
+    if not count_types:
+        return df
+    if "coaching_type" not in df.columns:
+        log.warning(
+            "coaching_history: count_types %s set but no 'coaching_type' column; type filter skipped.",
+            sorted(count_types),
+        )
+        return df
+    allow = {str(t).strip().casefold() for t in count_types}
+    return df[df["coaching_type"].astype(str).str.strip().str.casefold().isin(allow)]
+
+
 def build_coaching_history(
     normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]
 ) -> Optional[pd.DataFrame]:
@@ -31,6 +56,7 @@ def build_coaching_history(
     xmap = _unwrap(config.get("coaching_history_map") or {}, "coaching_history_map")
     map_key = xmap.get("map_key", "behavior_selected")
     count_status = set(xmap.get("count_status") or [])
+    count_types = set(xmap.get("count_types") or [])
     behavior_to_topic = xmap.get("behavior_to_topic") or {}
 
     df = raw.copy()
@@ -38,6 +64,11 @@ def build_coaching_history(
     # 1) keep only counted coaching statuses (defensive; also filtered at extraction)
     if count_status and "coaching_status" in df.columns:
         df = df[df["coaching_status"].astype(str).str.strip().isin(count_status)]
+    if df.empty:
+        return None
+
+    # 1b) keep only counted coaching types (allow-list; empty => all types count)
+    df = _filter_coaching_types(df, count_types)
     if df.empty:
         return None
 

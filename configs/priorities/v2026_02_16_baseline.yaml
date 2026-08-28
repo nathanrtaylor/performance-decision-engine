@@ -4,7 +4,7 @@ priorities:
   # Default weighting stance: business metrics dominate
   by_category:
     sell: 1.0
-    serve: 0.7
+    serve: 0.8
     solve: 0.7
     business: 0.8
     tool_usage: 0.6

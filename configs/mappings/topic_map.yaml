@@ -21,7 +21,7 @@ topic_map:
     expert_5star: "Improve Expert 5star"
     nsp100: "Improve NSP100"
     sp100: "Improve Sales"
-    crt: "Reduce CRT"
+    crt: "Efficient Issue Resolution"
 
 
     # ===== Tool usage
@@ -90,7 +90,7 @@ topic_map:
   # ---------------------------------------------------
   topic_to_conversation_type:
     "Improve Resolution Rate": "Performance Coaching"
-    "Reduce Cancel Rate": "Performance Correction"
+    "Cancel Rate Reduction": "Performance Correction"
     "Reduce Client Transfer Rate": "Performance Correction"
     "Improve One Call Resolution": "Performance Coaching"
     "Reduce Hold Time": "Performance Correction"
@@ -100,7 +100,7 @@ topic_map:
     "Improve NSP100": "Performance Coaching"
     "Improve Sales": "Performance Coaching"
     "Reduce Callback Rate": "Performance Coaching"
-    "Reduce CRT": "Performance Coaching"
+    "Efficient Issue Resolution": "Performance Coaching"
 
     "Increase Guided Flow Adoption": "Tool Enablement"
     "Increase Expert Assist Usage": "Tool Enablement"

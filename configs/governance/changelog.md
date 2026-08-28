@@ -166,3 +166,12 @@
 - deferred (manual merge from proposed_benchmarks.yaml):
   - transfer_rate [mcafee] (new cohort split - manual merge)
   - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-28 10:51 — benchmark recalculation apply
+- snapshot: 2026-08-27_weekly_wk6
+- approver: nathan
+- applied:
+  - callback_rate [xbox]: 0.382 -> 0.335
+- deferred (manual merge from proposed_benchmarks.yaml):
+  - transfer_rate [mcafee] (new cohort split - manual merge)
+  - transfer_rate [xbox] (new cohort split - manual merge)

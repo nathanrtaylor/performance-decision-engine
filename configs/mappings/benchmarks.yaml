@@ -59,7 +59,7 @@ benchmarks:
       pss-at&t: 0.216
       pss-verizon: 0.286
       mcafee: 0.174
-      xbox: 0.382
+      xbox: 0.335
   one_call_resolution:
     default: 0.818
     by_icp_client:

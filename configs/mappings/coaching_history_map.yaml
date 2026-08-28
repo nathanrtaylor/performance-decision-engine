@@ -20,6 +20,14 @@ coaching_history_map:
     - Submitted
     - Excused
 
+  # Coaching TYPES that count as "coached" for dampening (allow-list; case-insensitive).
+  # Empty or omitted => ALL coaching types count (pre-existing behavior). Initially restricted
+  # to ADAPT: only structured ADAPT coaching should suppress (dampen) re-coaching of the same
+  # topic; informal types (e.g. "In The Game", huddles, "Seek To Understand") do not dampen.
+  # Expand this list as other coaching types warrant dampening.
+  count_types:
+    - ADAPT
+
   # behavior_selected  ->  engine topic (see mappings/topic_map.yaml for valid topics)
   # High-confidence mappings against the observed coaching vocabulary. Behaviors with no
   # corresponding engine topic (e.g. "Discovery Questions") are intentionally omitted and simply

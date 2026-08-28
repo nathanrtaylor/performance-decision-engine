@@ -63,7 +63,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "hold time"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: serve
+      category: business
       direction: lower_is_better
       unit: rate
       description: "time spent on hold / calls"
@@ -79,7 +79,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "talk time"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: serve
+      category: business
       direction: lower_is_better
       unit: rate
       description: "time spent on talking / calls"
@@ -242,7 +242,7 @@ metric_catalog:
       source: agent_metrics
       source_metric_key: "crt"
       display: { scale: 1, suffix: "s", decimals: 0 }
-      category: serve
+      category: business
       direction: lower_is_better
       unit: rate
       description: "Call Resolution time. Measure of call handling time and efficiency"

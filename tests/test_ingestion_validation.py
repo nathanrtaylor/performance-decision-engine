@@ -59,3 +59,54 @@ def test_all_unmapped_returns_none():
          "behavior_selected": "Totally Unknown"},
     ])
     assert build_coaching_history({"coaching_history": raw}, CFG) is None
+
+
+# ---- count_types allow-list -------------------------------------------------
+
+_CFG_TYPES = {
+    "coaching_history_map": {"coaching_history_map": {
+        "map_key": "behavior_selected",
+        "count_status": ["Submitted", "Excused"],
+        "count_types": ["ADAPT"],
+        "behavior_to_topic": {"Increased Transfer Rate": "Reduce Client Transfer Rate"},
+    }}
+}
+
+
+def _raw_typed():
+    return pd.DataFrame([
+        {"agent_id": "1", "period": "2026-06-12", "coaching_status": "Submitted",
+         "coaching_type": "ADAPT", "behavior_selected": "Increased Transfer Rate"},
+        {"agent_id": "2", "period": "2026-06-12", "coaching_status": "Submitted",
+         "coaching_type": "In The Game", "behavior_selected": "Increased Transfer Rate"},
+    ])
+
+
+def test_count_types_filters_to_allowlist():
+    # Only the ADAPT row (agent 1) survives; "In The Game" (agent 2) is excluded.
+    hist = build_coaching_history({"coaching_history": _raw_typed()}, _CFG_TYPES)
+    assert hist is not None
+    assert set(hist["agent_id"]) == {"1"}
+
+
+def test_count_types_is_case_insensitive():
+    raw = _raw_typed()
+    raw.loc[0, "coaching_type"] = "adapt"  # lowercase variant still matches
+    hist = build_coaching_history({"coaching_history": raw}, _CFG_TYPES)
+    assert hist is not None and set(hist["agent_id"]) == {"1"}
+
+
+def test_count_types_empty_counts_all_types():
+    # No count_types configured => all types count (backward compatible).
+    hist = build_coaching_history({"coaching_history": _raw_typed()}, CFG)
+    assert hist is not None and set(hist["agent_id"]) == {"1", "2"}
+
+
+def test_count_types_skipped_when_column_absent():
+    # count_types set but no coaching_type column => filter skipped (cannot enforce).
+    raw = pd.DataFrame([
+        {"agent_id": "1", "period": "2026-06-12", "coaching_status": "Submitted",
+         "behavior_selected": "Increased Transfer Rate"},
+    ])
+    hist = build_coaching_history({"coaching_history": raw}, _CFG_TYPES)
+    assert hist is not None and set(hist["agent_id"]) == {"1"}
