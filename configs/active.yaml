@@ -153,11 +153,10 @@ tie_breakers:
   topic_order:
     - "Reduce Client Transfer Rate"
     - "Improve Resolution Rate"
-    - "Reduce Cancel Rate"
+    - "Cancel Rate Reduction"
     - "Increase Guided Flow Adoption"
     - "Increase Expert Assist Usage"
     - "Improve Smart Offer Adoption"
-    - "Strengthen Empathy Statements"
     - "Use Clear Transition Statements"
 
 # Conversation type per topic is defined once, in topic_map.yaml

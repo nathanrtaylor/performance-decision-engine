@@ -135,6 +135,15 @@ benchmarks:
     default: 0.918
   transition_statement:
     default: 0.117
+  show_compassion:
+    # p25 of per-agent windowed-mean pass-rate (bottom-quartile floor). Cohort splits only where
+    # p25 differs materially from the global (|delta| >= 0.05); pss-at&t nac is a clear low outlier.
+    # mcafee/mob-verizon/pss-at&t/pss-verizon are within ~0.02 of default and fall through.
+    default: 0.286
+    by_icp_client:
+      mob-at&t: 0.371
+      pss-at&t nac: 0.146
+      xbox: 0.353
   complete_product_scope_expectations:
     default: 0.108
   provide_assurance:

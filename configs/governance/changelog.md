@@ -175,3 +175,16 @@
 - deferred (manual merge from proposed_benchmarks.yaml):
   - transfer_rate [mcafee] (new cohort split - manual merge)
   - transfer_rate [xbox] (new cohort split - manual merge)
+
+## 2026-08-28 — metric onboarding: show_compassion
+- snapshot: 2026-08-27_weekly_wk6
+- new quality_behavior metric `show_compassion` (source_metric_key "Show Compassion",
+  behavior_scores; both HEROES scorecards). Topic: "Show Compassion".
+- seeded benchmarks (p25 of per-agent windowed-mean pass-rate):
+  - show_compassion [default]: 0.286
+  - show_compassion [mob-at&t]: 0.371
+  - show_compassion [pss-at&t nac]: 0.146
+  - show_compassion [xbox]: 0.353
+- coaching_history_map: "Show Compassion" dampening repointed
+  "Strengthen Empathy Statements" -> "Show Compassion" (aligns with the new metric's topic).
+- follow-up: re-run recalculate-benchmarks (recipe `quality`) to firm up floors as weeks accumulate.

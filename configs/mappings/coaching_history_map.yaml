@@ -41,17 +41,20 @@ coaching_history_map:
     "Resolutions": "Improve Resolution Rate"
     "Smart Offer Adherence": "Improve Smart Offer Adoption"
     "Quality Sales - Smart Offer": "Improve Smart Offer Adoption"
-    "Make an Offer": "Improve Smart Offer Adoption"
-    "Show Compassion": "Strengthen Empathy Statements"
+    "Make an Offer": "Make an Offer"
+    "Show Compassion": "Show Compassion"
     "Transition Statement": "Use Clear Transition Statements"
     "Increased Transfer Rate": "Reduce Client Transfer Rate"
     "Transfers": "Reduce Client Transfer Rate"
-    "Cancel Rate Reduction": "Reduce Cancel Rate"
+    "Cancel Rate Reduction": "Cancel Rate Reduction"
     "Talk Time": "Reduce Talk Time"
     "AHT Talk Time": "Reduce Talk Time"
     "Hold Time": "Reduce Hold Time"
     "AHT Hold Time": "Reduce Hold Time"
     "ERP": "Improve ERP"
+    "Sentiment": "Improve ERP"
+    "Confirm Resolution": "Confirm Resolution (Advanced Discovery)"
+    "Provide Assurance": "Provide Assurance"
 
     # --- TODO(Ops): ambiguous behaviors — confirm intended engine topic (currently no dampening) ---
     # "Quality Sales": ?                 # sales-oriented; -> "Improve NSP100"?

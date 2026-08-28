@@ -33,6 +33,7 @@ topic_map:
     #       like the business metrics above). Eligible behaviors now drive recommendations.
     transition_statement: "Use Clear Transition Statements"
     demonstrate_professionalism_and_courtesy: "Demonstrate Professionalism and Courtesy"
+    show_compassion: "Show Compassion"
     appropriate_product_positioning_language: "Appropriate Product Positioning Language"
     positive_and_helpful_tone: "Positive and Helpful Tone"
     manage_call_efficiently: "Manage Call Efficiently"
@@ -106,7 +107,6 @@ topic_map:
     "Increase Expert Assist Usage": "Tool Enablement"
     "Improve Smart Offer Adoption": "Tool Enablement"
 
-    "Strengthen Empathy Statements": "Quality Coaching"
     "Use Clear Transition Statements": "Quality Coaching"
 
     "Demonstrate Professionalism and Courtesy": "Quality Coaching"
