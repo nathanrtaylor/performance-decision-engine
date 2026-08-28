@@ -108,7 +108,8 @@ metric_catalog:
         type: config
 
     cancel_rate:
-      recalc: { recipe: absolute, bound: { kind: floor } }   # median at 0 floor -> keep curated absolute
+      recalc: { recipe: operational }   # pooled per-cohort MEDIAN (window_aggregation: pooled makes the
+                                        # windowed rate meaningful, so the old absolute/floor hold no longer applies)
       source: agent_metrics
       source_metric_key: "cancellation rate"
       display: { scale: 100, suffix: "%", decimals: 1 }

@@ -37,6 +37,7 @@ class MetricMeta:
     denominator_min: Optional[float]
     recalc_recipe: Optional[str] = None   # which recompute recipe to run (declared in metric_catalog)
     recalc_bound: Optional[Dict[str, Any]] = None  # absolute-recipe degeneracy bound {kind: floor|ceiling, at?}
+    window_aggregation: Optional[str] = None  # "pooled" -> per-agent Σnum/Σden (mirror temporal.aggregate)
 
 
 @dataclass(frozen=True)
@@ -106,6 +107,8 @@ def build_metric_meta(config: Dict[str, Any]) -> Dict[str, MetricMeta]:
             denominator_min=(float(dmin) if dmin is not None else None),
             recalc_recipe=_resolve_recipe(entry, category, cat_defaults),
             recalc_bound=((entry.get("recalc") or {}).get("bound") or None),
+            window_aggregation=(str(over.get("window_aggregation")).strip().lower()
+                                if over.get("window_aggregation") is not None else None),
         )
     return out
 
@@ -254,27 +257,59 @@ def windowed_mean_per_agent(
     *,
     cohort_col: Optional[str] = "icp_client",
     denominator_min: Optional[float] = None,
+    pooled: bool = False,
 ) -> pd.DataFrame:
     """
-    Collapse per-agent-per-week ``calc`` to one MEAN per agent over the window -- the grain the
-    engine scores on. Optionally drops thin weekly rows (denominator < denominator_min) first,
-    matching how temporal.aggregate treats low-evidence weeks.
+    Collapse per-agent-per-week rows to one per-agent value over the window -- the grain the engine
+    scores on. Optionally drops thin weekly rows (denominator < denominator_min) first, matching how
+    temporal.aggregate treats low-evidence weeks.
+
+    Aggregation mode (mirrors temporal.aggregate):
+      - default: ``mean_calc`` = MEAN of weekly ``calc`` (per-week rates).
+      - ``pooled=True``: ``mean_calc`` = Σnumerator / Σdenominator over the window (denominator-
+        weighted pooled rate), for metrics with computation_override.window_aggregation == "pooled".
+        Weekly rows are kept when denominator >= denominator_min OR the denominator is null (a week
+        with a numerator but no same-period denominator still contributes its numerator), exactly as
+        the engine's pooled level does. Falls back to the mean path if numerator/denominator are
+        absent. The output column stays ``mean_calc`` so all downstream recipes are unchanged.
 
     Returns columns: agent_id, [icp_client], mean_calc, n_weeks.
     """
+    empty_cols = ["agent_id"] + ([cohort_col] if cohort_col else []) + ["mean_calc", "n_weeks"]
     if df is None or df.empty:
-        cols = ["agent_id"] + ([cohort_col] if cohort_col else []) + ["mean_calc", "n_weeks"]
-        return pd.DataFrame(columns=cols)
+        return pd.DataFrame(columns=empty_cols)
 
     d = df[df["metric_key"] == metric_key].copy()
+
+    use_pooled = pooled and {"numerator", "denominator"}.issubset(d.columns)
+    if pooled and not use_pooled:
+        log.warning("windowed_mean_per_agent: pooled requested for %r but numerator/denominator "
+                    "missing; using mean.", metric_key)
+
+    if use_pooled:
+        num = pd.to_numeric(d["numerator"], errors="coerce")
+        den = pd.to_numeric(d["denominator"], errors="coerce")
+        # keep den >= min OR den null (null-denominator numerator weeks still count), else all rows
+        if denominator_min is not None:
+            keep = (den >= float(denominator_min)) | den.isna()
+            d, num, den = d[keep], num[keep], den[keep]
+        d = d.assign(_num=num, _den=den)
+        if d.empty:
+            return pd.DataFrame(columns=empty_cols)
+        group_cols = ["agent_id"] + ([cohort_col] if cohort_col and cohort_col in d.columns else [])
+        g = d.groupby(group_cols, dropna=False)
+        out = g.agg(_num=("_num", "sum"), _den=("_den", "sum"), n_weeks=("_num", "size")).reset_index()
+        out["mean_calc"] = out["_num"] / out["_den"].where(out["_den"] > 0)
+        out = out.dropna(subset=["mean_calc"]).drop(columns=["_num", "_den"])
+        return out
+
     d["calc"] = pd.to_numeric(d["calc"], errors="coerce")
     d = d.dropna(subset=["calc"])
     if denominator_min is not None and "denominator" in d.columns:
         den = pd.to_numeric(d["denominator"], errors="coerce")
         d = d[den >= float(denominator_min)]
     if d.empty:
-        cols = ["agent_id"] + ([cohort_col] if cohort_col else []) + ["mean_calc", "n_weeks"]
-        return pd.DataFrame(columns=cols)
+        return pd.DataFrame(columns=empty_cols)
 
     group_cols = ["agent_id"] + ([cohort_col] if cohort_col and cohort_col in d.columns else [])
     out = (

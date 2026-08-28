@@ -97,18 +97,16 @@ benchmarks:
 
   # ---- absolute defaults: cohort medians degenerate (scale boundary/floor) or no cohort variation ----
   cancel_rate:
-    # Recalibrated for POOLED windowing (metric_catalog.cancel_rate.window_aggregation: pooled):
-    # the windowed level is now Sum(cancels)/Sum(sales) over the window, so cohort rates are
-    # meaningful (no longer floored at 0). PROVISIONAL floors = cohort p75 of the pooled windowed
-    # rate (flag ~worst quartile; the lower_is_better analogue of the p25 floors above). Confirm via
-    # `recalculate-benchmarks` before treating as final. pss-at&t nac (n=6) and xbox fall to default.
-    default: 0.30
+    # POOLED windowing (metric_catalog.cancel_rate.window_aggregation: pooled): the windowed level
+    # is Sum(cancels)/Sum(sales) over the window. Benchmarks = per-cohort MEDIAN of the pooled
+    # windowed rate (recalc recipe: operational). Cohorts at the overall median (pss-at&t /
+    # pss-verizon 0.333) and thin/absent cohorts (pss-at&t nac n=1, xbox) fall to default. Confirm
+    # via `recalculate-benchmarks`.
+    default: 0.333
     by_icp_client:
-      mob-verizon: 0.35
-      pss-verizon: 0.33
-      mob-at&t: 0.29
-      mcafee: 0.27
-      pss-at&t: 0.14
+      mcafee: 0.207
+      mob-at&t: 0.286
+      mob-verizon: 0.289
   erp:
     default: 90         # 0-100 scale; cohort median is 100 (ceiling) -> absolute sub-max target.
   nps:

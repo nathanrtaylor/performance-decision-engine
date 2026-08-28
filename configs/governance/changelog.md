@@ -196,9 +196,14 @@
   cancellations that arrive in a week with no new sale (denominator null) net against sales from
   other weeks rather than reading 0%. Fixes a systematic understatement (~115 -> ~2,793 agents with
   a measurable cancel rate on the latest snapshot).
-- benchmarks: cancel_rate recalibrated to the pooled scale (PROVISIONAL, cohort p75 of the pooled
-  windowed rate):
-  - cancel_rate [default]: 0.111 -> 0.30
-  - cancel_rate [mob-verizon]: 0.35 ; [pss-verizon]: 0.33 ; [mob-at&t]: 0.29 ; [mcafee]: 0.27 ; [pss-at&t]: 0.14
-- follow-up: confirm the cancel_rate floors via `recalculate-benchmarks` before treating as final.
+- benchmarks_recalc: taught the recalc to interpret window_aggregation: pooled (prep.windowed_mean_per_agent
+  computes per-agent Σnum/Σden, keeping null-denominator numerator weeks) so cancel_rate proposals are on
+  the same scale the engine scores. cancel_rate recalc recipe changed absolute -> operational (per-cohort
+  MEDIAN), since the pooled rate is no longer degenerate at the 0 floor.
+- benchmarks: cancel_rate recalibrated to the per-cohort MEDIAN of the pooled windowed rate:
+  - cancel_rate [default]: 0.111 -> 0.333
+  - cancel_rate [mcafee]: 0.207 ; [mob-at&t]: 0.286 ; [mob-verizon]: 0.289
+  - pss-at&t / pss-verizon (~0.333) at default; pss-at&t nac (n=1) and xbox fall to default.
+- follow-up: confirm via `recalculate-benchmarks`. recalc does NOT replicate the engine's thin-window
+  drop, so its pooled proposals run slightly high vs the scored population (accepted).
 - known limitation: trend/recency for cancel_rate still derive from weekly gaps (level is the fix).

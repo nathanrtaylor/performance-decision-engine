@@ -50,7 +50,8 @@ def _config(metrics: dict, themes: dict | None = None) -> dict:
 
 def _raw(agent_metrics=None):
     return RawFrames(agents=pd.DataFrame(), agent_metrics=pd.DataFrame(agent_metrics or []),
-                     behavior_scores=pd.DataFrame(), raw_dir=None, snapshot_id="test-snap")
+                     behavior_scores=pd.DataFrame(), advanced_discovery=pd.DataFrame(),
+                     raw_dir=None, snapshot_id="test-snap")
 
 
 # ---------------------------------------------------------------------------

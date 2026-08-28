@@ -111,9 +111,15 @@ def _p25_stat(wm: pd.DataFrame, cohort: Optional[str], thr: RecalcThresholds) ->
 # category workers
 # ---------------------------------------------------------------------------------------------------
 
+def _is_pooled(prepped: PreppedFrames, metric: str) -> bool:
+    return (prepped.metric_meta.get(metric).window_aggregation == "pooled"
+            if prepped.metric_meta.get(metric) else False)
+
+
 def recompute_operational(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
     dmin = prepped.metric_meta[metric].denominator_min
-    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col="icp_client", denominator_min=dmin)
+    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col="icp_client",
+                                 denominator_min=dmin, pooled=_is_pooled(prepped, metric))
     lo, hi = _value_range(wm, thr)
     default = _median_stat(wm, None, thr)
     by_cohort = {c: _median_stat(wm, c, thr) for c in thr.cohorts}
@@ -123,7 +129,8 @@ def recompute_operational(prepped: PreppedFrames, metric: str, thr: RecalcThresh
 
 def recompute_nsp100(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
     dmin = prepped.metric_meta[metric].denominator_min
-    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col="icp_client", denominator_min=dmin)
+    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col="icp_client",
+                                 denominator_min=dmin, pooled=_is_pooled(prepped, metric))
     lo, hi = _value_range(wm, thr)
     default = _median_stat(wm, None, thr)
     by_cohort: Dict[str, CohortStat] = {}
@@ -142,7 +149,8 @@ def recompute_nsp100(prepped: PreppedFrames, metric: str, thr: RecalcThresholds)
 
 def recompute_absolute(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
     dmin = prepped.metric_meta[metric].denominator_min
-    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col=None, denominator_min=dmin)
+    wm = windowed_mean_per_agent(prepped.agent_metrics, metric, cohort_col=None,
+                                 denominator_min=dmin, pooled=_is_pooled(prepped, metric))
     lo, hi = _value_range(wm, thr)
     s = _series_for_cohort(wm, None)
     n = int(s.shape[0])
@@ -175,7 +183,8 @@ def recompute_absolute(prepped: PreppedFrames, metric: str, thr: RecalcThreshold
 
 
 def recompute_quality(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
-    wm = windowed_mean_per_agent(prepped.behavior_scores, metric, cohort_col=None, denominator_min=None)
+    wm = windowed_mean_per_agent(prepped.behavior_scores, metric, cohort_col=None,
+                                 denominator_min=None, pooled=_is_pooled(prepped, metric))
     lo, hi = _value_range(wm, thr)
     default = _p25_stat(wm, None, thr)
     return CandidateBenchmark(metric, C.CAT_QUALITY, default, {}, split_applied=False,
@@ -183,7 +192,8 @@ def recompute_quality(prepped: PreppedFrames, metric: str, thr: RecalcThresholds
 
 
 def recompute_sentiment(prepped: PreppedFrames, metric: str, thr: RecalcThresholds) -> CandidateBenchmark:
-    wm = windowed_mean_per_agent(prepped.behavior_scores, metric, cohort_col="icp_client", denominator_min=None)
+    wm = windowed_mean_per_agent(prepped.behavior_scores, metric, cohort_col="icp_client",
+                                 denominator_min=None, pooled=_is_pooled(prepped, metric))
     lo, hi = _value_range(wm, thr)
     default = _p25_stat(wm, None, thr)
 

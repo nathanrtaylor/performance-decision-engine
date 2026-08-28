@@ -72,11 +72,12 @@ def _beh_meta(name, raw, recipe="quality"):
             "recalc": {"recipe": recipe}}
 
 
-def _raw(agent_metrics=None, behavior_scores=None, agents=None):
+def _raw(agent_metrics=None, behavior_scores=None, agents=None, advanced_discovery=None):
     return RawFrames(
         agents=pd.DataFrame(agents) if agents else pd.DataFrame(),
         agent_metrics=pd.DataFrame(agent_metrics) if agent_metrics else pd.DataFrame(),
         behavior_scores=pd.DataFrame(behavior_scores) if behavior_scores else pd.DataFrame(),
+        advanced_discovery=pd.DataFrame(advanced_discovery) if advanced_discovery else pd.DataFrame(),
         raw_dir=None, snapshot_id="test-snap",
     )
 
