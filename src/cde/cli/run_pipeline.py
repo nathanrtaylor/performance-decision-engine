@@ -182,6 +182,18 @@ def main(argv=None) -> None:
     candidates = apply_recent_coaching_dampening(candidates, config, history=coaching_history)
     candidates.to_csv(out_dir / "topic_candidates.csv", index=False)
 
+    # Dampening evidence: per-agent record of WHY each candidate was dampened (which recent
+    # coaching triggered it). Non-fatal — an evidence error must not fail the run.
+    try:
+        from cde.prioritization.dampening_evidence import build_dampening_evidence
+        dampening_evidence = build_dampening_evidence(
+            candidates, normalized.get("coaching_history"), config
+        )
+        dampening_evidence.to_csv(out_dir / "dampening_evidence.csv", index=False)
+        print(f"dampening_evidence rows: {len(dampening_evidence)}")
+    except Exception as e:  # noqa: BLE001
+        print(f"WARNING: dampening evidence export failed: {e!r}")
+
     # Three-tier selection: break-glass override -> theme -> single (fallback).
     # Identical to the prior single-argmax when no themes/break_glass are configured.
     recs, selection_detail = select_recommendations(

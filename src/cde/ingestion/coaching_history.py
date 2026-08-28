@@ -36,20 +36,25 @@ def _filter_coaching_types(df: pd.DataFrame, count_types: set) -> pd.DataFrame:
     return df[df["coaching_type"].astype(str).str.strip().str.casefold().isin(allow)]
 
 
-def build_coaching_history(
-    normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]
+def map_coaching_events(
+    raw: Optional[pd.DataFrame], config: Dict[str, Any]
 ) -> Optional[pd.DataFrame]:
     """
-    Collapse raw coaching events into the dampening input grain:
+    Behavior-level coaching events mapped to engine topics — the shared basis for both
+    dampening (build_coaching_history) and the dampening-evidence export.
 
-        agent_id | topic | last_coached_period
+    Applies the governed crosswalk (configs/mappings/coaching_history_map.yaml): the
+    count_status and count_types allow-lists, then behavior_selected -> topic (case-insensitive;
+    unmapped behaviors are logged and dropped). Returns ONE ROW PER coaching event (not collapsed)
+    with columns:
 
-    Uses the governed crosswalk (configs/mappings/coaching_history_map.yaml) to map each event's
-    ``behavior_selected`` to an engine topic. Unmapped behaviors are logged and dropped (they
-    simply do not dampen). Returns None when no ``coaching_history`` table is present, so the
-    pipeline degrades gracefully to no dampening.
+        agent_id (normalized) | topic | coach_period | coaching_date | behavior | coaching_status
+
+    ``coach_period`` is the dampening date driver (the weekly ``period`` bucket when present, else
+    ``coaching_date``); ``coaching_date`` is the actual event day retained for human-readable
+    evidence. Returns None when there is nothing to map (no table, empty after filters, missing
+    map_key/date columns).
     """
-    raw = normalized.get("coaching_history")
     if raw is None or getattr(raw, "empty", True):
         return None
 
@@ -82,6 +87,7 @@ def build_coaching_history(
     # 2) map behavior -> topic (case-insensitive; log unmapped; they don't dampen)
     norm_map = {str(k).strip().casefold(): v for k, v in behavior_to_topic.items()}
     subject = df[map_key].astype(str).str.strip()
+    df["behavior"] = subject
     df["topic"] = subject.str.casefold().map(norm_map)
     unmapped = sorted(subject[df["topic"].isna()].dropna().unique().tolist())
     if unmapped:
@@ -94,19 +100,46 @@ def build_coaching_history(
     if df.empty:
         return None
 
-    # 3) canonical agent_id + period, then reduce to last coached period per (agent, topic)
+    # 3) canonical agent_id + the date driver (weekly `period` bucket preferred, else coaching_date)
     df["agent_id"] = normalize_agent_id(df["agent_id"])
-
-    period_col = "period" if "period" in df.columns else ("coaching_date" if "coaching_date" in df.columns else None)
-    if period_col is None:
+    driver_col = "period" if "period" in df.columns else ("coaching_date" if "coaching_date" in df.columns else None)
+    if driver_col is None:
         log.warning("coaching_history: no 'period'/'coaching_date' column; no dampening applied.")
         return None
 
-    df["last_coached_period"] = pd.to_datetime(df[period_col], errors="coerce")
-    df = df[df["agent_id"].notna() & df["last_coached_period"].notna()]
+    df["coach_period"] = pd.to_datetime(df[driver_col], errors="coerce")
+    df["coaching_date"] = pd.to_datetime(
+        df["coaching_date"] if "coaching_date" in df.columns else df[driver_col], errors="coerce"
+    )
+    df["coaching_status"] = df["coaching_status"].astype(str) if "coaching_status" in df.columns else pd.NA
+    df = df[df["agent_id"].notna() & df["coach_period"].notna()]
     if df.empty:
         return None
 
-    hist = df.groupby(["agent_id", "topic"], as_index=False)["last_coached_period"].max()
+    return df[["agent_id", "topic", "coach_period", "coaching_date", "behavior", "coaching_status"]].reset_index(drop=True)
+
+
+def build_coaching_history(
+    normalized: Dict[str, pd.DataFrame], config: Dict[str, Any]
+) -> Optional[pd.DataFrame]:
+    """
+    Collapse raw coaching events into the dampening input grain:
+
+        agent_id | topic | last_coached_period
+
+    Uses the governed crosswalk (configs/mappings/coaching_history_map.yaml) via
+    ``map_coaching_events`` to map each event's ``behavior_selected`` to an engine topic, then keeps
+    the most recent coached period per (agent, topic). Returns None when no ``coaching_history``
+    table is present (or nothing maps), so the pipeline degrades gracefully to no dampening.
+    """
+    events = map_coaching_events(normalized.get("coaching_history"), config)
+    if events is None or events.empty:
+        return None
+
+    hist = (
+        events.groupby(["agent_id", "topic"], as_index=False)["coach_period"]
+        .max()
+        .rename(columns={"coach_period": "last_coached_period"})
+    )
     log.info("coaching_history: built %d agent x topic dampening rows.", len(hist))
     return hist
