@@ -252,6 +252,12 @@ def lint_config(cfg: Dict[str, Any]) -> LintReport:
                 r.errors.append(
                     f"core_metrics: by_icp_client cohort '{coh}' is not in active.yaml icp_clients"
                 )
+        for tn, tb in (themes or {}).items():
+            for coh in ((tb or {}).get("cohorts") or []):
+                if coh not in roster_set:
+                    r.errors.append(
+                        f"themes: theme '{tn}' cohorts entry '{coh}' is not in active.yaml icp_clients"
+                    )
 
     # ---- DENOMINATOR FLOOR coupling: signal_thresholds.by_metric must match the catalog floor ----
     for k, v in (by_metric or {}).items():

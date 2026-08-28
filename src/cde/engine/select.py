@@ -122,7 +122,19 @@ def select_recommendations(
     bg_top = top_break_glass_per_agent(bg_all)
 
     # Tier 2
-    theme_cands, theme_members = build_theme_candidates(scores_windowed, config)
+    # scores_windowed drops icp_client by design, so derive the agent->cohort map
+    # from eligible_signals (which carries it) to enforce per-theme `cohorts` scoping.
+    agent_cohort = None
+    if (
+        eligible_signals is not None
+        and not eligible_signals.empty
+        and {"agent_id", "icp_client"}.issubset(eligible_signals.columns)
+    ):
+        ac = eligible_signals[["agent_id", "icp_client"]].dropna()
+        ac = ac.assign(icp_client=ac["icp_client"].astype(str).str.strip().str.lower())
+        agent_cohort = ac.groupby("agent_id")["icp_client"].first().to_dict()
+
+    theme_cands, theme_members = build_theme_candidates(scores_windowed, config, agent_cohort)
     theme_top = top_theme_per_agent(theme_cands)
     # Themes never override a break-glass agent.
     theme_top = _anti_join(theme_top, bg_top)

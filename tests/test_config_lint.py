@@ -109,6 +109,32 @@ def test_absolute_recipe_requires_bound(cfg):
     assert any("recalc.bound" in e for e in report.errors)
 
 
+def test_theme_cohort_not_in_roster_is_error(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    themes = _themes(c)
+    tname = next(iter(themes))
+    themes[tname]["cohorts"] = ["ghost-cohort"]
+    report = lint_config(c)
+    assert not report.ok()
+    assert any("cohorts entry 'ghost-cohort' is not in active.yaml icp_clients" in e for e in report.errors)
+
+
+def test_theme_cohort_in_roster_is_ok(cfg):
+    import copy
+
+    c = copy.deepcopy(cfg)
+    roster = list(c.get("icp_clients") or [])
+    if not roster:
+        pytest.skip("no roster configured")
+    themes = _themes(c)
+    tname = next(iter(themes))
+    themes[tname]["cohorts"] = [roster[0]]
+    report = lint_config(c)
+    assert not any("cohorts entry" in e for e in report.errors)
+
+
 def test_theme_member_not_a_metric_is_error(cfg):
     import copy
 

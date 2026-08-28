@@ -141,3 +141,60 @@ def test_invalid_override_falls_back_to_global():
     sw = _sw([("w1", 0.4), ("w2", 0.4), ("w3", 0.0), ("w4", 0.0)])
     cands, _ = build_theme_candidates(sw, cfg)
     assert set(cands["theme"]) == {"Wide"}
+
+
+# ---- per-theme cohort allow-list ----------------------------------------
+
+def _sw_agent(agent_id, rows):
+    """Like _sw but for an explicit agent_id (cohort scoping keys on agent_id)."""
+    df = _sw(rows)
+    df["agent_id"] = agent_id
+    return df
+
+
+_CFG_COHORT = {
+    "themes": {"themes": {
+        # Scoped to a single cohort; and an unscoped theme (applies everywhere).
+        "Sales": {"members": ["m1", "m2", "m3"], "conversation_type": "Performance Coaching",
+                  "cohorts": ["mob-verizon"]},
+        "Anywhere": {"members": ["m4", "m5"], "conversation_type": "Quality Coaching"},
+    }},
+    "theme_selection": {"count_fraction": 0.5, "score_level_floor": 0.15, "aggregate": "mean"},
+}
+
+# Both themes are deficient enough to qualify on the numbers alone.
+_SW_COHORT = _sw_agent("A1", [("m1", 0.4), ("m2", 0.4), ("m3", 0.0), ("m4", 0.4), ("m5", 0.4)])
+
+
+def test_scoped_theme_qualifies_only_for_matching_cohort():
+    # Agent in mob-verizon: scoped "Sales" AND unscoped "Anywhere" qualify.
+    cands, members = build_theme_candidates(_SW_COHORT, _CFG_COHORT, {"A1": "mob-verizon"})
+    assert set(cands["theme"]) == {"Sales", "Anywhere"}
+    assert set(members["theme"]) == {"Sales", "Anywhere"}
+
+
+def test_scoped_theme_excluded_for_other_cohort():
+    # Agent in a different cohort: only the unscoped "Anywhere" survives.
+    cands, members = build_theme_candidates(_SW_COHORT, _CFG_COHORT, {"A1": "pss-verizon"})
+    assert set(cands["theme"]) == {"Anywhere"}
+    assert set(members["theme"]) == {"Anywhere"}
+
+
+def test_cohort_labels_matched_case_insensitively():
+    # themes.yaml labels are lowercased on load; the agent_cohort map is lowercased
+    # by select.py, so a mixed-case cohort still matches after normalization.
+    cands, _ = build_theme_candidates(_SW_COHORT, _CFG_COHORT, {"A1": "mob-verizon"})
+    assert "Sales" in set(cands["theme"])
+
+
+def test_unknown_cohort_excluded_from_scoped_theme():
+    # Agent missing from the map (unknown cohort) fails the scoped allow-list.
+    cands, _ = build_theme_candidates(_SW_COHORT, _CFG_COHORT, {})
+    assert set(cands["theme"]) == {"Anywhere"}
+
+
+def test_scoping_skipped_without_agent_cohort_map():
+    # No map provided (default): scoping cannot be enforced, so a scoped theme is
+    # NOT dropped — preserves the 2-arg call contract used elsewhere.
+    cands, _ = build_theme_candidates(_SW_COHORT, _CFG_COHORT)
+    assert set(cands["theme"]) == {"Sales", "Anywhere"}

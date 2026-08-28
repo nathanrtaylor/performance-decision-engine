@@ -56,6 +56,22 @@ _MEMBER_DETAIL_COLS = [
 ]
 
 
+def _normalize_cohorts(raw: Any) -> set | None:
+    """
+    Normalize a theme's optional ``cohorts`` allow-list to a set of lowercase,
+    stripped cohort labels — or None when absent/empty (=> theme applies to ALL
+    cohorts, today's behavior). The labels are matched EXACTLY against the derived
+    ``icp_client`` (which already carries composite ``icp_client::client`` splits,
+    see ingestion.normalize.derive_cohort), so we lowercase/strip both sides.
+    """
+    if not raw:
+        return None
+    if isinstance(raw, str):  # tolerate a single string instead of a list
+        raw = [raw]
+    out = {str(c).strip().lower() for c in raw if str(c).strip()}
+    return out or None
+
+
 def _load_themes(config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
     """
     Return {theme_name: {"members": [...], "conversation_type": str}} from
@@ -82,6 +98,9 @@ def _load_themes(config: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
             # theme_selection.count_fraction. Resolved (validated) in
             # build_theme_candidates via _resolve_count_fraction.
             "count_fraction": spec.get("count_fraction"),
+            # Optional per-theme cohort allow-list; None => applies to ALL cohorts.
+            # Applied in build_theme_candidates once the agent->cohort map is known.
+            "cohorts": _normalize_cohorts(spec.get("cohorts")),
         }
     return out
 
@@ -152,6 +171,7 @@ def _empty_member_detail() -> pd.DataFrame:
 def build_theme_candidates(
     scores_windowed: pd.DataFrame,
     config: Dict[str, Any],
+    agent_cohort: Dict[str, str] | None = None,
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Build qualifying theme candidates per (agent_id, period, call_type).
@@ -162,6 +182,14 @@ def build_theme_candidates(
         n_deficient, and the member/deficient metric lists.
       - theme_members_detail: one row per (agent, period, call_type, theme, member)
         for every theme that appears in candidates — used to build receipt drivers.
+
+    ``agent_cohort`` (agent_id -> lowercase cohort label) enables the per-theme
+    ``cohorts`` allow-list: a theme that declares ``cohorts`` only qualifies for
+    agents whose cohort is in that set. scores_windowed does not carry icp_client
+    (by design), so select_recommendations derives this map from eligible_signals.
+    When None, cohort scoping cannot be enforced (unit-test callers) and a theme's
+    ``cohorts`` restriction is skipped with a warning. Themes without ``cohorts``
+    always apply to every cohort.
 
     Empty, well-formed frames are returned when no themes are configured or no
     theme qualifies (so the caller falls through to single-behavior selection).
@@ -213,6 +241,27 @@ def build_theme_candidates(
         return _empty_candidates(), _empty_member_detail()
     sw_themed["theme"] = sw_themed["metric"].map(metric_to_themes)
     sw_themed = sw_themed.explode("theme", ignore_index=True)
+
+    # Per-theme cohort allow-list: drop (agent x theme) rows whose cohort is not
+    # in a scoped theme's `cohorts` set. Themes with no `cohorts` (falsy) apply to
+    # every cohort. Applied BEFORE member_detail so both outputs respect it.
+    theme_cohorts = {name: spec.get("cohorts") for name, spec in themes.items()}
+    if any(theme_cohorts.values()):
+        if agent_cohort is not None:
+            coh = sw_themed["agent_id"].map(agent_cohort)
+            keep = [
+                (not theme_cohorts.get(t)) or (c in theme_cohorts[t])
+                for t, c in zip(sw_themed["theme"], coh)
+            ]
+            sw_themed = sw_themed[keep].copy()
+            if sw_themed.empty:
+                return _empty_candidates(), _empty_member_detail()
+        else:
+            log.warning(
+                "themes: %d theme(s) declare `cohorts` but no agent_cohort map was "
+                "provided; cohort scoping not applied.",
+                sum(1 for v in theme_cohorts.values() if v),
+            )
 
     # Member detail (kept for receipts; only deficient members are drivers).
     member_detail = sw_themed[

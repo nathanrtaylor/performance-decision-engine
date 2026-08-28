@@ -34,6 +34,13 @@ themes:
   #     bar for that theme only — used to make a WIDE, correlated theme require
   #     a broader pattern (e.g. Call Control 3-of-4) without demanding 3-of-3
   #     on the 3-member themes the way a global 0.75 would.
+  #   * A theme may set an OPTIONAL `cohorts:` allow-list to restrict it to
+  #     specific cohorts. Entries are lowercase `icp_client` labels (or composite
+  #     `icp_client::client` labels from cohort_map.yaml), matched EXACTLY against
+  #     the derived icp_client — listing a base like "small clients" does NOT pull
+  #     in its "small clients::hp" split. OMIT the field (default) => the theme
+  #     applies to ALL cohorts, unchanged. Each listed label must be in
+  #     active.yaml `icp_clients` (config_lint errors otherwise).
   #   * Among qualifying themes, the highest combined score wins.
   #   * A break-glass single (metric_catalog break_glass flag) can still
   #     override a theme; an ordinary single is the fallback when no theme
@@ -82,4 +89,8 @@ themes:
       - sp100
       - cancel_rate
       - transition_statement_ad
-    conversation_type: "Performance Coaching"  
+    conversation_type: "Performance Coaching"
+    # Optional cohort scoping (omit => all cohorts). Example: restrict to Verizon:
+    #cohorts:
+    #  - "mob-verizon"
+    #  - "pss-verizon"
