@@ -1,0 +1,383 @@
+<title>Training Decision Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root {
+    --ground: #eef1f4;
+    --surface: #ffffff;
+    --surface-2: #f4f6f9;
+    --sunken: #e9edf2;
+    --ink: #12242b;
+    --text: #2a3a42;
+    --muted: #5c6b74;
+    --faint: #869099;
+    --line: rgba(18, 36, 43, 0.11);
+    --line-strong: rgba(18, 36, 43, 0.18);
+    --accent: #0b6f78;
+    --accent-bright: #109aa6;
+    --accent-soft: rgba(16, 154, 166, 0.12);
+    --ok: #1f7a4d;
+    --ok-soft: rgba(31, 122, 77, 0.13);
+    --pending: #9a6a12;
+    --pending-soft: rgba(154, 106, 18, 0.13);
+    --shadow: 0 1px 2px rgba(18,36,43,.05), 0 12px 34px -20px rgba(18,36,43,.30);
+
+    --disp: "Sora", system-ui, sans-serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    --maxw: 60rem;
+    --edge: clamp(1.1rem, 4vw, 3rem);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #0d1218;
+      --surface: #141b22;
+      --surface-2: #1a222b;
+      --sunken: #10161d;
+      --ink: #eaf1f5;
+      --text: #d3dce3;
+      --muted: #98a6af;
+      --faint: #67757e;
+      --line: rgba(255,255,255,0.10);
+      --line-strong: rgba(255,255,255,0.17);
+      --accent: #2bb7c2;
+      --accent-bright: #45cdd8;
+      --accent-soft: rgba(43, 183, 194, 0.13);
+      --ok: #4cc185;
+      --ok-soft: rgba(76, 193, 133, 0.14);
+      --pending: #d6a94e;
+      --pending-soft: rgba(214, 169, 78, 0.14);
+      --shadow: 0 1px 2px rgba(0,0,0,.32), 0 18px 42px -22px rgba(0,0,0,.7);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #0d1218;
+    --surface: #141b22;
+    --surface-2: #1a222b;
+    --sunken: #10161d;
+    --ink: #eaf1f5;
+    --text: #d3dce3;
+    --muted: #98a6af;
+    --faint: #67757e;
+    --line: rgba(255,255,255,0.10);
+    --line-strong: rgba(255,255,255,0.17);
+    --accent: #2bb7c2;
+    --accent-bright: #45cdd8;
+    --accent-soft: rgba(43, 183, 194, 0.13);
+    --ok: #4cc185;
+    --ok-soft: rgba(76, 193, 133, 0.14);
+    --pending: #d6a94e;
+    --pending-soft: rgba(214, 169, 78, 0.14);
+    --shadow: 0 1px 2px rgba(0,0,0,.32), 0 18px 42px -22px rgba(0,0,0,.7);
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--ground); color: var(--text);
+    font-family: var(--sans); font-size: 16px; line-height: 1.62;
+    -webkit-font-smoothing: antialiased;
+  }
+  .shell { max-width: 78rem; margin: 0 auto; display: grid; grid-template-columns: 1fr; }
+  @media (min-width: 1000px) {
+    .shell { grid-template-columns: 15rem minmax(0,1fr); gap: 2.5rem; padding-inline: var(--edge); }
+  }
+
+  /* ---- nav rail ---- */
+  nav.toc { display: none; }
+  @media (min-width: 1000px) {
+    nav.toc {
+      display: block; position: sticky; top: 0; align-self: start;
+      max-height: 100vh; overflow-y: auto; padding: 2.4rem 0 2rem;
+      font-family: var(--mono); font-size: .76rem;
+    }
+    nav.toc .navtitle { color: var(--accent); letter-spacing: .12em; text-transform: uppercase; font-weight: 600; margin-bottom: 1rem; }
+    nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: .28rem 0; border-left: 2px solid transparent; padding-left: .8rem; }
+    nav.toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+  }
+
+  main { min-width: 0; max-width: var(--maxw); padding: 0 var(--edge) 5rem; }
+  @media (min-width: 1000px) { main { padding-inline: 0; } }
+
+  /* ---- header ---- */
+  header.doc { padding: clamp(2.4rem,6vw,4rem) 0 1.6rem; }
+  .eyebrow { font-family: var(--mono); font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  h1 { font-family: var(--disp); font-weight: 700; font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -.02em; color: var(--ink); margin: .8rem 0 0; text-wrap: balance; }
+  .sub { font-size: 1.08rem; color: var(--muted); margin-top: .9rem; max-width: 46ch; }
+  .meta { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: 1.5rem; }
+  .chip { font-family: var(--mono); font-size: .72rem; letter-spacing: .03em; padding: .32rem .7rem; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); background: var(--surface); }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .chip.accent { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+
+  section { padding-top: 2.6rem; scroll-margin-top: 1rem; }
+  h2 { font-family: var(--disp); font-weight: 600; font-size: 1.5rem; color: var(--ink); letter-spacing: -.01em; margin: 0 0 .2rem; display: flex; gap: .6rem; align-items: baseline; }
+  h2 .num { font-family: var(--mono); font-size: .9rem; color: var(--accent); font-weight: 500; }
+  h3 { font-family: var(--disp); font-weight: 600; font-size: 1.08rem; color: var(--ink); margin: 1.8rem 0 .4rem; }
+  section > p, section > ul, section > ol { max-width: 68ch; }
+  p { margin: .7rem 0; }
+  a { color: var(--accent); }
+  strong { color: var(--ink); font-weight: 600; }
+  ul, ol { padding-left: 1.2rem; }
+  li { margin: .3rem 0; }
+  .rule { height: 1px; background: var(--line); border: 0; margin-top: 2.6rem; }
+
+  code { font-family: var(--mono); font-size: .86em; background: var(--sunken); padding: .1em .38em; border-radius: 4px; color: var(--ink); }
+  pre { background: var(--sunken); border: 1px solid var(--line); border-radius: 8px; padding: 1rem 1.1rem; overflow-x: auto; margin: 1rem 0; }
+  pre code { background: none; padding: 0; font-size: .8rem; line-height: 1.55; color: var(--text); }
+  .cmt { color: var(--faint); }
+
+  /* ---- lede / callout ---- */
+  .lede { font-family: var(--disp); font-weight: 500; font-size: clamp(1.15rem,2.4vw,1.5rem); line-height: 1.35; color: var(--ink); border-left: 3px solid var(--accent); padding-left: 1.1rem; margin: 1.4rem 0; letter-spacing: -.01em; }
+  .note { background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--accent-bright); border-radius: 0 8px 8px 0; padding: 1rem 1.2rem; margin: 1.2rem 0; box-shadow: var(--shadow); }
+  .note .lbl { font-family: var(--mono); font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+  .note.warn { border-left-color: var(--pending); }
+  .note.warn .lbl { color: var(--pending); }
+  .note p:last-child { margin-bottom: 0; }
+
+  /* ---- tables ---- */
+  .tablewrap { overflow-x: auto; margin: 1.2rem 0; border: 1px solid var(--line); border-radius: 8px; }
+  table { border-collapse: collapse; width: 100%; font-size: .92rem; }
+  th, td { text-align: left; padding: .7rem .9rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-family: var(--mono); font-size: .7rem; letter-spacing: .06em; text-transform: uppercase; color: var(--faint); font-weight: 600; background: var(--surface-2); }
+  tr:last-child td { border-bottom: 0; }
+  td code { white-space: nowrap; }
+
+  .status { font-family: var(--mono); font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; font-weight: 600; padding: .18rem .5rem; border-radius: 999px; white-space: nowrap; }
+  .status.done { color: var(--ok); background: var(--ok-soft); }
+  .status.now { color: var(--accent); background: var(--accent-soft); }
+  .status.todo { color: var(--pending); background: var(--pending-soft); }
+
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+</style>
+
+<div class="shell">
+  <nav class="toc" aria-label="Contents">
+    <div class="navtitle">Contents</div>
+    <a href="#what">1 · What it is</a>
+    <a href="#arch">2 · Architecture</a>
+    <a href="#status">3 · Status by phase</a>
+    <a href="#files">4 · What's built</a>
+    <a href="#schema">5 · Program schema</a>
+    <a href="#decisions">6 · Design decisions</a>
+    <a href="#open">7 · Assumptions & open items</a>
+    <a href="#run">8 · How to run</a>
+    <a href="#roadmap">9 · Roadmap</a>
+    <a href="#principle">10 · Guiding principle</a>
+  </nav>
+
+  <main>
+    <header class="doc">
+      <div class="eyebrow">Design &amp; Status · for review</div>
+      <h1>Training Decision Engine</h1>
+      <p class="sub">Extending the coaching engine's methodology to new-hire training — as remediation routing that tells an expert exactly what to retake, and stays quiet when they're on track.</p>
+      <div class="meta">
+        <span class="chip accent"><b>Phases 0–2 complete</b></span>
+        <span class="chip">Phase&nbsp;3 next</span>
+        <span class="chip">branch <b>training-insights</b></span>
+        <span class="chip">updated <b>2026-09-01</b></span>
+      </div>
+    </header>
+
+    <section id="what">
+      <h2><span class="num">01</span> What it is</h2>
+      <p>The <strong>Training Decision Engine</strong> extends the Coaching Decision Engine's methodology — <em>weight data → find signals → summarize → recommend</em> — from live-call coaching to <strong>new-hire / expert training</strong>.</p>
+      <p class="lede">Its goal is remediation routing: for each expert, surface which specific parts of their training to go back and retake — targeted at the skills where they're deficient. When nothing is materially deficient, no remediation is prescribed.</p>
+      <p>The output is a governed, per-expert <strong>remediation plan</strong> (what to retake, why, with the progression gate) plus a training dashboard — engine-generated and evidence-backed, not hand-written.</p>
+      <h3>The remediation model — three properties that drive the design</h3>
+      <ul>
+        <li><strong>Block-gated trigger.</strong> Training is organized into sequential <strong>learning blocks</strong>, each ending in a <strong>test call</strong>. Scoring below the acceptable threshold on that test call triggers remediation for the block: retake the block's skill-level simulations (for the deficient skills) <em>and</em> the end-of-block test call, and the expert can't progress until the gate clears.</li>
+        <li><strong>Steerable scope.</strong> We can tune <em>how far back</em> to send an expert (this block / back N blocks / to the block that first taught a weak skill) and <em>what areas</em> (which modalities and skills) — via config, without code changes.</li>
+        <li><strong>Once-only.</strong> An expert is never sent back to remediate material they've <strong>already remediated</strong>; a remediation-history exclusion keeps plans from looping.</li>
+      </ul>
+    </section>
+
+    <hr class="rule">
+    <section id="arch">
+      <h2><span class="num">02</span> Architecture — reusing the coaching engine</h2>
+      <p>The core finding from exploration: <strong>~70–80% of the analytical engine is domain-generic</strong> (percentile scoring, temporal windowing, evidence gating, prioritization, three-tier selection), and most of the rest is <strong>pure YAML config</strong>. Coaching-specific behavior is concentrated in ingestion, a shallow org-enrichment block, narrative text, and dashboards.</p>
+      <p>So training is an <strong>additive, parallel domain</strong>: it reuses the shared <code>src/cde</code> core unchanged and runs from <strong>its own governed config set</strong> (<code>configs/training/</code>). <strong>The live-call coaching pipeline is untouched.</strong></p>
+      <pre><code>Training data (tall-skinny)                Shared engine (UNCHANGED)
+  TrAIning Assist skills ─┐
+  CBT completion/scores  ─┼─→ build_signals → thresholds → temporal window →
+                          │    scoring (percentile-of-deficit) → prioritization →
+                          │    three-tier selection → abstention → receipts
+  configs/training/ (isolated) drives every metric / benchmark / topic / threshold</code></pre>
+      <h3>Two data sources (not three)</h3>
+      <ol>
+        <li><strong>TrAIning Assist</strong> (AI simulator): per-behavior <code>behaviorPresent</code> flags → rolled up to <strong>skill-level pass-rates</strong>; also the source of end-of-block <strong>test calls</strong>.</li>
+        <li><strong>Computer-Based Training (CBT)</strong> (Workday Learning): course completion + <strong>scores</strong>. <strong>The CBT <code>score</code> is the assessment</strong> — there is no separate assessments feed.</li>
+      </ol>
+      <p>Both conform to the engine's <strong>tall-skinny contract</strong> — <code>(agent_id, period, call_type, metric_key, numerator, denominator, calc)</code> — valued as a 0–1 pass-rate (<code>value = calc</code>), exactly like the coaching <code>behavior_scores</code> source.</p>
+      <div class="note">
+        <div class="lbl">Temporal grain = DAY</div>
+        <p>Training progresses day-by-day, so the domain runs on a <strong>daily</strong> grain. This is a <strong>config-level change, not a core rewrite</strong>: windowing selects the <em>last N distinct <code>period</code> values</em> (period-generic, not 7-day-calendar math) and trend runs over real timestamps. Binding <code>period</code> to the event day + a day-unit <code>temporal:</code> block makes the whole pipeline day-grained, with a <strong>rolling last-N-days</strong> window (currently 30). The internal score columns keep their weekly-era names (<code>level_8w</code>); the values are day-based.</p>
+      </div>
+    </section>
+
+    <hr class="rule">
+    <section id="status">
+      <h2><span class="num">03</span> Status by phase</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Phase</th><th>Scope</th><th>Status</th><th>Commit</th></tr></thead>
+        <tbody>
+          <tr><td><b>0</b></td><td>Branch + consolidate prior scattered work</td><td><span class="status done">Done</span></td><td><code>d552279</code></td></tr>
+          <tr><td><b>1</b></td><td>Training config set + first recommendations from real sim data</td><td><span class="status done">Done</span></td><td><code>e434ad1</code></td></tr>
+          <tr><td><b>2</b></td><td>CBT source (= completion + assessment scores)</td><td><span class="status done">Done · day-ready</span></td><td><code>b3e1fb3</code></td></tr>
+          <tr><td><b>3</b></td><td>Program structure + block-gated remediation engine</td><td><span class="status now">Next</span></td><td>—</td></tr>
+          <tr><td><b>4</b></td><td>Remediation plans + real dashboard + narratives</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
+          <tr><td><b>5</b></td><td>Config-driven enrichment, governance, tests, docs</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
+        </tbody>
+      </table></div>
+      <h3>Phase 1 validated the reuse thesis</h3>
+      <p>Running the training config set through the shared engine on the current extract produced, with <strong>zero core-code changes</strong>: config-lint clean, <strong>104 remediation recommendations vs 2,075 on-track (abstained)</strong>, and receipts carrying real evidence — e.g. <em>"account_assessment averages 22% against a benchmark of 80% … the gap has been widening, so it is timely to intervene."</em></p>
+      <div class="note warn">
+        <div class="lbl">Validation caveat</div>
+        <p>Those numbers are <strong>plumbing-valid on weekly data with day-grain knobs</strong>; real magnitudes await the daily re-extract. CBT is <strong>day-ready but not yet validated end-to-end</strong> (no DB access locally).</p>
+      </div>
+    </section>
+
+    <hr class="rule">
+    <section id="files">
+      <h2><span class="num">04</span> What's built &amp; where</h2>
+      <h3>Config set — <code>configs/training/</code> (isolated; live-call <code>configs/</code> untouched)</h3>
+      <ul>
+        <li><code>active.yaml</code> — composition root; day-grain <code>temporal:</code> block; abstention ON; <code>Re-training</code> conversation type.</li>
+        <li><code>mappings/source_catalog.yaml</code> — <code>agents</code> roster, <code>training_assist_skills</code>, <code>training_cbt</code>.</li>
+        <li><code>mappings/{metric_catalog,benchmarks,topic_map}.yaml</code> — 22 skill metrics, 80% pass-mark, <code>Retake: &lt;skill&gt;</code> topics (generated).</li>
+        <li><code>thresholds/signal_thresholds.yaml</code>, <code>priorities/v2026_09_01_training_baseline.yaml</code>.</li>
+      </ul>
+      <h3>Extraction &amp; code</h3>
+      <ul>
+        <li><code>extraction/sql/training_assist.sql.j2</code> (sim behaviors; week-grained until day re-extract), <code>training_cbt.sql.j2</code> (day-grained), <code>extract_training_assist.yaml</code> (runs both into <code>data/raw/adhoc</code>).</li>
+        <li><code>src/cde/ingestion/training_assist_skills.py</code> + CLI <code>build_training_assist_skills</code> (behavior → skill rollup via <code>training_profiles.yaml</code>).</li>
+        <li><code>tools/gen_training_configs.py</code> (regenerates the mechanical configs from real data; multi-source), <code>tools/ascend_training_dashboard_example.py</code> (target dashboard shape + JSON contract).</li>
+        <li><strong>Reused unchanged:</strong> <code>scoring/assemble.py</code>, <code>temporal/aggregate.py</code>, <code>signals/*</code>, <code>prioritization/*</code>, <code>engine/*</code>, <code>reporting/dashboard_kit.py</code>.</li>
+      </ul>
+      <h3>Seeded (Phase 3 start)</h3>
+      <p><code>configs/training/training_program.yaml</code> — a 16-block ASCEND Launchpad instance seeded from the strategy doc (see §5).</p>
+      <h3>Not yet built (Phases 3–5)</h3>
+      <p><code>configs/training/remediation.yaml</code> (steerable policy), <code>src/cde/training/program.py</code> (block-gate + pacing + remediation mapper), remediation-history ingestion, <code>explainability/training_templates.py</code>, <code>reporting/training_dashboard.py</code>, <code>cli/run_training_pipeline.py</code>.</p>
+    </section>
+
+    <hr class="rule">
+    <section id="schema">
+      <h2><span class="num">05</span> Proposed <code>training_program.yaml</code> schema</h2>
+      <p>Phase 3's crux is the <strong>program structure</strong>, which you define <strong>incrementally</strong>. It's a config you fill in a block at a time; the engine runs on whatever's defined and a checker reports what's still missing. Below is the proposed schema (empty scaffold + field docs) — please sanity-check the <em>shape</em> before we build <code>program.py</code> against it.</p>
+      <div class="note">
+        <div class="lbl">Seeded from the ASCEND strategy doc</div>
+        <p>A 16-block instance now exists at <code>configs/training/training_program.yaml</code> — blocks, order, labels, assessment methods, simulation counts, gates at <code>pass_mark: 0.90</code>, and best-effort <code>develops:</code> mappings (all 22 cataloged skills covered). It adds <strong>pacing dimensions</strong> on top of the schema below: per-block <code>estimated_hours</code> and <strong><code>expected_completion_day</code></strong> (days since training start, derived from cumulative hours at a program-level <code>pace.hours_per_day</code> knob — provisional until the real class calendar replaces it). <code>gate.test_call</code> refs, component (CBT/sim) enumeration, and the tools/troubleshooting skill mappings remain <code>TODO</code>.</p>
+      </div>
+      <pre><code>program:
+  name: "&lt;program name&gt;"
+  blocks:                          <span class="cmt"># in the order an expert progresses</span>
+    - id: block_1                  <span class="cmt"># stable id used by program.py + receipts</span>
+      label: "&lt;human label&gt;"
+      order: 1
+      gate:                        <span class="cmt"># end-of-block TEST CALL that gates progression</span>
+        test_call: "&lt;challenge_id / test-call key in the data&gt;"
+        pass_mark: 0.80            <span class="cmt"># optional; falls back to a default</span>
+      components:                  <span class="cmt"># remediable items; each names the skills it develops</span>
+        - kind: skill_sim          <span class="cmt"># a TrAIning Assist scenario</span>
+          ref: "&lt;challenge_id&gt;"
+          develops: [ "&lt;skill_id&gt;", "&lt;skill_id&gt;" ]
+        - kind: cbt                <span class="cmt"># a Workday Learning course (score = assessment)</span>
+          ref: "&lt;courseid&gt;"
+          develops: [ "&lt;skill_id&gt;" ]
+    <span class="cmt"># - id: block_2 ...            # add blocks as you define them</span>
+  defaults:
+    gate_pass_mark: 0.80</code></pre>
+      <ul>
+        <li><code>develops:</code> is the routing table in inverse form (component → skills). <code>program.py</code> derives the forward map (deficient skill → components to retake) from it, so the config stays in natural "here's what this course/sim teaches" phrasing.</li>
+        <li><strong>Partial is fine.</strong> Unmapped skills, courses not tied to a block, or a block missing a gate are reported as <code>TODO</code> by the checker — not errors. The engine remediates only where structure is defined.</li>
+        <li>Skill ids are the ones already cataloged (<code>warm_greeting</code>, <code>account_assessment</code>, …); CBT <code>ref</code> is the <code>courseid</code>; sim <code>ref</code> is the <code>challenge_id</code>.</li>
+      </ul>
+      <h3>Companion — <code>remediation.yaml</code> (steerable policy)</h3>
+      <pre><code>remediation:
+  gate_pass_mark: 0.80             <span class="cmt"># acceptable performance on a block-gate test call</span>
+  scope:
+    how_far_back: current_block    <span class="cmt"># current_block | back_n | to_skill_origin</span>
+    back_n: 1
+    include_modalities: [ skill_sim, test_call ]
+    skills: deficient_only         <span class="cmt"># deficient_only | whole_block</span>
+  once_only: true                  <span class="cmt"># never re-prescribe already-remediated material</span></code></pre>
+    </section>
+
+    <hr class="rule">
+    <section id="decisions">
+      <h2><span class="num">06</span> Key design decisions &amp; rationale</h2>
+      <div class="tablewrap"><table>
+        <thead><tr><th>Decision</th><th>Choice</th><th>Why</th></tr></thead>
+        <tbody>
+          <tr><td>Branch vs fork</td><td><b>Branch</b>, same repo</td><td>~70–80% of the core is reusable unchanged; most difference is config; prior training work already lived here; a fork would strand it and guarantee drift. Extract a shared package only if training later becomes a separately-governed product.</td></tr>
+          <tr><td>Branch base</td><td><code>theme-cohort-scoping</code> (PR #18 tip)</td><td>Green baseline + newest primitives. Rebase onto <code>main</code> after PR #18 merges.</td></tr>
+          <tr><td>Config isolation</td><td>Dedicated <code>configs/training/</code></td><td>Full isolation + independent governance; shared code; coaching pipeline untouched.</td></tr>
+          <tr><td>Grain</td><td><b>Day</b> (rolling last-N-days)</td><td>Training progresses day-by-day; supported by config alone (period-generic windowing).</td></tr>
+          <tr><td>Materiality</td><td><b>Abstention ON</b></td><td>Cleanly separates "needs remediation" from "on-track"; a withheld remediation is an explicit, explained decision.</td></tr>
+          <tr><td>Benchmarks</td><td>Flat 80% (first pass)</td><td>Simple start; per-skill calibration via the recalc module against real daily data.</td></tr>
+          <tr><td>Assessments</td><td>= CBT <code>score</code></td><td>Confirmed: not a separate feed.</td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <hr class="rule">
+    <section id="open">
+      <h2><span class="num">07</span> Assumptions to confirm &amp; open items</h2>
+      <div class="note warn">
+        <div class="lbl">CBT assumptions — confirm on the first real extract</div>
+        <p>Each is a one-line SQL change, flagged in <code>training_cbt.sql.j2</code>:</p>
+        <p>• <code>userid</code> is the <strong>numeric employee id</strong> (so CBT joins TrAIning Assist on <code>agent_id</code>). If it's a username, we add a <code>userid → employee_id</code> map.<br>
+        • <code>score</code> is on a <strong>0–100</strong> scale (normalized <code>/100</code>). If already 0–1, drop the <code>/100</code>.</p>
+      </div>
+      <h3>Reconciliation gaps (SME review)</h3>
+      <ul>
+        <li>3 sim behaviors have no skill mapping and are dropped: <code>ask to enroll</code>, <code>celebrate enrollment</code>, <code>disclosures statement</code>.</li>
+        <li>11 <code>challenge_id</code>s in the data aren't in <code>training_profiles.yaml</code> (likely newer/test profiles); their rows are dropped until reconciled.</li>
+      </ul>
+      <h3>Benchmark calibration</h3>
+      <p>A flat 80% pass-mark misfits some skills — e.g. <code>resolve_concerns</code> never dips below 0.83, so nobody is ever "deficient" on it. Tune per-skill pass-marks with the benchmark-recalc module against real daily data.</p>
+      <h3>Program structure</h3>
+      <p>The biggest open item — blocks, components, gates, and skill mappings (Section 5) — is the domain/SME definition currently in progress.</p>
+    </section>
+
+    <hr class="rule">
+    <section id="run">
+      <h2><span class="num">08</span> How to run (today)</h2>
+      <pre><code><span class="cmt"># 1. Extract training data (needs DB access) -> data/raw/adhoc/latest/</span>
+python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
+
+<span class="cmt"># 2. Roll TrAIning Assist behaviors up to skill pass-rates</span>
+python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+
+<span class="cmt"># 3. (Re)generate the mechanical training configs from the real data</span>
+python tools/gen_training_configs.py --raw-dir data/raw/adhoc/latest
+
+<span class="cmt"># 4. Validate config integrity</span>
+python -m cde.cli.check_config --configs-dir configs/training --raw-dir data/raw/adhoc/latest
+
+<span class="cmt"># 5. Run the training domain through the shared engine</span>
+python -m cde.cli.run_pipeline --configs-dir configs/training \
+    --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/&lt;date&gt;</code></pre>
+      <p>A dedicated <code>run_training_pipeline</code> entrypoint + training dashboard arrive in Phase 4.</p>
+    </section>
+
+    <hr class="rule">
+    <section id="roadmap">
+      <h2><span class="num">09</span> Roadmap</h2>
+      <ul>
+        <li><strong>Phase 3 — Program structure + remediation engine.</strong> Define <code>training_program.yaml</code> incrementally; build <code>program.py</code> (block/modality status, block-gate trigger, steerable last-N-days scope, once-only exclusion) + <code>remediation.yaml</code> + a coverage checker that reports defined-vs-missing. Validate against the TrAIning Assist data already flowing.</li>
+        <li><strong>Phase 4 — Remediation plans + dashboard + narratives.</strong> Per-expert remediation plan (retake targets + progression gate + evidence + role-split expert/trainer/coach actions); promote the mockup into a real data-backed <code>training_dashboard.py</code>; remediation-phrased narratives; <code>run_training_pipeline.py</code>.</li>
+        <li><strong>Phase 5 — Enrichment, governance, tests, docs.</strong> Config-driven org-enrichment (trainee roster: class / trainer / tenure_group), config-lint coverage for the program structure, tests, and README.</li>
+      </ul>
+    </section>
+
+    <hr class="rule">
+    <section id="principle">
+      <h2><span class="num">10</span> Guiding principle</h2>
+      <p class="lede">The system should not slow leaders down. It should make fast decisions work on purpose.</p>
+      <p>For training: the moment an expert falls short at a block gate, the engine names exactly what to retake and why — and stays quiet for everyone who's on track.</p>
+    </section>
+  </main>
+</div>

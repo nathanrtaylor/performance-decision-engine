@@ -1,0 +1,211 @@
+# configs/training/training_program.yaml
+# ============================================================================
+# ASCEND "Launchpad" program structure  --  SEED (for SME review & completion)
+# ============================================================================
+# Seeded from docs/training/"Ascend Learning Blocks Training Strategy.docx"
+# (16 learning blocks, ~45 CBTs, ~189 simulations). This is the routing table
+# Phase 3's remediation engine consumes: block sequence + gates + which skills
+# each component develops (deficient skill -> components to retake).
+#
+# PARTIAL BY DESIGN. Fill in incrementally; the coverage checker reports what is
+# still TODO (unmapped skills, components without refs, blocks missing a gate).
+#
+# What is seeded vs TODO:
+#   - blocks / order / labels / estimated_hours / expected_completion_day : from the doc.
+#   - assessment_methods, total_simulations : from the doc.
+#   - gate.pass_mark : seeded from each block's "Minimum Performance Expectations"
+#       (mostly 9-of-10 = 0.90; some 100% = 1.0). gate.test_call ref = TODO
+#       (map to the block's TrAIning Assist end-of-block test-call challenge_id).
+#   - develops : BEST-EFFORT seed where the block maps cleanly to the 22 cataloged
+#       TrAIning Assist skills; [] # TODO where it does not (tools/troubleshooting
+#       blocks have no direct sim-skill yet). SME to confirm.
+#   - components (individual CBTs/sims by ref) : TODO -- enumerate from the course
+#       tables + "Ascend Simulations.xlsx" and reconcile CBT courseids once the
+#       training_cbt extract lands.
+#
+# NOTE on expected_completion_day: PROVISIONAL. Derived as cumulative
+# estimated_hours / pace.hours_per_day (content+sim time only -- excludes ILT,
+# coaching, remediation, breaks). Replace with the real class calendar.
+
+program:
+  name: "ASCEND Launchpad"
+  source: 'docs/training/Ascend Learning Blocks Training Strategy.docx'
+  totals: { learning_blocks: 16, cbts: 45, videos: 23, simulations: 189, ilt: 1 }
+
+  # Pacing assumption used to derive expected_completion_day from cumulative hours.
+  pace:
+    hours_per_day: 6          # productive content/sim hours per training day (ADJUST to real schedule)
+
+  defaults:
+    gate_pass_mark: 0.90      # "9 of 10 evaluated scenarios" is the common bar; some blocks require 1.0
+
+  blocks:
+    - id: block_01
+      order: 1
+      label: "Welcome to Asurion"
+      estimated_hours: 4.5
+      expected_completion_day: 1        # cum 4.5h
+      assessment_methods: [knowledge_check]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # orientation; no demonstrated sim skill
+
+    - id: block_02
+      order: 2
+      label: "Expert Foundations - The Tech Coach Role & Call Flow"
+      estimated_hours: 2.0
+      expected_completion_day: 2        # cum 6.5h
+      total_simulations: 13
+      assessment_methods: [knowledge_check, simulation, training_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [set_expectations, transition_statement]   # SEED - call-flow structure
+
+    - id: block_03
+      order: 3
+      label: "Tools for the Call Flow - Asurion Tools"
+      estimated_hours: 3.0
+      expected_completion_day: 2        # cum 9.5h
+      total_simulations: 10
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, helix_search]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # TODO - tool-proficiency skills not in the sim-skill catalog
+
+    - id: block_04
+      order: 4
+      label: "Tools for the Call Flow - Client Tools"
+      estimated_hours: 2.67
+      expected_completion_day: 3        # cum 12.2h
+      total_simulations: 10
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, guided_flows]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # TODO
+
+    - id: block_05
+      order: 5
+      label: "Sales Foundation - Product Knowledge, Compliance & Integrity"
+      estimated_hours: 2.08
+      expected_completion_day: 3        # cum 14.3h
+      total_simulations: 6
+      assessment_methods: [knowledge_check, simulation, roleplay_tool, training_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # TODO - foundational; sales skills demonstrated in block_14
+
+    - id: block_06
+      order: 6
+      label: "Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance"
+      estimated_hours: 2.25
+      expected_completion_day: 3        # cum 16.5h
+      total_simulations: 10
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [warm_greeting, verification, account_assessment, advanced_discovery, show_empathy, reassure, set_expectations]  # SEED
+
+    - id: block_07
+      order: 7
+      label: "Call Flow Stage 2: Troubleshooting Basics"
+      estimated_hours: 3.17
+      expected_completion_day: 4        # cum 19.7h
+      total_simulations: 13
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # TODO - troubleshooting logic; confirm sim-skill mapping
+
+    - id: block_08
+      order: 8
+      label: "Call Flow Stage 2: Solve & Test - Device Basics"
+      estimated_hours: 3.08
+      expected_completion_day: 4        # cum 22.8h
+      total_simulations: 20
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution]       # SEED - solve & confirm resolution
+
+    - id: block_09
+      order: 9
+      label: "Call Flow Stage 2: Solve & Test - Hardware vs Software"
+      estimated_hours: 4.0
+      expected_completion_day: 5        # cum 26.8h
+      total_simulations: 15
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution]       # SEED
+
+    - id: block_10
+      order: 10
+      label: "Call Flow Stage 2: Solve & Test - Networking"
+      estimated_hours: 3.0
+      expected_completion_day: 5        # cum 29.8h
+      total_simulations: 13
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution]       # SEED
+
+    - id: block_11
+      order: 11
+      label: "Call Flow Stage 2: Solve & Test - Activations & Device Onboarding"
+      estimated_hours: 7.0
+      expected_completion_day: 7        # cum 36.8h
+      total_simulations: 35
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution]       # SEED
+
+    - id: block_12
+      order: 12
+      label: "Call Flow Stage 2: Solve & Test - Carrier Account"
+      estimated_hours: 2.25
+      expected_completion_day: 7        # cum 39.0h
+      total_simulations: 11
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [account_assessment, test_resolution]   # SEED
+
+    - id: block_13
+      order: 13
+      label: "Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims"
+      estimated_hours: 2.5
+      expected_completion_day: 7        # cum 41.5h
+      total_simulations: 8
+      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution]       # SEED
+
+    - id: block_14
+      order: 14
+      label: "Call Flow Stage 4: Sales in Action"
+      estimated_hours: 2.25
+      expected_completion_day: 8        # cum 43.8h
+      total_simulations: 10
+      assessment_methods: [knowledge_check, simulation, training_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [discovery_question, engagement_question, core_benefit_1, core_benefit_2, core_benefit_3, price_statement, resolve_concerns, ask_for_sale, ask_to_send_link, transition_statement, conversational_language]  # SEED - sell flow
+
+    - id: block_15
+      order: 15
+      label: "Call Flow Stage 5: Confirm, Recap, Close"
+      estimated_hours: 1.17
+      expected_completion_day: 8        # cum 44.9h
+      assessment_methods: [knowledge_check, simulation, training_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: [test_resolution, goodbye_with_rapport, survey, ty_reinforcement]  # SEED - confirm/recap/close
+
+    - id: block_16
+      order: 16
+      label: "Expert Readiness - Training Closing"
+      estimated_hours: 3.75
+      expected_completion_day: 9        # cum 48.7h
+      total_simulations: 7
+      assessment_methods: [knowledge_check, simulation, training_assist]
+      gate: { test_call: TODO, pass_mark: 0.90 }
+      develops: []                      # capstone - mixed-intent readiness; SME to scope
+
+# ----------------------------------------------------------------------------
+# TODO (SME / data reconciliation):
+#   1. gate.test_call for each block -> the TrAIning Assist end-of-block test-call
+#      challenge_id (and per-block pass_mark where the doc requires 100%).
+#   2. components: enumerate CBTs (courseid, once training_cbt lands) and skill
+#      sims (challenge_id) per block, each with its own develops: skills, from the
+#      course tables + Ascend Simulations.xlsx.
+#   3. develops: confirm/complete the skill mappings, incl. tool & troubleshooting
+#      blocks (may need new skills beyond the current 22 sim skills).
+#   4. pace.hours_per_day + expected_completion_day: replace estimates with the
+#      real class calendar.
