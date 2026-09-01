@@ -1,0 +1,26 @@
+signal_thresholds:
+
+  # Fail-closed evidence gating for the training domain (see the coaching engine's
+  # signal_thresholds.yaml for the mode contract). Materiality is deferred to the
+  # abstention floor in active.yaml -- these are evidence-QUALITY gates only.
+  mode: production
+
+  # Day grain: coverage is sparser per period than the weekly engine, so min_confidence
+  # and denominator floors are lower. Calibrate against a real daily extract.
+  global:
+    min_confidence: 0.20
+    max_volatility: null
+    min_denominator_default: 3
+
+  # All training skill categories fall back to `global`; add overrides here if a
+  # category needs a different floor.
+  by_category: {}
+
+  by_metric: {}
+
+  candidate_rules:
+    require_reference_point: true    # must have a benchmark gap (NO_REFERENCE_POINT otherwise)
+    require_bad_magnitude: false     # materiality decided by the abstention floor
+    require_bad_trend: false
+    only_worsening: false
+    max_candidates_per_agent: 10

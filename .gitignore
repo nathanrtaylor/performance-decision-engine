@@ -33,6 +33,7 @@ Thumbs.db
 outputs/runs/**
 outputs/benchmark_recalc/**
 outputs/theme_discovery/**
+outputs/training_runs/**
 
 # ---- data (generated or external drops) ----
 data/raw/**

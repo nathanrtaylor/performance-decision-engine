@@ -1,0 +1,63 @@
+source_catalog:
+
+  # ---------------------------------------------------
+  # Training-domain source definitions (ingestion contract).
+  # Same tall-skinny contract as the coaching engine; consumed by the shared
+  # build_signals. Phase 2 adds training_cbt and training_assessment here.
+  # ---------------------------------------------------
+
+  sources:
+
+    agents:
+      type: dimension
+      description: "Trainee roster dimension: icp_client (+ later class/trainer/tenure_group)."
+      owner: ops_reporting
+      refresh_frequency: daily
+      status: active
+
+      schema:
+        entity_keys:
+          agent_id: agent_id
+          period: period
+        data_quality:
+          freshness_days_max: 45
+          null_rate_max: 0.10
+
+    training_assist_skills:
+      # Produced by cde.cli.build_training_assist_skills from the raw TrAIning Assist
+      # behavior extract (extraction/sql/training_assist.sql.j2). Skill-level pass-rates
+      # (behaviorPresent), valued exactly like behavior_scores (value = calc, 0-1).
+      description: "TrAIning Assist skill-development pass-rates (simulator practice)."
+      owner: analytics
+      refresh_frequency: daily
+      status: active
+
+      schema:
+        entity_keys:
+          agent_id: agent_id
+          period: period
+          call_type: call_type
+
+        metric_key: skill
+        numerator: numerator
+        denominator: denominator
+        calculation: null
+        value: calc
+
+      computation:
+        # Skill metrics are behaviorPresent PASS-RATES (0-1), like behavior_scores:
+        # value = calc, not the raw numerator sum.
+        prefer_value_column_if_present: true
+        default_calculation: score
+        calculation_handlers:
+          score: { formula: numerator }
+
+      data_quality:
+        # Day grain: allow a longer freshness window than the weekly engine.
+        freshness_days_max: 45
+        null_rate_max: 0.20
+
+  governance:
+    require_owner: true
+    require_refresh_frequency: true
+    require_metric_key: true

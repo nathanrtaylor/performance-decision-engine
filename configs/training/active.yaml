@@ -1,0 +1,88 @@
+# configs/training/active.yaml
+# Governed config set for the TRAINING-INSIGHTS domain. Selected with
+#   python -m cde.cli.run_pipeline --configs-dir configs/training ...
+# (Phase 4 adds a dedicated run_training_pipeline entrypoint + training dashboard.)
+#
+# GRAIN = DAY. Training progresses day-by-day, so `period` is the training day and the
+# temporal knobs below are in DAYS. The engine windows the last N distinct `period`
+# values, so no core change is needed -- only this config. The internal score columns
+# keep their weekly-era names (level_8w / weeks_present); the values are day-based.
+
+# ---------------------------------------------------
+# Mapping layer (training-specific; isolated from the coaching configs/mappings)
+# ---------------------------------------------------
+mappings:
+  source_catalog: mappings/source_catalog.yaml
+  metric_catalog: mappings/metric_catalog.yaml
+  topic_map: mappings/topic_map.yaml
+  benchmarks: mappings/benchmarks.yaml
+
+thresholds: thresholds/signal_thresholds.yaml
+priorities: priorities/v2026_09_01_training_baseline.yaml
+
+# ---------------------------------------------------
+# Data snapshot (training extract lands in data/raw/adhoc)
+# ---------------------------------------------------
+data_snapshot:
+  mode: latest
+  root: data/raw/adhoc
+  expected_sources:
+    - agents
+    - training_assist_skills
+
+# Single implicit call type for training practice.
+call_type_mode: disabled
+default_call_type: "all"
+
+# ---------------------------------------------------
+# Scoring model (reused unchanged from the coaching engine)
+# ---------------------------------------------------
+priority_model:
+  w_level: 0.5
+  w_trend: 0.2
+  w_risk: 0.3
+  w_confidence: 0.0
+
+risk_model:
+  alpha_level: 0.7
+  beta_trend: 0.3
+
+signal_window:
+  volatility_periods: 4
+
+# ---------------------------------------------------
+# Temporal windowing -- DAY units (rolling last-N-days window)
+# ---------------------------------------------------
+temporal:
+  window_weeks: 30              # last 30 distinct training DAYS (misnamed key; = periods)
+  period_col: period
+  trend_method: slope
+  min_weeks_for_trend: 3        # >= 3 distinct days before a slope is trusted
+  confidence_method: coverage
+  use_sample_size_confidence: true
+  volume_target_weeks: 5        # full volume credit at ~5 days' worth of the skill's denom floor
+  min_window_denominator_default: 3
+  min_window_weeks: 2           # drop a skill seen on < 2 days in the window (noise)
+  include_recency_shift: true
+  recent_weeks: 5               # last 5 days considered "recent"
+
+eligibility:
+  min_confidence: 0.30
+
+# ---------------------------------------------------
+# Abstention ON: cleanly separates "needs remediation" from "on track / completed".
+# ---------------------------------------------------
+abstention:
+  enabled: true
+  min_priority_score: 0.05   # provisional; calibrate from a real daily run's priority_score spread
+
+explainability:
+  top_competitors: 3
+
+conversation_types:
+  default: "Re-training"
+
+meta:
+  version: v2026_09_01_training_baseline
+  data_snapshot: auto
+  engine_version: 0.1.0

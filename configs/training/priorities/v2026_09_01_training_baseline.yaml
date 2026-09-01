@@ -1,0 +1,36 @@
+priorities:
+  version: v2026_09_01_training_baseline
+
+  # Training baseline: all skill categories weighted equally. The remediation model
+  # (Phase 3) decides WHAT to retake from block-gate failures + deficient skills; these
+  # weights only tie-break which single skill leads a recommendation. Tune per program.
+  by_category:
+    customer_connection: 1.0
+    call_control: 1.0
+    discovery: 1.0
+    resolution: 1.0
+    sales_transition: 1.0
+    sales_discovery: 1.0
+    value_presentation: 1.0
+    sales_delivery: 1.0
+    closing: 1.0
+    objection_handling: 1.0
+    call_close: 1.0
+
+  by_metric: {}
+  by_call_type: {}
+  by_icp_client: {}
+
+  tie_breakers:
+    prefer_categories_in_order:
+      - resolution
+      - call_control
+      - customer_connection
+      - discovery
+      - objection_handling
+      - sales_discovery
+      - value_presentation
+      - sales_transition
+      - sales_delivery
+      - closing
+      - call_close
