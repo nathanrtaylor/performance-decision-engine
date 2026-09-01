@@ -33,13 +33,19 @@ def remediation_reason(
     focus_labels: Sequence[str],
     gate_score: Optional[float] = None,
     pass_mark: float = 0.90,
+    block_num: Optional[int] = None,
 ) -> str:
-    """One-line why-this-remediation, gate-aware when a test-call score is known."""
+    """One-line why-this-remediation, gate-aware when a test-call score is known.
+
+    ``block_num`` (the learning-block number) is prepended so a trainer sees exactly
+    which block to send the expert back to.
+    """
     focus = _join(focus_labels)
+    where = f"Block {block_num} — {block_label}" if block_num is not None else block_label
     if gate_score is not None:
-        return (f"Test call for {block_label} scored {round(gate_score * 100)}% — below the "
+        return (f"Test call for {where} scored {round(gate_score * 100)}% — below the "
                 f"{round(pass_mark * 100)}% pass mark. Weakest behaviors: {focus}.")
-    return f"{block_label} shows deficient behaviors below the {round(pass_mark * 100)}% pass mark: {focus}."
+    return f"{where} shows deficient behaviors below the {round(pass_mark * 100)}% pass mark: {focus}."
 
 
 def learning_actions(block_label: str, focus_labels: Sequence[str],

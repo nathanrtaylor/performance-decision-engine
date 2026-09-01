@@ -65,6 +65,7 @@ def test_current_block_and_pacing():
     assert a1["days_since_start"] == 5
     assert a1["expected_block_num"] == 3        # blocks due by day 5: 1,3,5 -> max order 3
     assert a1["on_track"] is False              # current 2 < expected 3
+    assert a1["pace"] == "behind"               # current 2 < expected 3
 
 
 def test_skills_rolled_up_under_blocks():
@@ -83,6 +84,8 @@ def test_remediation_targets_reached_blocks_and_three_action_groups():
     r = recs["a1"]["remediation"]
     assert r is not None
     assert r["primary_block"] == 2
+    assert r["primary_block_label"].startswith("Block 2")     # block number surfaced for the trainer
+    assert r["reason"].startswith("Block 2")                  # reason leads with the block number
     assert all(tb <= 2 for tb in r["triggered_blocks"])       # never a future/locked block
     assert set(r["groups"].keys()) == {"learning", "training_support", "coaching"}
     assert r["groups"]["learning"]["actor"] == "Expert"
@@ -94,6 +97,7 @@ def test_clean_expert_is_completed_and_on_track():
     a2 = recs["a2"]
     assert a2["remediation"] is None
     assert a2["on_track"] is True               # current 3 >= expected 3
+    assert a2["pace"] == "on_track"             # current 3 == expected 3
     assert a2["status"] == "completed"          # reached last block, no deficiency
 
 

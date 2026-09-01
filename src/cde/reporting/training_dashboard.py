@@ -122,6 +122,14 @@ def build_training_records(
         on_track: Optional[bool] = (
             (current_num >= expected_num) if (current_num is not None and expected_num is not None) else None
         )
+        if current_num is None or expected_num is None:
+            pace: Optional[str] = None
+        elif current_num > expected_num:
+            pace = "ahead"
+        elif current_num == expected_num:
+            pace = "on_track"
+        else:
+            pace = "behind"
 
         cur = current_num if current_num is not None else 0
         block_defic: Dict[int, List[str]] = {}
@@ -164,14 +172,16 @@ def build_training_records(
                 focus_ids = block_defic.get(prim.order) or deficient
                 focus_labels = [skill_meta.get(s, {}).get("label", _title(s)) for s in focus_ids]
                 remediation = {
-                    "reason": remediation_reason(short_desc(prim.label), focus_labels, pass_mark=pass_mark),
+                    "reason": remediation_reason(short_desc(prim.label), focus_labels,
+                                                 pass_mark=pass_mark, block_num=prim.order),
                     "focus_skills": focus_labels,
                     "triggered_blocks": trig_nums,
                     "primary_block": prim.order,
+                    "primary_block_label": f"Block {prim.order} — {short_desc(prim.label)}",
                     "targets": [{"block": program.block_order(t.block_id), "kind": t.kind, "ref": t.ref,
                                  "reason_skills": [skill_meta.get(s, {}).get("label", _title(s)) for s in t.reason_skills]}
                                 for t in plan.targets],
-                    "groups": build_action_groups(short_desc(prim.label), focus_labels),
+                    "groups": build_action_groups(f"Block {prim.order}", focus_labels),
                 }
 
         if block_defic:
@@ -195,7 +205,7 @@ def build_training_records(
         records.append({
             "id": aid, "name": name, "class_id": class_id, "trainer": trainer, "icp": icp,
             "days_since_start": dss, "status": status, "current_block": cur_block,
-            "expected_block_num": expected_num, "on_track": on_track, "avg_skill": avg_skill,
+            "expected_block_num": expected_num, "on_track": on_track, "pace": pace, "avg_skill": avg_skill,
             "blocks": blocks, "remediation": remediation,
         })
 
@@ -363,6 +373,8 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
   background:color-mix(in srgb,var(--serious) 8%,var(--surface-2));font-size:13px}
 .retrain .rt-top{display:flex;gap:10px;align-items:flex-start}
 .retrain .rt-ico{color:var(--serious);font-size:15px;line-height:1.2}
+.retrain .backto{font-weight:700;font-size:14px;margin-bottom:3px}
+.retrain .also{color:var(--muted);font-size:12px;margin-top:3px}
 .actsgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
 @media(max-width:640px){.actsgrid{grid-template-columns:1fr}}
 .actcol{background:var(--surface-1);border:1px solid var(--border);border-radius:9px;padding:10px 12px;border-top-width:3px}
@@ -422,8 +434,10 @@ function pct(v){return (v==null)?"—":Math.round(v*100)+"%";}
 function chip(cls,label){return `<span class="chip ${cls}"><span class="ico">${SEV_ICON[cls]||""}</span>${esc(label)}</span>`;}
 function statusChip(s){const m=STATUS_META[s]||{cls:"muted",label:s};return chip(m.cls,m.label);}
 function onTrackChip(e){
-  if(e.on_track==null) return chip("muted","pace: pending");
-  return e.on_track ? chip("good","on track") : chip("warning","behind");
+  if(e.pace==null) return chip("muted","pace: pending");
+  if(e.pace==="ahead") return chip("good","ahead of pace");
+  if(e.pace==="on_track") return chip("good","on track");
+  return chip("warning","behind");
 }
 function curBlockText(e){const b=e.current_block||{};return (b.num!=null?("Block "+b.num):"—")+(b.short&&b.short!=="—"?" — "+b.short:"");}
 
@@ -532,8 +546,12 @@ function remediationView(e){
   if(!r) return `<div class="okline"><span class="ok-ico">${SEV_ICON.good}</span>On track — no remediation required.</div>`;
   const tags = (r.focus_skills||[]).map(s=>`<span class="tag">${esc(s)}</span>`).join("");
   const g = r.groups||{};
+  const backto = r.primary_block_label || ("Block "+r.primary_block);
+  const others = (r.triggered_blocks||[]).filter(b=>b!==r.primary_block);
+  const alsoLine = others.length ? `<div class="also">Also flagged: ${others.map(b=>"Block "+b).join(", ")}</div>` : "";
   return `<div class="retrain"><div class="rt-top"><span class="rt-ico">${SEV_ICON.serious}</span>`+
-    `<div><b>${esc(r.reason)}</b><div style="margin-top:4px">Focus behaviors: ${tags}</div></div></div>`+
+    `<div><div class="backto">↩ Go back to ${esc(backto)}</div><b>${esc(r.reason)}</b>`+
+    `<div style="margin-top:4px">Focus behaviors: ${tags}</div>${alsoLine}</div></div>`+
     `<div class="actsgrid">${actCol("learning",g.learning)}${actCol("training_support",g.training_support)}${actCol("coaching",g.coaching)}</div>`+
   `</div>`;
 }

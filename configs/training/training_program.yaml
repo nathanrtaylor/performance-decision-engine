@@ -34,7 +34,7 @@ program:
 
   # Pacing assumption used to derive expected_completion_day from cumulative hours.
   pace:
-    hours_per_day: 6          # productive content/sim hours per training day (ADJUST to real schedule)
+    hours_per_day: 2.3        # Launchpad ~3 weeks (~21 calendar days); scored content is a fraction of each day. Only used to derive a block's expected_completion_day when it isn't set explicitly (all are, below).
 
   defaults:
     gate_pass_mark: 0.90      # "9 of 10 evaluated scenarios" is the common bar; some blocks require 1.0
@@ -44,7 +44,7 @@ program:
       order: 1
       label: "Welcome to Asurion"
       estimated_hours: 4.5
-      expected_completion_day: 1        # cum 4.5h
+      expected_completion_day: 1
       assessment_methods: [knowledge_check]
       gate: { test_call: TODO, pass_mark: 0.90 }
       develops: []                      # orientation; no demonstrated sim skill
@@ -53,7 +53,7 @@ program:
       order: 2
       label: "Expert Foundations - The Tech Coach Role & Call Flow"
       estimated_hours: 2.0
-      expected_completion_day: 2        # cum 6.5h
+      expected_completion_day: 3
       total_simulations: 13
       assessment_methods: [knowledge_check, simulation, training_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -63,7 +63,7 @@ program:
       order: 3
       label: "Tools for the Call Flow - Asurion Tools"
       estimated_hours: 3.0
-      expected_completion_day: 2        # cum 9.5h
+      expected_completion_day: 5
       total_simulations: 10
       assessment_methods: [knowledge_check, simulation, training_assist, assima, helix_search]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -73,7 +73,7 @@ program:
       order: 4
       label: "Tools for the Call Flow - Client Tools"
       estimated_hours: 2.67
-      expected_completion_day: 3        # cum 12.2h
+      expected_completion_day: 6
       total_simulations: 10
       assessment_methods: [knowledge_check, simulation, training_assist, assima, guided_flows]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -83,7 +83,7 @@ program:
       order: 5
       label: "Sales Foundation - Product Knowledge, Compliance & Integrity"
       estimated_hours: 2.08
-      expected_completion_day: 3        # cum 14.3h
+      expected_completion_day: 7
       total_simulations: 6
       assessment_methods: [knowledge_check, simulation, roleplay_tool, training_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -93,7 +93,7 @@ program:
       order: 6
       label: "Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance"
       estimated_hours: 2.25
-      expected_completion_day: 3        # cum 16.5h
+      expected_completion_day: 8
       total_simulations: 10
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -103,7 +103,7 @@ program:
       order: 7
       label: "Call Flow Stage 2: Troubleshooting Basics"
       estimated_hours: 3.17
-      expected_completion_day: 4        # cum 19.7h
+      expected_completion_day: 9
       total_simulations: 13
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -113,7 +113,7 @@ program:
       order: 8
       label: "Call Flow Stage 2: Solve & Test - Device Basics"
       estimated_hours: 3.08
-      expected_completion_day: 4        # cum 22.8h
+      expected_completion_day: 10
       total_simulations: 20
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -123,7 +123,7 @@ program:
       order: 9
       label: "Call Flow Stage 2: Solve & Test - Hardware vs Software"
       estimated_hours: 4.0
-      expected_completion_day: 5        # cum 26.8h
+      expected_completion_day: 12
       total_simulations: 15
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -133,7 +133,7 @@ program:
       order: 10
       label: "Call Flow Stage 2: Solve & Test - Networking"
       estimated_hours: 3.0
-      expected_completion_day: 5        # cum 29.8h
+      expected_completion_day: 13
       total_simulations: 13
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -143,7 +143,7 @@ program:
       order: 11
       label: "Call Flow Stage 2: Solve & Test - Activations & Device Onboarding"
       estimated_hours: 7.0
-      expected_completion_day: 7        # cum 36.8h
+      expected_completion_day: 16
       total_simulations: 35
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -153,7 +153,7 @@ program:
       order: 12
       label: "Call Flow Stage 2: Solve & Test - Carrier Account"
       estimated_hours: 2.25
-      expected_completion_day: 7        # cum 39.0h
+      expected_completion_day: 17
       total_simulations: 11
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -163,7 +163,7 @@ program:
       order: 13
       label: "Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims"
       estimated_hours: 2.5
-      expected_completion_day: 7        # cum 41.5h
+      expected_completion_day: 18
       total_simulations: 8
       assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -173,7 +173,7 @@ program:
       order: 14
       label: "Call Flow Stage 4: Sales in Action"
       estimated_hours: 2.25
-      expected_completion_day: 8        # cum 43.8h
+      expected_completion_day: 19
       total_simulations: 10
       assessment_methods: [knowledge_check, simulation, training_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
@@ -183,7 +183,7 @@ program:
       order: 15
       label: "Call Flow Stage 5: Confirm, Recap, Close"
       estimated_hours: 1.17
-      expected_completion_day: 8        # cum 44.9h
+      expected_completion_day: 20
       assessment_methods: [knowledge_check, simulation, training_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
       develops: [test_resolution, goodbye_with_rapport, survey, ty_reinforcement]  # SEED - confirm/recap/close
@@ -192,7 +192,7 @@ program:
       order: 16
       label: "Expert Readiness - Training Closing"
       estimated_hours: 3.75
-      expected_completion_day: 9        # cum 48.7h
+      expected_completion_day: 21
       total_simulations: 7
       assessment_methods: [knowledge_check, simulation, training_assist]
       gate: { test_call: TODO, pass_mark: 0.90 }
