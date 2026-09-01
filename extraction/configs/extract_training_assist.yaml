@@ -1,0 +1,46 @@
+# ============================================================
+# Ad-hoc extract: TrAIning Assist ONLY
+# ============================================================
+# Runs just the training_assist output, isolated from the weekly snapshot.
+#
+# output_dir is data/raw/adhoc (NOT data/raw/weekly), so run_extract's
+# update_latest_pointer() rewrites data/raw/adhoc/latest and leaves the real
+# weekly snapshot (data/raw/weekly/latest) untouched.
+#
+#   python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
+#   python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+#
+# Edit start_date / end_date to the window you want (keep them in sync with the
+# weekly run if you'll later fold the output into signals).
+
+run:
+  run_id: "adhoc_training_assist"
+  compiled_sql_dir: "extraction/compiled_sql"
+  output_dir: "data/raw/adhoc"          # isolated from data/raw/weekly/latest
+  flatten_sql: true
+  strip_trailing_semicolon: true
+
+globals:
+  source_schema: "hive.care"
+  start_date: "2026-07-04"
+  end_date:   "2026-08-14"
+  grain: "week"
+  use_pay_calendar: false
+
+outputs:
+  training_assist:
+    sql_file: "extraction/sql/training_assist.sql.j2"
+    output_file: "training_assist.csv"
+    require_rows: false
+    expected_columns:
+      - agent_id
+      - week_ending
+      - call_type
+      - scorecard_name
+      - behavior
+      - attempts
+      - numerator
+      - denominator
+      - calc
+    params:
+      training_table: "l1_asurion_dst_ai_assisted_training"
