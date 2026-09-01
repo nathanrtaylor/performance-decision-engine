@@ -1,0 +1,51 @@
+-- extraction/sql/training_cbt.sql.j2
+--
+-- Computer-Based Training (CBT) completion + scores per expert-DAY-course.
+-- Source: Workday Learning course-enrollment flat file
+--   {{ source_schema }}.{{ cbt_table }}
+-- Key columns: userid, courseid, coursename, status, score, progress, datecompleted.
+--
+-- Tall-skinny output (DAY grain), one row per (agent_id, period=completion day, courseid):
+--   numerator   = SUM(score)/100        (normalized score sum)
+--   denominator = COUNT(*)              (course records that day -> volume for confidence)
+--   calc        = numerator / denominator = mean(score)/100   (0-1 pass-rate)
+--   attempts    = COUNT(*)
+-- so build_signals values it exactly like behavior_scores / training_assist_skills (value = calc).
+--
+-- ASSUMPTIONS TO CONFIRM against real data (both are single-line changes):
+--   1. `userid` is the numeric employee id (same identifier as TrAIning Assist's EmployeeId),
+--      so training + CBT join on agent_id. If it is a username, add a userid->employee_id map.
+--   2. `score` is on a 0-100 scale (hence /100 to reach the 0-1 pass-rate scale the 80%
+--      benchmark expects). If score is already 0-1, remove the /100.
+-- Only completed enrollments are scored (datecompleted + numeric score present). `status` /
+-- `progress` are available for later completion/in-progress modeling (not scored here).
+--
+-- {{ start_date }} / {{ end_date }} / {{ source_schema }} come from extract_run.yaml globals
+-- via compile_sql.build_context; {{ cbt_table }} is an output-level param.
+
+SELECT
+    CAST(userid AS BIGINT)               AS agent_id,
+    CAST(datecompleted AS DATE)          AS period,          -- DAY grain
+    'all'                                AS call_type,
+    courseid,
+    MAX(coursename)                      AS coursename,
+    COUNT(*)                             AS attempts,
+    SUM(TRY_CAST(score AS DOUBLE)) / 100.0            AS numerator,
+    CAST(COUNT(*) AS DOUBLE)                          AS denominator,
+    CASE
+        WHEN COUNT(*) = 0 THEN NULL
+        ELSE (SUM(TRY_CAST(score AS DOUBLE)) / 100.0) / COUNT(*)
+    END                                  AS calc
+
+FROM {{ source_schema }}.{{ cbt_table }}
+
+WHERE LOWER(CAST(userid AS VARCHAR)) NOT LIKE '%test%'
+  AND datecompleted IS NOT NULL
+  AND TRY_CAST(score AS DOUBLE) IS NOT NULL
+  AND CAST(datecompleted AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+
+GROUP BY
+    1,
+    2,
+    3,
+    4

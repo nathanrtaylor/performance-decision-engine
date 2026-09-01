@@ -57,6 +57,39 @@ source_catalog:
         freshness_days_max: 45
         null_rate_max: 0.20
 
+    training_cbt:
+      # Produced by extraction/sql/training_cbt.sql.j2 from the Workday Learning
+      # course-enrollment flat file. Day grain: one row per (agent_id, completion day,
+      # courseid); value = mean(score)/100 as a 0-1 pass-rate (see the SQL header for the
+      # userid->agent_id and score-scale assumptions). Not in active.yaml expected_sources
+      # until a real CBT extract lands and its courses are cataloged.
+      description: "Computer-based training (Workday Learning) completion scores (day grain)."
+      owner: analytics
+      refresh_frequency: daily
+      status: active
+
+      schema:
+        entity_keys:
+          agent_id: agent_id
+          period: period
+          call_type: call_type
+
+        metric_key: courseid
+        numerator: numerator
+        denominator: denominator
+        calculation: null
+        value: calc
+
+      computation:
+        prefer_value_column_if_present: true
+        default_calculation: score
+        calculation_handlers:
+          score: { formula: numerator }
+
+      data_quality:
+        freshness_days_max: 60
+        null_rate_max: 0.20
+
   governance:
     require_owner: true
     require_refresh_frequency: true

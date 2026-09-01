@@ -1,7 +1,7 @@
 # ============================================================
-# Ad-hoc extract: TrAIning Assist ONLY
+# Ad-hoc extract: TRAINING sources (TrAIning Assist + CBT)
 # ============================================================
-# Runs just the training_assist output, isolated from the weekly snapshot.
+# Runs the training outputs, isolated from the weekly snapshot.
 #
 # output_dir is data/raw/adhoc (NOT data/raw/weekly), so run_extract's
 # update_latest_pointer() rewrites data/raw/adhoc/latest and leaves the real
@@ -9,9 +9,11 @@
 #
 #   python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
 #   python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+#   # (training_cbt.csv is already tall-skinny at DAY grain -- no rollup step needed)
 #
-# Edit start_date / end_date to the window you want (keep them in sync with the
-# weekly run if you'll later fold the output into signals).
+# Edit start_date / end_date to the window you want. NOTE: training_cbt is DAY-grained
+# (period = datecompleted); training_assist is still week-grained (week_ending) until its
+# SQL is switched to session-day + re-extracted.
 
 run:
   run_id: "adhoc_training_assist"
@@ -44,3 +46,20 @@ outputs:
       - calc
     params:
       training_table: "l1_asurion_dst_ai_assisted_training"
+
+  training_cbt:
+    sql_file: "extraction/sql/training_cbt.sql.j2"
+    output_file: "training_cbt.csv"
+    require_rows: false
+    expected_columns:
+      - agent_id
+      - period
+      - call_type
+      - courseid
+      - coursename
+      - attempts
+      - numerator
+      - denominator
+      - calc
+    params:
+      cbt_table: "l1_asurion_flatfile_dbo_workday_learning_course_enrollment"
