@@ -1,0 +1,36 @@
+# configs/training/remediation.yaml
+# Steerable remediation policy for the training domain (consumed by
+# src/cde/training/program.py). These knobs tune HOW FAR BACK and WHAT AREAS a
+# remediation covers, without code changes. See docs/training/training_decision_engine.md.
+
+remediation:
+  # Acceptable performance on a block-gate test call. A block whose end-of-block
+  # test call scores below this triggers remediation for the block. Per-block
+  # gate.pass_mark in training_program.yaml overrides this.
+  gate_pass_mark: 0.90
+
+  scope:
+    # How far back to send an expert when a block gate fails:
+    #   current_block   -> remediate only the failed block
+    #   back_n          -> the failed block plus `back_n` preceding blocks
+    #   to_skill_origin -> route each deficient skill to the earliest block that teaches it
+    how_far_back: current_block
+    back_n: 1                       # used only when how_far_back = back_n
+
+    # Which remediable modalities a plan includes.
+    include_modalities: [skill_sim, test_call]
+
+    # Which of a block's components to retake:
+    #   deficient_only -> only components that develop a deficient skill (+ the gate test call)
+    #   whole_block    -> every component in the block
+    skills: deficient_only
+
+  # Never re-prescribe material an expert has already remediated (a hard exclude,
+  # not a soft dampen). Requires a remediation-history input (Phase 3/4).
+  once_only: true
+
+  # Pacing: also flag blocks an expert is BEHIND on -- past the block's
+  # expected_completion_day (days since training start) without having cleared it.
+  behind_schedule:
+    enabled: true
+    grace_days: 0                   # allowance beyond expected_completion_day before flagging

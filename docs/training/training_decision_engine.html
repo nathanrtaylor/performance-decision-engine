@@ -226,7 +226,7 @@
           <tr><td><b>0</b></td><td>Branch + consolidate prior scattered work</td><td><span class="status done">Done</span></td><td><code>d552279</code></td></tr>
           <tr><td><b>1</b></td><td>Training config set + first recommendations from real sim data</td><td><span class="status done">Done</span></td><td><code>e434ad1</code></td></tr>
           <tr><td><b>2</b></td><td>CBT source (= completion + assessment scores)</td><td><span class="status done">Done · day-ready</span></td><td><code>b3e1fb3</code></td></tr>
-          <tr><td><b>3</b></td><td>Program structure + block-gated remediation engine</td><td><span class="status now">Next</span></td><td>—</td></tr>
+          <tr><td><b>3</b></td><td>Program structure + block-gated remediation engine</td><td><span class="status now">Engine built + tested</span></td><td>—</td></tr>
           <tr><td><b>4</b></td><td>Remediation plans + real dashboard + narratives</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
           <tr><td><b>5</b></td><td>Config-driven enrichment, governance, tests, docs</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
         </tbody>
@@ -256,10 +256,15 @@
         <li><code>tools/gen_training_configs.py</code> (regenerates the mechanical configs from real data; multi-source), <code>tools/ascend_training_dashboard_example.py</code> (target dashboard shape + JSON contract).</li>
         <li><strong>Reused unchanged:</strong> <code>scoring/assemble.py</code>, <code>temporal/aggregate.py</code>, <code>signals/*</code>, <code>prioritization/*</code>, <code>engine/*</code>, <code>reporting/dashboard_kit.py</code>.</li>
       </ul>
-      <h3>Seeded (Phase 3 start)</h3>
-      <p><code>configs/training/training_program.yaml</code> — a 16-block ASCEND Launchpad instance seeded from the strategy doc (see §5).</p>
+      <h3>Built (Phase 3 — remediation engine)</h3>
+      <ul>
+        <li><code>configs/training/training_program.yaml</code> — the 16-block ASCEND Launchpad seed (§5).</li>
+        <li><code>configs/training/remediation.yaml</code> — the steerable policy (how-far-back, areas, once-only, behind-schedule).</li>
+        <li><code>src/cde/training/program.py</code> — routing, coverage, block-gate evaluation, <code>expected_completion_day</code> derivation, behind-schedule check, and the <code>plan_remediation</code> mapper (scope policy + once-only + block-level fallback for partial structure).</li>
+        <li><code>src/cde/cli/check_training_program.py</code> — coverage checker; <code>tests/test_training_program.py</code> — 19 tests. Validated on the real Phase-1 deficient experts.</li>
+      </ul>
       <h3>Not yet built (Phases 3–5)</h3>
-      <p><code>configs/training/remediation.yaml</code> (steerable policy), <code>src/cde/training/program.py</code> (block-gate + pacing + remediation mapper), remediation-history ingestion, <code>explainability/training_templates.py</code>, <code>reporting/training_dashboard.py</code>, <code>cli/run_training_pipeline.py</code>.</p>
+      <p>remediation-history ingestion (the once-only data source), <code>explainability/training_templates.py</code>, <code>reporting/training_dashboard.py</code>, <code>cli/run_training_pipeline.py</code>.</p>
     </section>
 
     <hr class="rule">

@@ -58,7 +58,7 @@ Training progresses day-by-day (blocks, retakes), so the training domain runs on
 | 0 | Branch + consolidate prior scattered work | **Done** | `d552279` |
 | 1 | Training config set + first recommendations from real sim data | **Done** | `e434ad1` |
 | 2 | CBT source (= completion + assessment scores) | **Done (day-ready)** | `b3e1fb3` |
-| 3 | Program structure + block-gated remediation engine | **Not started** (this doc precedes it) | — |
+| 3 | Program structure + block-gated remediation engine | **Engine built + tested; structure being defined** | — |
 | 4 | Remediation plans + real dashboard + training narratives | Not started | — |
 | 5 | Config-driven org-enrichment, governance, tests, docs | Not started | — |
 
@@ -97,9 +97,14 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 - Dashboard mock + JSON contract: `tools/ascend_training_dashboard_example.py` (the target output shape for Phase 4).
 - **Reused unchanged:** `scoring/assemble.py`, `temporal/aggregate.py`, `signals/*`, `prioritization/*`, `engine/*` (select / break_glass / themes / recommend / abstain / receipts), `reporting/dashboard_kit.py`.
 
-**Seeded (Phase 3 start):** `configs/training/training_program.yaml` — a 16-block ASCEND Launchpad instance seeded from the strategy doc (see Section 5).
+**Built (Phase 3 — remediation engine):**
+- `configs/training/training_program.yaml` — the 16-block ASCEND Launchpad seed (Section 5).
+- `configs/training/remediation.yaml` — the steerable policy (how-far-back, areas, once-only, behind-schedule).
+- `src/cde/training/program.py` — loader, skill→block routing, coverage report, block-gate evaluation, `expected_completion_day` derivation, behind-schedule check, and the `plan_remediation` mapper (scope policy + once-only + block-level fallback for partial structure).
+- `src/cde/cli/check_training_program.py` — coverage checker (defined-vs-TODO).
+- `tests/test_training_program.py` — 19 unit tests. Validated on the real Phase-1 deficient experts (routes skills → blocks; block-level fallback while components/gates are TODO).
 
-**Not yet built (Phases 3–5):** `configs/training/remediation.yaml` (steerable policy), `src/cde/training/program.py` (block-gate + pacing + remediation mapper), remediation-history ingestion, `src/cde/explainability/training_templates.py` (remediation-phrased narratives), `src/cde/reporting/training_dashboard.py`, `src/cde/cli/run_training_pipeline.py`.
+**Not yet built (Phases 3–5):** remediation-history ingestion (the once-only data source), `src/cde/explainability/training_templates.py` (remediation-phrased narratives), `src/cde/reporting/training_dashboard.py`, `src/cde/cli/run_training_pipeline.py`.
 
 ---
 
