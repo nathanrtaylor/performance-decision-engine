@@ -227,7 +227,7 @@
           <tr><td><b>1</b></td><td>Training config set + first recommendations from real sim data</td><td><span class="status done">Done</span></td><td><code>e434ad1</code></td></tr>
           <tr><td><b>2</b></td><td>CBT source (= completion + assessment scores)</td><td><span class="status done">Done · day-ready</span></td><td><code>b3e1fb3</code></td></tr>
           <tr><td><b>3</b></td><td>Program structure + block-gated remediation engine</td><td><span class="status now">Engine built + tested</span></td><td>—</td></tr>
-          <tr><td><b>4</b></td><td>Remediation plans + real dashboard + narratives</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
+          <tr><td><b>4</b></td><td>Remediation plans + real dashboard + narratives</td><td><span class="status now">Built + validated</span></td><td>—</td></tr>
           <tr><td><b>5</b></td><td>Config-driven enrichment, governance, tests, docs</td><td><span class="status todo">Planned</span></td><td>—</td></tr>
         </tbody>
       </table></div>
@@ -263,8 +263,13 @@
         <li><code>src/cde/training/program.py</code> — routing, coverage, block-gate evaluation, <code>expected_completion_day</code> derivation, behind-schedule check, and the <code>plan_remediation</code> mapper (scope policy + once-only + block-level fallback for partial structure).</li>
         <li><code>src/cde/cli/check_training_program.py</code> — coverage checker; <code>tests/test_training_program.py</code> — 19 tests. Validated on the real Phase-1 deficient experts.</li>
       </ul>
-      <h3>Not yet built (Phases 3–5)</h3>
-      <p>remediation-history ingestion (the once-only data source), <code>explainability/training_templates.py</code>, <code>reporting/training_dashboard.py</code>, <code>cli/run_training_pipeline.py</code>.</p>
+      <h3>Built (Phase 4 — plans, dashboard, narratives)</h3>
+      <ul>
+        <li><code>src/cde/reporting/training_dashboard.py</code> — <code>build_training_records</code> (per-expert records, schema v1.1) + a data-backed HTML dashboard: class-ID filter, filter-linked summary tiles incl. time-progress, current block as "Block N — short", on-track vs expected completion day, behavior/skill data rolled up under the learning blocks, and Learning / Training-support / Coaching action groups.</li>
+        <li><code>src/cde/explainability/training_templates.py</code> — the three action-group narratives; <code>src/cde/cli/run_training_pipeline.py</code> — engine → dashboard end to end; <code>tests/test_training_dashboard.py</code> (7 tests). Validated on the current extract.</li>
+      </ul>
+      <h3>Not yet built (Phase 5)</h3>
+      <p>Remediation-history ingestion (once-only source); real roster fields (class ID, training start date, current block — synthesized for validation now); config-driven org-enrichment. Until block-gate test-call data exists, remediation triggers on any reached skill below the mark (fallback), narrowing to true gate failures once gates are populated.</p>
     </section>
 
     <hr class="rule">

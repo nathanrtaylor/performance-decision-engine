@@ -59,7 +59,7 @@ Training progresses day-by-day (blocks, retakes), so the training domain runs on
 | 1 | Training config set + first recommendations from real sim data | **Done** | `e434ad1` |
 | 2 | CBT source (= completion + assessment scores) | **Done (day-ready)** | `b3e1fb3` |
 | 3 | Program structure + block-gated remediation engine | **Engine built + tested; structure being defined** | — |
-| 4 | Remediation plans + real dashboard + training narratives | Not started | — |
+| 4 | Remediation plans + real dashboard + training narratives | **Built + validated** (synthetic roster fields pending real roster) | — |
 | 5 | Config-driven org-enrichment, governance, tests, docs | Not started | — |
 
 ### Phase 0 — consolidation
@@ -104,7 +104,12 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 - `src/cde/cli/check_training_program.py` — coverage checker (defined-vs-TODO).
 - `tests/test_training_program.py` — 19 unit tests. Validated on the real Phase-1 deficient experts (routes skills → blocks; block-level fallback while components/gates are TODO).
 
-**Not yet built (Phases 3–5):** remediation-history ingestion (the once-only data source), `src/cde/explainability/training_templates.py` (remediation-phrased narratives), `src/cde/reporting/training_dashboard.py`, `src/cde/cli/run_training_pipeline.py`.
+**Built (Phase 4 — plans, dashboard, narratives):**
+- `src/cde/reporting/training_dashboard.py` — `build_training_records` (UI-agnostic per-expert records, schema v1.1) + a data-backed HTML dashboard. Filters incl. **class ID**; program summary tiles recompute live from the filters (incl. time-progress: avg days in program, % on pace); current block shown as "Block N — short"; per-expert **on-track vs expected completion day**; behavior/skill data **rolled up under the learning blocks**; remediation framed as **Learning / Training-support / Coaching** actions.
+- `src/cde/explainability/training_templates.py` — the three action-group narratives.
+- `src/cde/cli/run_training_pipeline.py` — runs the shared engine over the training configs, then builds the dashboard. Validated end-to-end (`outputs/training_runs/…/training_dashboard.{html,json}`); `tests/test_training_dashboard.py` (7 tests).
+
+**Not yet built (Phase 5):** remediation-history ingestion (the once-only data source); real roster fields (class ID, training start date, current block — currently synthesized for validation); config-driven org-enrichment; and — until block-gate test-call data exists — remediation triggers on any reached skill below the mark (the fallback), narrowing to true block-gate failures once gates are populated.
 
 ---
 
