@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Performance Decision Engine — Overview</title>
+<title>Training Decision Engine — Overview</title>
 <style>
   :root{
     --bg:#f6f7fb; --surface:#ffffff; --surface-2:#f0f1f7; --border:#e2e4ee;
@@ -28,11 +28,10 @@
   .accent{background:linear-gradient(100deg,var(--brand-a),var(--brand-b));
     -webkit-background-clip:text;background-clip:text;color:transparent}
 
-  /* Hero */
   header.hero{padding:76px 0 30px;text-align:center}
   .eyebrow{font-size:12.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
   h1{font-size:clamp(34px,6vw,54px);line-height:1.05;margin:14px 0 0;letter-spacing:-.02em}
-  .lede{font-size:clamp(17px,2.4vw,21px);color:var(--text-2);max-width:680px;margin:20px auto 0}
+  .lede{font-size:clamp(17px,2.4vw,21px);color:var(--text-2);max-width:700px;margin:20px auto 0}
   .pill-row{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;margin-top:26px}
   .pill{font-size:13px;font-weight:600;color:var(--text-2);background:var(--surface);
     border:1px solid var(--border);border-radius:999px;padding:7px 14px}
@@ -44,26 +43,22 @@
   h3{font-size:20px;margin:0 0 6px;letter-spacing:-.01em}
   p{margin:0 0 14px;color:var(--text-2)}
   .big-statement{font-size:clamp(20px,3vw,26px);line-height:1.4;color:var(--text-1);font-weight:500;
-    max-width:820px}
+    max-width:840px}
   .big-statement b{background:linear-gradient(100deg,var(--brand-a),var(--brand-b));
     -webkit-background-clip:text;background-clip:text;color:transparent;font-weight:700}
 
   .grid{display:grid;gap:18px}
   .cols-2{grid-template-columns:repeat(2,1fr)}
-  .cols-3{grid-template-columns:repeat(3,1fr)}
   .cols-4{grid-template-columns:repeat(2,1fr)}
-  @media (max-width:760px){.cols-2,.cols-3,.cols-4{grid-template-columns:1fr}}
+  @media (max-width:760px){.cols-2,.cols-4{grid-template-columns:1fr}}
 
   .card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:24px;
     box-shadow:var(--shadow)}
-  .card .tag{display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.06em;
-    text-transform:uppercase;color:var(--brand-a);margin-bottom:10px}
-  .card ul{margin:12px 0 0;padding-left:18px;color:var(--text-2)}
+  .card ul{margin:10px 0 0;padding-left:18px;color:var(--text-2)}
   .card li{margin:6px 0}
   .ico{width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;
     font-size:21px;background:var(--surface-2);border:1px solid var(--border);margin-bottom:14px}
 
-  /* Steps */
   .steps{counter-reset:step}
   .step{display:flex;gap:18px;align-items:flex-start;padding:18px 0;border-top:1px solid var(--border)}
   .step:first-child{border-top:0}
@@ -73,7 +68,6 @@
   .step .n::before{content:counter(step)}
   .step h3{font-size:18px}
 
-  /* Trust pillars */
   .pillar .ico{background:var(--ring);border-color:transparent;color:var(--brand-a)}
 
   .callout{background:var(--surface);border:1px solid var(--border);border-left:4px solid var(--brand-a);
@@ -82,7 +76,7 @@
 
   .audience{display:flex;gap:14px;align-items:flex-start;padding:16px 0;border-top:1px dashed var(--border)}
   .audience:first-child{border-top:0}
-  .audience .who{flex:0 0 130px;font-weight:700;color:var(--text-1)}
+  .audience .who{flex:0 0 150px;font-weight:700;color:var(--text-1)}
   .audience .what{color:var(--text-2)}
 
   footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--border);
@@ -94,109 +88,108 @@
 <div class="wrap">
 
   <header class="hero">
-    <div class="eyebrow">Performance Decision Engine</div>
-    <h1>The right next step,<br><span class="accent">explained every time.</span></h1>
-    <p class="lede">It turns the performance data you already collect into a single, clear recommendation
-      for each person — and shows its work, so leaders can trust and act on it fast.</p>
+    <div class="eyebrow">Our Training Decision Engine</div>
+    <h1>We show every new hire<br><span class="accent">exactly what to retake.</span></h1>
+    <p class="lede">Our onboarding produces a mountain of practice and coursework data. We built this to
+      turn it into one clear plan per trainee — what to go back and redo, and whether they're on pace to
+      graduate — with the reasoning attached.</p>
     <div class="pill-row">
-      <span class="pill">Consistent</span>
+      <span class="pill">Per-trainee</span>
+      <span class="pill">On-pace tracking</span>
       <span class="pill">Explainable</span>
-      <span class="pill">Governed by the business</span>
-      <span class="pill">Auditable</span>
+      <span class="pill">Trainer-ready</span>
     </div>
   </header>
 
   <section>
-    <p class="big-statement">Most teams don't lack data — they lack a <b>trustworthy, repeatable way to
-      turn it into action</b>. The Performance Decision Engine looks at each person's numbers, decides the
-      one thing most worth acting on, and explains why — the same way, every single time.</p>
+    <p class="big-statement">In onboarding we've never had a data problem — we've had a
+      <b>"what do we do about it" problem</b>. Our engine reads each trainee's simulations and coursework,
+      decides the one thing most worth acting on, and explains why — the same way for every class.</p>
   </section>
 
   <section>
-    <h2>Two ways we use it today</h2>
+    <h2>What it gives us</h2>
     <div class="grid cols-2">
       <div class="card">
-        <div class="ico">🎧</div>
-        <span class="tag">Coaching</span>
-        <h3>What to coach next</h3>
-        <p>From live-call quality data, it recommends the single most valuable topic for each expert's
-          next coaching session — and holds back when someone is doing fine, so coaches spend time where
-          it actually moves the needle.</p>
-        <ul>
-          <li>One clear focus per person, not a scorecard to decipher</li>
-          <li>Flags the urgent, critical cases for immediate attention</li>
-          <li>Avoids repeating a topic that was just coached</li>
-        </ul>
+        <div class="ico">🎯</div>
+        <h3>The exact retake</h3>
+        <p>Not "you're behind" — the specific learning block and skills to redo, with the end-of-block
+          test call to clear before moving on. And when a trainee is doing fine, we say so, so no one
+          wastes a redo they don't need.</p>
       </div>
       <div class="card">
-        <div class="ico">🎓</div>
-        <span class="tag">Training</span>
-        <h3>What a new hire should retake</h3>
-        <p>From onboarding simulations and coursework, it surfaces exactly which parts of training an
-          expert should go back and redo — and whether they're on pace to graduate on schedule.</p>
-        <ul>
-          <li>Pinpoints the specific block and skills to retake</li>
-          <li>Shows on-track vs. behind against the expected timeline</li>
-          <li>Produces a clean hand-off summary when a trainee graduates</li>
-        </ul>
+        <div class="ico">📈</div>
+        <h3>On pace, or not</h3>
+        <p>We track each trainee's actual block completion against the expected schedule, so we can see —
+          per person and per class — who's on track, who's ahead, and who needs a nudge, in time to act.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🤝</div>
+        <h3>A clean graduation hand-off</h3>
+        <p>When someone clears every block, we generate a ready-for-coach summary: what they mastered and
+          the couple of skills to keep an eye on in their first live calls.</p>
+      </div>
+      <div class="card">
+        <div class="ico">🧩</div>
+        <h3>The full picture</h3>
+        <p>Skills roll up under the learning block that teaches them, alongside any recent coaching the
+          trainee has had — so a trainer sees the whole story in one place, not five reports.</p>
       </div>
     </div>
-    <p style="margin-top:18px;text-align:center;color:var(--muted);font-size:14.5px">
-      Same engine underneath — pointed at a different question. New performance questions can be added
-      the same way, without rebuilding anything.</p>
   </section>
 
   <section>
     <h2>How it works — in four steps</h2>
     <div class="steps">
       <div class="step"><div class="n"></div><div>
-        <h3>Gather the facts</h3>
-        <p>It pulls the performance data you already have into a clean, dated snapshot — so every decision
-          is tied to exactly what was known at the time.</p>
+        <h3>We gather the facts</h3>
+        <p>We pull each class's simulation and coursework results into a clean, dated snapshot, tied to
+          the roster — who's in the class, their trainer, and when they started.</p>
       </div></div>
       <div class="step"><div class="n"></div><div>
-        <h3>Weigh what matters</h3>
-        <p>It compares each person to the agreed benchmarks and to their peers, focusing only on genuine
-          gaps — never on strengths — and weights them by the priorities the business has set.</p>
+        <h3>We measure against our bar</h3>
+        <p>We compare each trainee to the skill bar and the block schedule we set for the program —
+          focusing only on genuine gaps, and only on blocks they've actually reached.</p>
       </div></div>
       <div class="step"><div class="n"></div><div>
-        <h3>Decide — or hold back</h3>
-        <p>It picks the single most worthwhile action. When nothing is worth flagging, it says so on
-          purpose, with a reason — never a random filler suggestion.</p>
+        <h3>We decide the retake — or confirm on-track</h3>
+        <p>We surface the specific block and skills to redo, or confirm the trainee is on pace and needs
+          nothing right now. Never a vague flag, never a filler task.</p>
       </div></div>
       <div class="step"><div class="n"></div><div>
-        <h3>Explain it</h3>
-        <p>Every recommendation comes with a plain-language receipt: why this, why now, and why not the
-          alternatives — ready to share with the person delivering it.</p>
+        <h3>We explain and hand it off</h3>
+        <p>Every call comes with its reasoning in plain language, in a per-trainee view a trainer can copy,
+          email, or print to share with a coach.</p>
       </div></div>
     </div>
   </section>
 
   <section>
-    <h2>Why you can trust it</h2>
+    <h2>Why we trust it</h2>
     <div class="grid cols-4">
       <div class="card pillar">
-        <div class="ico">🎯</div>
-        <h3>You set the priorities</h3>
-        <p>What matters most is a business setting, not something buried in code. Priorities can change
-          often without weakening the rigor.</p>
+        <div class="ico">🎚️</div>
+        <h3>We set the bar</h3>
+        <p>The skill thresholds, the block schedule, and how far a retake reaches back are our settings —
+          adjustable as the program evolves, without rebuilding anything.</p>
       </div>
       <div class="card pillar">
         <div class="ico">🔁</div>
         <h3>Same answer every time</h3>
-        <p>The same data and settings always produce the same decision. No black-box drift, no surprises.</p>
+        <p>The same data and settings always produce the same plan. Every class is judged consistently —
+          no drift, no surprises.</p>
       </div>
       <div class="card pillar">
         <div class="ico">🧾</div>
-        <h3>Every decision is explained</h3>
-        <p>Each recommendation carries its reasoning, so it can be reviewed, questioned, and trusted —
-          not just followed.</p>
+        <h3>Every call is explained</h3>
+        <p>Each retake carries its "why," so trainers and trainees can see the reasoning — and we can
+          stand behind it.</p>
       </div>
       <div class="card pillar">
         <div class="ico">🛡️</div>
-        <h3>People stay in control</h3>
-        <p>Changes to benchmarks and patterns are proposed for review and only take effect with a named
-          person's sign-off. It never quietly rewrites its own rules.</p>
+        <h3>We stay in control</h3>
+        <p>It recommends; people decide. It won't send anyone back over material they've already
+          remediated, and it never quietly changes our bar.</p>
       </div>
     </div>
   </section>
@@ -204,32 +197,32 @@
   <section>
     <h2>What it means for you</h2>
     <div class="card">
-      <div class="audience"><div class="who">Executives</div>
-        <div class="what">A defensible, consistent way performance decisions get made across the org —
-          fast to change as priorities shift, and always able to show its reasoning.</div></div>
-      <div class="audience"><div class="who">Operations</div>
-        <div class="what">You own the priorities. One governed setting steers where attention goes, and
-          every run is snapshotted and auditable.</div></div>
+      <div class="audience"><div class="who">Training leaders</div>
+        <div class="what">Consistent, defensible remediation across every class — and a fast way to adjust
+          the bar as the program changes, with every run snapshotted and auditable.</div></div>
       <div class="audience"><div class="who">Trainers</div>
-        <div class="what">A per-trainee view of exactly what to retake and who's on pace — plus a
-          one-click summary to hand a graduate off to their coach.</div></div>
+        <div class="what">A per-trainee view of exactly what to retake and who's on pace, plus a one-click
+          summary to hand a graduate off to their coach.</div></div>
       <div class="audience"><div class="who">Coaches</div>
-        <div class="what">One clear focus per person for the next session, with the "why" already written —
-          so the conversation starts on the right foot.</div></div>
+        <div class="what">A clean readiness hand-off when a new hire lands with you — what they cleared and
+          what to watch on the first live calls.</div></div>
+      <div class="audience"><div class="who">Executives</div>
+        <div class="what">Confidence that our onboarding decisions are consistent, explainable, and
+          auditable — the same standard for every cohort.</div></div>
     </div>
   </section>
 
   <section>
     <div class="callout">
-      <p style="margin:0"><strong>Human judgment stays in charge.</strong> The engine is built to make good
-      decisions fast and repeatable — not to remove people from the loop. It recommends, explains, and
-      holds itself to benchmarks the business approves. When it suggests changing those benchmarks or
-      spotting a new pattern, a person reviews and approves before anything changes.</p>
+      <p style="margin:0"><strong>Our judgment stays in charge.</strong> We built this to make good
+      onboarding decisions fast and repeatable — not to take trainers out of the loop. It recommends and
+      explains against a bar we approve; when it suggests changing that bar, one of us reviews and signs
+      off before anything changes.</p>
     </div>
   </section>
 
   <footer>
-    Performance Decision Engine — one explainable engine for coaching and training decisions.
+    Our Training Decision Engine — one explainable way to route new-hire remediation.
     <div class="disclaimer">Plain-language overview for a general audience. Technical detail lives in the
       project README.</div>
   </footer>
