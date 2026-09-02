@@ -115,7 +115,9 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 - `src/cde/explainability/training_templates.py` — the three action-group narratives.
 - `src/cde/cli/run_training_pipeline.py` — runs the shared engine over the training configs, then builds the dashboard. Validated end-to-end (`outputs/training_runs/…/training_dashboard.{html,json}`); `tests/test_training_dashboard.py` (7 tests).
 
-**Not yet built (Phase 5):** remediation-history ingestion (the once-only data source); real roster fields (class ID, training start date, current block — currently synthesized for validation); config-driven org-enrichment; and — until block-gate test-call data exists — remediation triggers on any reached skill below the mark (the fallback), narrowing to true block-gate failures once gates are populated.
+**Done in Phase 5 so far:** real **class roster** wired (`src/cde/training/roster.py` reads `docs/training/training_class_roster.xlsx`) as the source of truth for who appears + class/trainer/start date; **TrAIning Assist is now day-grained** (`period = session day`, matching CBT).
+
+**Not yet built (Phase 5):** a **per-expert progress feed** (block completions / test calls) so current block + pacing are exact rather than expected-position — comes with filling `training_program.yaml` `gate.test_call`/`components`; **remediation-history** ingestion (once-only source); config-driven org-enrichment; and tuning the deficient-skill fallback (it triggers on any reached skill below the mark until gate test-call data exists). Also needs the **DB re-extract** run over the roster window so day-grain sim/CBT data actually lands (the on-disk extract predates the classes → experts currently show `not_started`).
 
 ---
 

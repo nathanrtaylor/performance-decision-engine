@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import date
 from pathlib import Path
 
 import pandas as pd
@@ -21,6 +22,7 @@ import pandas as pd
 from cde.cli import run_pipeline as base_pipeline
 from cde.reporting.training_dashboard import build_training_records, write_training_dashboard
 from cde.training.program import load_program, load_policy
+from cde.training.roster import load_class_roster
 from cde.utils.io import load_yaml
 from cde.utils.logging import get_logger
 
@@ -36,6 +38,36 @@ def _skill_meta(profiles_path: Path) -> dict:
         out[str(sid)] = {"label": (meta or {}).get("label") or sid,
                          "category": (cats.get(cat) or {}).get("label", cat or "")}
     return out
+
+
+def _ensure_engine_agents(raw: Path) -> None:
+    """Regenerate the engine's `agents` dimension from the current training data.
+
+    The base pipeline needs an agents.csv (icp_client enrichment + expected_sources).
+    We derive it from the day-grain training sources so it always matches the experts
+    in the run — the class roster is the DASHBOARD's source of truth; this is only the
+    engine's cohort label. Overwrites any stale agents.csv.
+    """
+    frames = []
+    for name in ("training_assist_skills.csv", "training_cbt.csv"):
+        p = raw / name
+        if not p.exists():
+            continue
+        df = pd.read_csv(p)
+        if "period" not in df.columns and "week_ending" in df.columns:
+            df = df.rename(columns={"week_ending": "period"})
+        if {"agent_id", "period"} <= set(df.columns):
+            frames.append(df[["agent_id", "period"]])
+    if not frames:
+        return
+    a = pd.concat(frames, ignore_index=True).drop_duplicates()
+    a["week_ending"] = a["period"]                 # build_signals enrichment reads week_ending
+    a["icp_client"] = "training"
+    for c in ("mascot", "coach", "coach_id"):
+        a[c] = ""
+    a[["agent_id", "week_ending", "icp_client", "mascot", "coach", "coach_id"]].to_csv(
+        raw / "agents.csv", index=False)
+    log.info("engine agents dimension: wrote %d rows to %s", len(a), raw / "agents.csv")
 
 
 def _build_skills_df(out_dir: Path) -> pd.DataFrame:
@@ -61,7 +93,9 @@ def main(argv=None) -> int:
     ap.add_argument("--run-id", default="training_run")
     ap.add_argument("--program", default=None, help="training_program.yaml (default: <configs-dir>/training_program.yaml)")
     ap.add_argument("--policy", default=None, help="remediation.yaml (default: <configs-dir>/remediation.yaml)")
-    ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = latest window end in the run")
+    ap.add_argument("--roster", default="docs/training/training_class_roster.xlsx",
+                    help="Class roster xlsx — the source of truth for who/class/trainer/start date.")
+    ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
     args = ap.parse_args(argv)
 
@@ -72,26 +106,22 @@ def main(argv=None) -> int:
     policy_path = Path(args.policy) if args.policy else configs / "remediation.yaml"
     profiles_path = configs / "training_profiles.yaml"
 
-    # 1) shared engine over the training config set
+    # 1) shared engine over the training config set (regenerate the engine agents
+    #    dimension from the current data first, so it always matches this run's experts)
+    _ensure_engine_agents(raw)
     base_pipeline.main(["--configs-dir", str(configs), "--raw-dir", str(raw),
                         "--out-dir", str(out), "--run-id", args.run_id])
 
-    # 2) assemble dashboard inputs
+    # 2) assemble dashboard inputs. The ROSTER is the source of truth for who
+    #    appears + their class/trainer/start date; skills are left-joined by agent_id.
     skills_df = _build_skills_df(out)
-    agents_path = raw / "agents.csv"
-    agents_df = pd.read_csv(agents_path) if agents_path.exists() else pd.DataFrame(
-        {"agent_id": skills_df["agent_id"].astype(str).unique()})
+    agents_df = load_class_roster(args.roster)
     program = load_program(program_path)
     policy = load_policy(policy_path)
     skill_meta = _skill_meta(profiles_path)
 
-    report_date = args.report_date
-    if report_date is None:
-        try:
-            sw = pd.read_csv(out / "scores_windowed.csv")
-            report_date = str(pd.to_datetime(sw["window_end"]).max().date())
-        except Exception:  # noqa: BLE001
-            report_date = "2026-09-01"
+    # Timeline counts from each expert's start date to the report date (default: today).
+    report_date = args.report_date or date.today().isoformat()
 
     records, meta = build_training_records(skills_df, agents_df, program, policy, skill_meta,
                                            report_date=report_date, pass_mark=args.pass_mark)

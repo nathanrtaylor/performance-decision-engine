@@ -268,8 +268,10 @@
         <li><code>src/cde/reporting/training_dashboard.py</code> — <code>build_training_records</code> (per-expert records, schema v1.1) + a data-backed HTML dashboard: class-ID filter, filter-linked summary tiles incl. time-progress, current block as "Block N — short", on-track vs expected completion day, behavior/skill data rolled up under the learning blocks, and Learning / Training-support / Coaching action groups.</li>
         <li><code>src/cde/explainability/training_templates.py</code> — the three action-group narratives; <code>src/cde/cli/run_training_pipeline.py</code> — engine → dashboard end to end; <code>tests/test_training_dashboard.py</code> (7 tests). Validated on the current extract.</li>
       </ul>
+      <h3>Phase 5 — done so far</h3>
+      <p>Real <b>class roster</b> wired (<code>src/cde/training/roster.py</code> ← <code>docs/training/training_class_roster.xlsx</code>) as the source of truth for who appears + class / trainer / start date; <b>TrAIning Assist is now day-grained</b> (<code>period = session day</code>, matching CBT).</p>
       <h3>Not yet built (Phase 5)</h3>
-      <p>Remediation-history ingestion (once-only source); real roster fields (class ID, training start date, current block — synthesized for validation now); config-driven org-enrichment. Until block-gate test-call data exists, remediation triggers on any reached skill below the mark (fallback), narrowing to true gate failures once gates are populated.</p>
+      <p>A per-expert <b>progress feed</b> (block completions / test calls) so current block + pacing are exact rather than expected-position — arrives with filling <code>training_program.yaml</code> gates/components; <b>remediation-history</b> (once-only source); config-driven org-enrichment; fallback tuning. Also needs the DB re-extract run over the roster window so day-grain sim/CBT data lands (the on-disk extract predates the classes → experts currently show <code>not_started</code>).</p>
     </section>
 
     <hr class="rule">

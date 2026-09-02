@@ -84,11 +84,18 @@ def build_training_records(
         v = adf.at[aid, col]
         return default if (v is None or (isinstance(v, float) and pd.isna(v))) else v
 
-    records: List[Dict[str, Any]] = []
-    synthetic = False
+    # The roster (agents_df) is the SOURCE OF TRUTH for who appears; skills are
+    # left-joined. An expert on the roster with no skill data yet is still shown
+    # (status "not_started").
+    per_agent = {str(k): v for k, v in sdf.groupby("agent_id")} if not sdf.empty else {}
+    any_progress = ("current_block_order" in acols) and bool(adf["current_block_order"].notna().any())
 
-    for aid, g in sdf.groupby("agent_id"):
-        vals = {str(r.metric): (_num(r.value), _num(r.benchmark)) for r in g.itertuples()}
+    records: List[Dict[str, Any]] = []
+
+    for aid in [str(x) for x in adf.index]:
+        g = per_agent.get(aid)
+        vals = ({str(r.metric): (_num(r.value), _num(r.benchmark)) for r in g.itertuples()}
+                if g is not None else {})
         deficient = [m for m, (v, bm) in vals.items()
                      if v is not None and bm is not None and v < bm]
 
@@ -184,7 +191,9 @@ def build_training_records(
                     "groups": build_action_groups(f"Block {prim.order}", focus_labels),
                 }
 
-        if block_defic:
+        if not vals:
+            status = "not_started"                       # on the roster, no skill data yet
+        elif block_defic:
             status = "retraining"
         elif current_num is not None and current_num >= last_num:
             status = "completed"
@@ -198,9 +207,6 @@ def build_training_records(
         cur_block = next(({"num": bm["num"], "name": bm["name"], "short": bm["short"]}
                           for bm in blocks_meta if bm["num"] == current_num),
                          {"num": current_num, "name": "—", "short": "—"})
-
-        if aid not in adf.index or "current_block_order" not in acols or "training_start_date" not in acols:
-            synthetic = True
 
         records.append({
             "id": aid, "name": name, "class_id": class_id, "trainer": trainer, "icp": icp,
@@ -217,7 +223,9 @@ def build_training_records(
         "generated": str(report_date),
         "report_date": str(report_date),
         "blocks": blocks_meta,
-        "roster_fields_synthetic": synthetic,
+        "roster_fields_synthetic": False,   # real roster by default; demo generator overrides to True
+        "current_block_source": ("roster" if any_progress
+                                 else "expected position from schedule (no progress feed yet)"),
     }
     return records, meta
 
@@ -423,6 +431,7 @@ const BENCH = META.pass_mark;
 const byId = new Map(EXPERTS.map(e => [e.id, e]));
 const SEV_ICON = {good:"✓", warning:"⚠", serious:"▲", critical:"✕", muted:"–"};
 const STATUS_META = {
+  not_started:{cls:"muted",label:"Not started"},
   on_track:{cls:"good",label:"On track"}, behind:{cls:"warning",label:"Behind schedule"},
   retraining:{cls:"serious",label:"Re-training needed"}, completed:{cls:"good",label:"Completed"},
   unknown:{cls:"muted",label:"Unknown"},
@@ -463,6 +472,7 @@ function renderTiles(rows){
   const onPct = paceKnown.length ? Math.round(100*paceKnown.filter(e=>e.on_track).length/paceKnown.length) : null;
   const tiles = [
     {v:n, k:"Experts (filtered)"},
+    {v:c("not_started"), k:"Not started"},
     {v:c("on_track"), k:"On track"},
     {v:c("behind"), k:"Behind schedule"},
     {v:c("retraining"), k:"Re-training needed"},
@@ -482,7 +492,7 @@ function sel(id,label,key){
   return `<div class="fgroup"><span class="flabel">${esc(label)}</span><select id="${id}">${opts.join("")}</select></div>`;
 }
 function buildFilters(){
-  const stBtns = [["__all","All"],["on_track","On track"],["behind","Behind"],["retraining","Re-training"],["completed","Completed"]]
+  const stBtns = [["__all","All"],["not_started","Not started"],["on_track","On track"],["behind","Behind"],["retraining","Re-training"],["completed","Completed"]]
     .map(([v,l])=>`<button data-k="status" data-v="${v}" class="${v===state.status?"on":""}">${l}</button>`).join("");
   document.getElementById("filters").innerHTML =
     sel("clssel","class IDs","class_id")+
@@ -593,6 +603,8 @@ document.getElementById("subline").textContent =
   `Pass mark ${Math.round(BENCH*100)}% · ${EXPERTS.length} experts · generated ${META.generated}`;
 if(META.roster_fields_synthetic){document.getElementById("synbadge").style.display="";
   document.getElementById("foot").textContent = "Some roster fields (class ID, training start date, current block) are synthetic placeholders for validation — swap in the real roster to make pacing/on-track live.";}
+else if(META.current_block_source && String(META.current_block_source).indexOf("schedule")>=0){
+  document.getElementById("foot").textContent = "Roster is the source of truth for who/class/trainer/start date. Current block = " + META.current_block_source + "; it becomes exact once a per-expert progress feed (block completions / test calls) is wired.";}
 buildFilters(); render();
 (function(){const m=/^#e=(.+)$/.exec(location.hash); if(m && byId.has(m[1])) openModal(m[1]);})();
 </script>

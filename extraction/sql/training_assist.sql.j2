@@ -1,8 +1,8 @@
 -- extraction/sql/training_assist.sql.j2
 --
--- TrAIning Assist (AI-assisted training simulator) behavior pass-rates per expert-week.
+-- TrAIning Assist (AI-assisted training simulator) behavior pass-rates per expert-DAY.
 --
--- Tall-skinny output: one row per (agent_id, week_ending, call_type, challenge_id, behavior).
+-- Tall-skinny output (DAY grain): one row per (agent_id, period, call_type, challenge_id, behavior).
 -- Each AI-assisted training session emits a list of evaluated behaviors, each with a
 -- behaviorPresent flag (0/1). We aggregate to present-rates:
 --   numerator   = SUM(behaviorPresent)   (times the behavior was demonstrated)
@@ -17,11 +17,12 @@
 --
 -- Dates are parameterized like every other extract: the window is applied to the
 -- SESSION date (when the training happened -- the analog of behavior_scores' event date),
--- so week_ending always falls inside the extract window. {{ start_date }} / {{ end_date }} /
--- {{ source_schema }} come from extract_run.yaml globals via compile_sql.build_context.
+-- and `period` IS that session day. {{ start_date }} / {{ end_date }} / {{ source_schema }}
+-- come from extract_run.yaml globals via compile_sql.build_context. (The globals `grain`
+-- flag is not used here -- day grain is emitted directly.)
 --
--- Cohort (icp_client) is NOT emitted here; it is attached downstream in build_signals by
--- merging agents.csv on (agent_id, week_ending) -- the single canonical roster/cohort source.
+-- Cohort/roster (class, trainer, start date) come from the class roster, not this extract;
+-- the ingestion rolls these behaviors up to skill-level pass-rates per (agent_id, day).
 
 WITH base AS (
     SELECT DISTINCT
@@ -129,13 +130,7 @@ behavior_scores AS (
 SELECT
     agent_id,
 
-    CAST(
-        date_add(
-            'day',
-            4,
-            date_trunc('week', session_date)
-        ) AS DATE
-    ) AS week_ending,
+    CAST(session_date AS DATE) AS period,     -- DAY grain (the session day; not bucketed to a week)
 
     'all' AS call_type,
 

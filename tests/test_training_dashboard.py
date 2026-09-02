@@ -108,3 +108,16 @@ def test_action_groups_labels_and_actors():
     assert g["coaching"]["label"] == "Coaching actions"
     assert [g[k]["actor"] for k in ("learning", "training_support", "coaching")] == ["Expert", "Trainer", "Coach"]
     assert all(g[k]["actions"] for k in g)      # each has at least one action line
+
+
+def test_roster_expert_without_skill_data_is_not_started():
+    # Roster is the source of truth: an expert on the roster with no skill data still appears.
+    agents = pd.concat([_agents_df(), pd.DataFrame([{
+        "agent_id": "a3", "agent_name": "Cy", "class_id": "C2", "trainer": "T",
+        "icp_client": "training", "training_start_date": "2026-01-01"}])], ignore_index=True)
+    recs, _ = build_training_records(_skills_df(), agents, _program(), RemediationPolicy(),
+                                     _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
+    by = {r["id"]: r for r in recs}
+    assert "a3" in by                            # appears despite no skills in skills_df
+    assert by["a3"]["status"] == "not_started"
+    assert by["a3"]["remediation"] is None

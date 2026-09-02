@@ -17,12 +17,12 @@ d552279  Phase 0: consolidate scaffolding
 **Working & validated end to end:** TrAIning Assist skills → shared engine → per-expert remediation plans + `training_dashboard.{html,json}` (1,442 experts). Dashboard has: class-ID filter, filter-linked summary tiles incl. time-progress, "Block N — short", on-track vs expected completion day, skills rolled up under blocks, Learning/Training-support/Coaching actions. Anonymized shareable copy: `docs/training/training_dashboard_shareable.html` (untracked).
 
 ## Next up — Phase 5 (in rough priority)
-1. **Real expert roster** — replace the synthetic `class_id` / `training_start_date` / `current_block_order` (currently generated into `data/raw/adhoc/latest/agents.csv`) with the real roster. Makes pacing / on-track / class filter live and drops the "synthetic roster fields" badge.
-2. **Fill `configs/training/training_program.yaml` TODOs** — per-block `gate.test_call` (the end-of-block Training Assist test call) + `components` (CBT `courseid`s + skill sims) + tools/troubleshooting `develops:` maps. This flips remediation from the deficient-skill fallback to **gate-driven**. Check with `python -m cde.cli.check_training_program`.
-3. **Remediation-history ingestion** — the once-only source (blocks/components already remediated); `plan_remediation` already accepts `history`.
-4. **CBT extract** — run `extract_training_assist.yaml` (needs DB) → confirm the two SQL assumptions (`userid` = numeric employee id; `score` is 0–100) → `gen_training_configs.py` catalogs the courses.
-5. **TrAIning Assist day re-extract** — the sim extract is still weekly (`week_ending`); switch its SQL to session-day for true daily grain.
-6. **Tune the remediation fallback** — add a materiality margin (skill must be materially below the mark) to cut noise until gates land; and/or calibrate per-skill pass-marks with the benchmark-recalc module.
+1. **DONE — real roster wired.** `src/cde/training/roster.py` reads `docs/training/training_class_roster.xlsx` (sheet "Expert Roster"); `run_training_pipeline` uses it as the **source of truth** for who appears + class_id (Session #) / trainer / start date. Validated: 121 experts, 6 classes. Roster experts with no skill data yet show `not_started`.
+2. **DONE — TrAIning Assist is day-grained.** `training_assist.sql.j2` now emits `period = session day` (matches `training_cbt`); extract config `expected_columns` updated; window set to 2026-08-22…09-04 to cover the roster classes. Needs the DB re-extract run to land matching day data.
+3. **Run the DB extract** (`extract_training_assist.yaml`, needs DB) so day-grain sim + CBT data lands for the roster window → skill/remediation content populates (currently 0/121 match because the on-disk extract predates the classes). Confirm CBT `userid`=employee id and `score` 0–100.
+4. **Fill `training_program.yaml` TODOs** — per-block `gate.test_call` + `components` + tools/troubleshooting `develops:`. Flips remediation from the deficient-skill fallback to **gate-driven**, and gives a per-expert **progress feed** (current block from block completions/test calls) so pacing/on-track become exact instead of expected-position.
+5. **Remediation-history ingestion** — the once-only source; `plan_remediation` already accepts `history`.
+6. **Tune the remediation fallback** — materiality margin and/or per-skill pass-mark recalc.
 
 ## Assumptions to confirm (flagged in code)
 - CBT `userid` == employee id; CBT `score` 0–100 (both one-line changes in `extraction/sql/training_cbt.sql.j2`).
