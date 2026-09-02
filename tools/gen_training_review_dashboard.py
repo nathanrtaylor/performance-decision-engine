@@ -66,13 +66,23 @@ def main(argv=None) -> int:
     roster = load_class_roster(args.roster)
     report = pd.Timestamp(args.report_date)
 
-    cbo_by_agent, sk_rows = {}, []
+    last_num = max(b.order for b in program.blocks)
+    cbo_by_agent, sk_rows, completed = {}, [], 0
     for aid, row in roster.set_index("agent_id").iterrows():
         try:
             dss = int((report - pd.Timestamp(row["training_start_date"]).normalize()).days)
         except Exception:  # noqa: BLE001
             dss = 9
         eb = expected_block(dss)
+
+        # a few COMPLETED experts (cleared all blocks) -> shows the completion hand-off report
+        if completed < 3 and rnd.random() < 0.05:
+            cbo_by_agent[aid] = last_num + 1                      # graduated (all blocks passed)
+            for sid in skill_ids:                                # data for every block, all passing
+                sk_rows.append({"agent_id": aid, "metric": sid,
+                                "value": round(rnd.uniform(0.85, 0.98), 3), "benchmark": 0.80})
+            completed += 1
+            continue
 
         roll = rnd.random()
         if roll < 0.12:            # ~12% haven't produced data yet -> not_started (no feed, no skills)

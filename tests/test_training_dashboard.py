@@ -123,6 +123,39 @@ def test_roster_expert_without_skill_data_is_not_started():
     assert by["a3"]["remediation"] is None
 
 
+def test_locked_block_stays_blank_even_when_it_shares_a_skill():
+    # Block 3 (locked, not yet reached) develops the same skill as block 1 (reached). The
+    # expert has data for that skill, but it must NOT surface under the locked block.
+    prog = Program(name="P", pace_hours_per_day=6.0, blocks=[
+        Block(id="b1", order=1, label="Stage 1: Greeting", develops=["greet"], expected_completion_day=1),
+        Block(id="b2", order=2, label="Stage 2: Solve", develops=["solve"], expected_completion_day=3),
+        Block(id="b3", order=3, label="Stage 3: Re-greet", develops=["greet"], expected_completion_day=5),
+    ])
+    skills = pd.DataFrame([{"agent_id": "a1", "metric": "greet", "value": 0.90, "benchmark": 0.80}])
+    agents = pd.DataFrame([{"agent_id": "a1", "agent_name": "Ann", "class_id": "C1", "trainer": "T",
+                            "icp_client": "training", "training_start_date": "2026-01-01",
+                            "current_block_order": 1}])
+    recs, _ = build_training_records(skills, agents, prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80)
+    blocks = {b["num"]: b for b in recs[0]["blocks"]}
+    assert blocks[1]["status"] == "in_progress" and [s["skill"] for s in blocks[1]["skills"]] == ["greet"]
+    assert blocks[3]["status"] == "locked" and blocks[3]["skills"] == []   # blank, despite sharing "greet"
+
+
+def test_progress_feed_without_skill_data_is_in_training_not_not_started():
+    # An expert with a progress feed (current_block_order) but no skill data yet has clearly
+    # started -> "in_training" (awaiting skill signal), NOT "not_started".
+    agents = pd.DataFrame([{
+        "agent_id": "a9", "agent_name": "Di", "class_id": "C3", "trainer": "T",
+        "icp_client": "training", "training_start_date": "2026-01-01", "current_block_order": 1}])
+    recs, _ = build_training_records(pd.DataFrame(columns=["agent_id", "metric", "value", "benchmark"]),
+                                     agents, _program(), RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80)
+    by = {r["id"]: r for r in recs}
+    assert by["a9"]["status"] == "in_training"
+    assert by["a9"]["current_block"]["num"] == 1
+
+
 def test_no_progress_feed_is_not_schedule_inferred():
     # Without a progress feed (no current_block_order), progress is NOT inferred from the
     # schedule: current block is unknown, pace is pending, blocks are never marked "passed".

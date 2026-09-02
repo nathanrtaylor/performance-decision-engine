@@ -17,7 +17,9 @@ Reuses the theme-aware palette/scaffold of the coaching expert dashboard.
 """
 from __future__ import annotations
 
+import base64
 import json
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -138,23 +140,24 @@ def build_training_records(
         block_defic: Dict[int, List[str]] = {}
         blocks: List[Dict[str, Any]] = []
         for b in program.blocks:
-            bskills = []
-            for sid in b.develops_all:
-                if sid not in vals:
-                    continue
-                v, bm = vals[sid]
-                below = v is not None and bm is not None and v < bm
-                m = skill_meta.get(sid, {})
-                bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
-                                "category": m.get("category", ""),
-                                "value": None if v is None else round(v, 3), "below": bool(below)})
-            has_below = any(s["below"] for s in bskills)
             # "reached" = the expert has actually gotten to this block. With a progress feed
             # that's order <= current; without one we can't bound it, so any block with data
-            # counts. Remediation + the retraining status only apply to reached blocks (a
-            # deficiency in an unreached/locked block -- e.g. from a skill shared with a later
-            # block -- is not something to send them back to yet).
+            # counts. A locked/not-yet-reached block stays BLANK -- we never roll a skill up
+            # under it just because that skill is shared with an earlier block the expert did
+            # reach. Remediation + the retraining status likewise apply only to reached blocks.
             reached = (not has_progress) or (current_num is not None and b.order <= current_num)
+            bskills = []
+            if reached:
+                for sid in b.develops_all:
+                    if sid not in vals:
+                        continue
+                    v, bm = vals[sid]
+                    below = v is not None and bm is not None and v < bm
+                    m = skill_meta.get(sid, {})
+                    bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
+                                    "category": m.get("category", ""),
+                                    "value": None if v is None else round(v, 3), "below": bool(below)})
+            has_below = any(s["below"] for s in bskills)
             if has_below and reached:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
             # Block status: ACTUAL-completion-driven when a progress feed exists; otherwise
@@ -204,7 +207,9 @@ def build_training_records(
                 }
 
         if not vals:
-            status = "not_started"                       # on the roster, no skill data yet
+            # No skill-readiness signal yet. A progress feed means they've started (awaiting
+            # skill data) -> "in_training"; no feed and no data -> genuinely "not_started".
+            status = "in_training" if has_progress else "not_started"
         elif block_defic:
             status = "retraining"                         # has a below-mark skill -> needs remediation
         elif has_progress and current_num is not None and current_num >= last_num:
@@ -220,11 +225,27 @@ def build_training_records(
                           for bm in blocks_meta if bm["num"] == current_num),
                          {"num": current_num, "name": "—", "short": "—"})
 
+        # Completion hand-off: when an expert has cleared all blocks, summarize readiness
+        # for the coach they're handed off to (in place of a remediation plan).
+        handoff = None
+        if status == "completed":
+            cur_block = {"num": None, "name": "Completed", "short": "Completed", "done": True}
+            n_pass = sum(1 for (v, bm) in vals.values() if v is not None and bm is not None and v >= bm)
+            ranked = sorted(((v, skill_meta.get(m, {}).get("label", _title(m)))
+                             for m, (v, bm) in vals.items() if v is not None), key=lambda x: x[0])
+            handoff = {
+                "ready": True,
+                "summary": f"Completed all {last_num} learning blocks; {n_pass} of {len(vals)} "
+                           f"tracked skills at or above the {round(pass_mark * 100)}% mark.",
+                "watch": [lbl for _v, lbl in ranked[:3]],   # lowest (still-passing) skills to keep an eye on
+                "note": "Ready for coach hand-off. Monitor the first live calls, especially the watch-list skills.",
+            }
+
         records.append({
             "id": aid, "name": name, "class_id": class_id, "trainer": trainer, "icp": icp,
             "days_since_start": dss, "status": status, "current_block": cur_block,
             "expected_block_num": expected_num, "on_track": on_track, "pace": pace, "avg_skill": avg_skill,
-            "blocks": blocks, "remediation": remediation,
+            "blocks": blocks, "remediation": remediation, "handoff": handoff,
         })
 
     records.sort(key=lambda r: (r["class_id"], r["name"]))
@@ -246,10 +267,18 @@ def build_export(records: List[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[st
     return {**meta, "experts": records}
 
 
+@lru_cache(maxsize=1)
+def _logo_data_uri() -> str:
+    """ASCEND logo as a self-contained data URI so shared/emailed dashboards keep their branding."""
+    svg = (Path(__file__).parent / "assets" / "ascend_logo.svg").read_bytes()
+    return "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
+
+
 def render_html(records: List[Dict[str, Any]], meta: Dict[str, Any]) -> str:
     data_json = json.dumps(records, ensure_ascii=False, separators=(",", ":"))
     meta_json = json.dumps(meta, ensure_ascii=False)
-    return _HTML.replace("__DATA__", data_json).replace("__META__", meta_json)
+    return (_HTML.replace("__DATA__", data_json).replace("__META__", meta_json)
+            .replace("__LOGO__", _logo_data_uri()))
 
 
 def write_training_dashboard(out_dir: str | Path, records: List[Dict[str, Any]], meta: Dict[str, Any]) -> Path:
@@ -271,7 +300,7 @@ _HTML = r"""<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Training Dashboard</title>
+<title>ASCEND Performance Decision Engine</title>
 <style>
 :root{
   --surface-1:#fcfcfb; --surface-2:#ffffff; --page:#f9f9f7;
@@ -412,13 +441,36 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
   border:1px solid color-mix(in srgb,var(--good) 35%,var(--border));
   background:color-mix(in srgb,var(--good) 7%,var(--surface-2));color:var(--text-2)}
 .okline .ok-ico{color:var(--good)}
+.handoff{padding:12px 14px;border-radius:10px;font-size:13px;
+  border:1px solid color-mix(in srgb,var(--good) 40%,var(--border));
+  background:color-mix(in srgb,var(--good) 8%,var(--surface-2))}
+.handoff .hd-ico{color:var(--good);font-size:15px;line-height:1.2}
+.mtools{position:absolute;top:12px;right:14px;display:flex;gap:6px;align-items:center;z-index:2}
+.tbtn{border:1px solid var(--border);background:var(--surface-2);color:var(--text-2);border-radius:7px;
+  padding:6px 9px;font-size:12px;cursor:pointer;font-weight:600;white-space:nowrap}
+.tbtn:hover{color:var(--text-1)}
+.mtools .close{position:static;width:auto;height:32px;padding:6px 9px}
+.titlewrap{display:flex;align-items:center;gap:14px}
+.mhead-l{display:flex;align-items:center;gap:14px}
+.brand{height:36px;width:auto;display:block;flex:0 0 auto}
+.brand-modal{height:32px;width:auto;display:block;flex:0 0 auto}
 .foot-note{color:var(--muted);font-size:12px;margin-top:40px;border-top:1px solid var(--grid);padding-top:14px}
+@media print{
+  .wrap{display:none!important}
+  .overlay{position:static!important;display:block!important;background:none!important;padding:0!important;overflow:visible!important}
+  .modal{box-shadow:none!important;max-width:100%!important;border:0!important}
+  .mbody{max-height:none!important;overflow:visible!important}
+  .mtools{display:none!important}   /* drop the controls on the printed/PDF page; the ASCEND logo stays (upper-left) */
+}
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="topbar">
-    <div><h1 id="title"></h1><p class="sub" id="subline"></p></div>
+    <div class="titlewrap">
+      <img class="brand" src="__LOGO__" alt="ASCEND" />
+      <div><h1 id="title"></h1><p class="sub" id="subline"></p></div>
+    </div>
     <div class="right">
       <span class="exbadge" id="synbadge" style="display:none">● SYNTHETIC ROSTER FIELDS</span>
       <button class="themebtn" id="themebtn" type="button">◐ Theme</button>
@@ -461,7 +513,7 @@ function onTrackChip(e){
   if(e.pace==="on_track") return chip("good","on track");
   return chip("warning","behind");
 }
-function curBlockText(e){const b=e.current_block||{};return b.num!=null?("Block "+b.num+(b.short&&b.short!=="—"?" — "+b.short:"")):"Not tracked yet";}
+function curBlockText(e){const b=e.current_block||{};if(b.done)return "Completed — all blocks passed";return b.num!=null?("Block "+b.num+(b.short&&b.short!=="—"?" — "+b.short:"")):"Not tracked yet";}
 function expectedText(e){return e.expected_block_num!=null?("Expected: Block "+e.expected_block_num+(e.days_since_start!=null?" · day "+e.days_since_start:"")):"";}
 
 const state = {class_id:"__all", trainer:"__all", status:"__all", q:""};
@@ -558,9 +610,12 @@ function skillRows(b){
 function blocksView(e){
   return e.blocks.map(b=>{
     const m = BLK_META[b.status]||{cls:"muted",label:b.status};
-    return `<div class="lblk"><div class="bhead"><span class="bnum">Block ${b.num}</span>`+
-      `<span class="bname">${esc(b.short)}</span>${chip(m.cls,m.label)}</div>`+
-      `<table class="cmtable"><tbody>${skillRows(b)}</tbody></table></div>`;
+    const head = `<div class="bhead"><span class="bnum">Block ${b.num}</span>`+
+      `<span class="bname">${esc(b.short)}</span>${chip(m.cls,m.label)}</div>`;
+    // Locked / not-yet-reached blocks stay blank -- no skill content underneath.
+    const blank = (b.status==="locked" || b.status==="not_tracked") && !(b.skills && b.skills.length);
+    const body = blank ? "" : `<table class="cmtable"><tbody>${skillRows(b)}</tbody></table>`;
+    return `<div class="lblk${blank?" locked":""}">${head}${body}</div>`;
   }).join("");
 }
 function actCol(cls,g){
@@ -582,16 +637,58 @@ function remediationView(e){
     `<div class="actsgrid">${actCol("learning",g.learning)}${actCol("training_support",g.training_support)}${actCol("coaching",g.coaching)}</div>`+
   `</div>`;
 }
+function handoffView(e){
+  const h=e.handoff; if(!h) return "";
+  const tags=(h.watch||[]).map(s=>`<span class="tag">${esc(s)}</span>`).join("");
+  return `<div class="handoff"><div style="display:flex;gap:10px;align-items:flex-start"><span class="hd-ico">${SEV_ICON.good}</span><div>`+
+    `<b>Completed Launchpad — ready for coach hand-off.</b>`+
+    `<div style="margin-top:4px">${esc(h.summary)}</div>`+
+    (tags?`<div style="margin-top:4px">Watch in production: ${tags}</div>`:"")+
+    `<div class="muted" style="margin-top:6px">${esc(h.note)}</div>`+
+  `</div></div></div>`;
+}
+/* plain-text full summary a trainer can copy / email to a coach */
+function summaryText(e){
+  const L=[];
+  L.push("TRAINING SUMMARY — "+e.name+" (#"+e.id+")");
+  L.push("Class "+e.class_id+(e.trainer?" · trainer "+e.trainer:""));
+  L.push("Status: "+((STATUS_META[e.status]||{}).label||e.status)+(e.pace?"  ·  pace: "+e.pace:""));
+  L.push(curBlockText(e)+(e.expected_block_num!=null?"  ·  "+expectedText(e):""));
+  L.push("Skill readiness: "+pct(e.avg_skill));
+  if(e.handoff){L.push(""); L.push("COMPLETION HAND-OFF"); L.push("- "+e.handoff.summary);
+    if((e.handoff.watch||[]).length) L.push("- Watch in production: "+e.handoff.watch.join(", ")); L.push("- "+e.handoff.note);}
+  else if(e.remediation){const r=e.remediation; L.push(""); L.push("REMEDIATION — "+(r.primary_block_label||("Block "+r.primary_block)));
+    L.push("- "+r.reason); L.push("- Focus behaviors: "+(r.focus_skills||[]).join(", "));
+    ["learning","training_support","coaching"].forEach(k=>{const g=(r.groups||{})[k]; if(g){L.push("  "+g.label+" ("+g.actor+"):");(g.actions||[]).forEach(a=>L.push("    • "+a));}});}
+  L.push(""); L.push("LEARNING BLOCKS");
+  e.blocks.forEach(b=>{const st=(BLK_META[b.status]||{}).label||b.status;
+    const below=(b.skills||[]).filter(s=>s.below).map(s=>s.label);
+    L.push("- Block "+b.num+" "+b.short+" — "+st+(below.length?"  (below: "+below.join(", ")+")":""));});
+  L.push(""); L.push("From the training dashboard"+(META.notice?" — SIMULATED review data":"")+".");
+  return L.join("\n");
+}
 function openModal(id){
   const e = byId.get(id); if(!e) return;
   const exp = e.expected_block_num!=null ? ("expected Block "+e.expected_block_num) : "expected —";
+  const primary = e.handoff ? "Completion hand-off" : "Remediation";
+  const primaryView = e.handoff ? handoffView(e) : remediationView(e);
   document.getElementById("modal").innerHTML = `
     <div class="mhead">
-      <button class="close" id="closeBtn" aria-label="Close">✕</button>
-      <div class="eyebrow">Training record</div>
-      <h3 id="mTitle">${esc(e.name)}</h3>
-      <div class="dims">${statusChip(e.status)}<span>#${esc(e.id)}</span><span>Class ${esc(e.class_id)}</span>`+
-        `${e.trainer?`<span>trainer ${esc(e.trainer)}</span>`:""}${e.icp?`<span>${esc(e.icp)}</span>`:""}</div>
+      <div class="mtools">
+        <button id="mCopy" class="tbtn" type="button" title="Copy summary to clipboard">⧉ Copy</button>
+        <button id="mEmail" class="tbtn" type="button" title="Email summary to a coach">✉ Email</button>
+        <button id="mPrint" class="tbtn" type="button" title="Print / Save as PDF">⎙ PDF</button>
+        <button class="close" id="closeBtn" aria-label="Close">✕</button>
+      </div>
+      <div class="mhead-l">
+        <img class="brand-modal" src="__LOGO__" alt="ASCEND" />
+        <div>
+          <div class="eyebrow">Training record</div>
+          <h3 id="mTitle">${esc(e.name)}</h3>
+          <div class="dims">${statusChip(e.status)}<span>#${esc(e.id)}</span><span>Class ${esc(e.class_id)}</span>`+
+            `${e.trainer?`<span>trainer ${esc(e.trainer)}</span>`:""}${e.icp?`<span>${esc(e.icp)}</span>`:""}</div>
+        </div>
+      </div>
     </div>
     <div class="mbody">
       <div class="focusband">
@@ -599,11 +696,19 @@ function openModal(id){
           <div>${onTrackChip(e)} <span class="muted">${esc(exp)}${e.days_since_start!=null?` · day ${e.days_since_start}`:""}</span></div></div>
         <div><div class="k">Skill readiness</div><div class="topic">${pct(e.avg_skill)}</div></div>
       </div>
-      <div class="sec"><div class="h">Remediation</div>${remediationView(e)}</div>
+      <div class="sec"><div class="h">${primary}</div>${primaryView}</div>
       <div class="sec"><div class="h">Learning blocks &amp; skills</div>${blocksView(e)}</div>
     </div>`;
   const ov = document.getElementById("overlay"); ov.classList.add("open");
   document.getElementById("closeBtn").onclick = closeModal;
+  document.getElementById("mCopy").onclick = ()=>{const b=document.getElementById("mCopy");
+    (navigator.clipboard?navigator.clipboard.writeText(summaryText(e)):Promise.reject())
+      .then(()=>{b.textContent="Copied ✓";setTimeout(()=>b.textContent="⧉ Copy",1500);})
+      .catch(()=>{b.textContent="Copy failed";setTimeout(()=>b.textContent="⧉ Copy",1500);});};
+  document.getElementById("mEmail").onclick = ()=>{
+    location.href="mailto:?subject="+encodeURIComponent("Training summary: "+e.name+" ("+e.class_id+")")
+      +"&body="+encodeURIComponent(summaryText(e).slice(0,1800));};
+  document.getElementById("mPrint").onclick = ()=>window.print();
   document.getElementById("closeBtn").focus();
   if(location.hash !== "#e="+id) history.replaceState(null,"","#e="+id);
 }

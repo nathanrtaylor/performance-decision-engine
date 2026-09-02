@@ -6,12 +6,14 @@ training dashboard, their class/session id, trainer, and training start date (th
 day the training-timeline count begins).
 
 Roster columns -> canonical:
-    Expert Name  -> agent_name
-    EEID         -> agent_id          (employee id; joins to the skill data's agent_id)
-    Trainer Name -> trainer
-    Start Date   -> training_start_date
-    Class Type   -> class_type         (New Hire | Tenure Conversion | ...)
-    Session #    -> class_id           (the class / session id, e.g. S-04191)
+    Expert Name           -> agent_name
+    EEID                  -> agent_id          (employee id; joins to the skill data's agent_id)
+    Trainer Name          -> trainer
+    Start Date            -> training_start_date
+    Class ID / Session #  -> class_id           (the class / session id, e.g. S-04191)
+
+"Class ID" is the current header (formerly "Session #", still accepted); "Class Type"
+was dropped from the export and is optional.
 """
 from __future__ import annotations
 
@@ -29,8 +31,9 @@ _RENAME = {
     "EEID": "agent_id",
     "Trainer Name": "trainer",
     "Start Date": "training_start_date",
-    "Class Type": "class_type",
-    "Session #": "class_id",
+    "Class Type": "class_type",   # dropped from the current export; kept for older files
+    "Session #": "class_id",      # renamed to "Class ID" below; kept for older files
+    "Class ID": "class_id",
 }
 _COLS = ["agent_id", "agent_name", "class_id", "trainer", "training_start_date", "class_type", "icp_client"]
 
@@ -39,6 +42,7 @@ def load_class_roster(path: str | Path, *, icp_client: str = "training") -> pd.D
     """Return the roster as a normalized agents frame (one row per expert)."""
     df = pd.read_excel(Path(path), sheet_name=_SHEET)
     df = df.rename(columns=_RENAME)
+    df = df.loc[:, ~df.columns.duplicated()]   # if both "Session #" and "Class ID" exist, keep the first
 
     missing = [c for c in ("agent_id", "class_id", "trainer", "training_start_date") if c not in df.columns]
     if missing:
