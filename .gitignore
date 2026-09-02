@@ -40,6 +40,8 @@ data/raw/**
 data/interim/**
 data/marts/**
 data/**/*.csv
+# live training inputs (class roster xlsx) -- PII, refreshed per run, never committed
+data/training/**
 
 # keep small samples + fixtures
 !data/samples/**

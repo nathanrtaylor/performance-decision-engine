@@ -38,7 +38,7 @@ def _skill_ids() -> list:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--roster", default=str(REPO / "docs/training/training_class_roster.xlsx"))
+    ap.add_argument("--roster", default=str(REPO / "data/training/training_class_roster.xlsx"))
     ap.add_argument("--report-date", default="2026-09-02")
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--out", default=None)

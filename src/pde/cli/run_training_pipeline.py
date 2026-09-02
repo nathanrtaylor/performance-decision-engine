@@ -93,8 +93,9 @@ def main(argv=None) -> int:
     ap.add_argument("--run-id", default="training_run")
     ap.add_argument("--program", default=None, help="training_program.yaml (default: <configs-dir>/training_program.yaml)")
     ap.add_argument("--policy", default=None, help="remediation.yaml (default: <configs-dir>/remediation.yaml)")
-    ap.add_argument("--roster", default="docs/training/training_class_roster.xlsx",
-                    help="Class roster xlsx — the source of truth for who/class/trainer/start date.")
+    ap.add_argument("--roster", default="data/training/training_class_roster.xlsx",
+                    help="Class roster xlsx — the source of truth for who/class/trainer/start date. "
+                         "Lives under data/training/ (gitignored: PII, updated per run).")
     ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
     ap.add_argument("--coaching-history", default=None,

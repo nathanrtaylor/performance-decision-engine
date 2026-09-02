@@ -1,9 +1,10 @@
 """Training class roster — the source of truth for the dashboard population.
 
-Loads the Training Orchestra export (docs/training/training_class_roster.xlsx,
-sheet "Expert Roster") into a normalized frame. This defines WHO shows up in the
-training dashboard, their class/session id, trainer, and training start date (the
-day the training-timeline count begins).
+Loads the Training Orchestra export (the class roster xlsx, sheet "Expert Roster")
+into a normalized frame. This defines WHO shows up in the training dashboard, their
+class/session id, trainer, and training start date (the day the training-timeline
+count begins). The live file lives at data/training/training_class_roster.xlsx
+(gitignored: it carries PII and is refreshed each run); format: docs/training/roster_format.md.
 
 Roster columns -> canonical:
     Expert Name           -> agent_name
