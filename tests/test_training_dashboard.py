@@ -121,3 +121,18 @@ def test_roster_expert_without_skill_data_is_not_started():
     assert "a3" in by                            # appears despite no skills in skills_df
     assert by["a3"]["status"] == "not_started"
     assert by["a3"]["remediation"] is None
+
+
+def test_no_progress_feed_is_not_schedule_inferred():
+    # Without a progress feed (no current_block_order), progress is NOT inferred from the
+    # schedule: current block is unknown, pace is pending, blocks are never marked "passed".
+    agents = _agents_df().drop(columns=["current_block_order"])
+    recs, _ = build_training_records(_skills_df(), agents, _program(), RemediationPolicy(),
+                                     _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
+    by = {r["id"]: r for r in recs}
+    a1, a2 = by["a1"], by["a2"]
+    assert a1["current_block"]["num"] is None and a1["pace"] is None
+    assert all(b["status"] in ("retraining", "not_tracked") for b in a1["blocks"])  # never "passed"
+    assert a1["status"] == "retraining"          # has a below-mark skill (solve)
+    assert a2["status"] == "in_training"         # has data, no deficiency, progress not tracked
+    assert a2["expected_block_num"] is not None  # expected is still computed (for comparison)

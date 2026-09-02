@@ -113,36 +113,31 @@ def build_training_records(
             except Exception:  # noqa: BLE001
                 dss = None
 
-        # expected block position by schedule
+        # Expected block by schedule -- used ONLY to judge on-track vs behind, never to
+        # infer actual completion.
         expected_num: Optional[int] = None
         if dss is not None:
             due = [b.order for b in program.blocks
                    if b.expected_completion_day is not None and b.expected_completion_day <= dss]
             expected_num = max(due) if due else 0
 
-        # actual current block (from roster progress if present, else the expected position)
+        # ACTUAL current block comes from a progress feed (roster current_block_order) when
+        # present; otherwise it is unknown -- we do NOT infer it from the expected schedule.
         cbo = aget(aid, "current_block_order")
-        if cbo is not None:
-            current_num: Optional[int] = int(cbo)
-        else:
-            current_num = expected_num
-        on_track: Optional[bool] = (
-            (current_num >= expected_num) if (current_num is not None and expected_num is not None) else None
-        )
-        if current_num is None or expected_num is None:
-            pace: Optional[str] = None
-        elif current_num > expected_num:
-            pace = "ahead"
-        elif current_num == expected_num:
-            pace = "on_track"
-        else:
-            pace = "behind"
+        has_progress = cbo is not None
+        current_num: Optional[int] = int(cbo) if has_progress else None
 
-        cur = current_num if current_num is not None else 0
+        # pace = ACTUAL current block vs EXPECTED block (only when actual progress is known)
+        if current_num is not None and expected_num is not None:
+            on_track: Optional[bool] = current_num >= expected_num
+            pace: Optional[str] = ("ahead" if current_num > expected_num
+                                   else "on_track" if current_num == expected_num else "behind")
+        else:
+            on_track, pace = None, None
+
         block_defic: Dict[int, List[str]] = {}
         blocks: List[Dict[str, Any]] = []
         for b in program.blocks:
-            status = "passed" if b.order < cur else ("in_progress" if b.order == cur else "locked")
             bskills = []
             for sid in b.develops_all:
                 if sid not in vals:
@@ -153,27 +148,36 @@ def build_training_records(
                 bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
                                 "category": m.get("category", ""),
                                 "value": None if v is None else round(v, 3), "below": bool(below)})
-                if below and b.order <= cur:
-                    block_defic.setdefault(b.order, []).append(sid)
-            if b.order == cur and any(s["below"] for s in bskills):
-                status = "retraining"
+            has_below = any(s["below"] for s in bskills)
+            if has_below:
+                # a below-mark skill means the expert has attempted (reached) this block
+                block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
+            # Block status: ACTUAL-completion-driven when a progress feed exists; otherwise
+            # data-driven (retraining where a deficiency shows, else not_tracked). Never
+            # schedule-inferred -- pre-feed we do NOT claim blocks are passed.
+            if has_progress:
+                status = ("passed" if b.order < current_num
+                          else "in_progress" if b.order == current_num else "locked")
+                if b.order == current_num and has_below:
+                    status = "retraining"
+            else:
+                status = "retraining" if has_below else "not_tracked"
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
                            "short": short_desc(b.label), "status": status, "skills": bskills})
 
         vv = [v for (v, _bm) in vals.values() if v is not None]
         avg_skill = round(sum(vv) / len(vv), 3) if vv else None
 
-        # Remediation only targets blocks the expert has REACHED (<= current). block_defic
-        # already holds the reached blocks with below-mark skills; drive triggering from it so
-        # a deficiency shared with a future/locked block never pulls that block in. (Once real
-        # gate test-call data exists, triggering is gate-driven and this fallback is unused.)
+        # Remediation targets blocks the expert has reached (a below-mark skill means they
+        # attempted it). block_defic holds those; drive triggering from it. (Once real gate
+        # test-call data exists, triggering is gate-driven and this fallback is unused.)
         id_by_order = {b.order: b.id for b in program.blocks}
         remediation = None
         if block_defic:
             triggered_ids = [id_by_order[o] for o in sorted(block_defic)]
             plan = plan_remediation(aid, program, policy, deficient_skills=deficient, triggered_blocks=triggered_ids)
             trig_nums = sorted(block_defic)
-            prim_order = cur if cur in block_defic else max(block_defic)
+            prim_order = current_num if current_num in block_defic else max(block_defic)
             prim = next((b for b in program.blocks if b.order == prim_order), None)
             if prim is not None:
                 focus_ids = block_defic.get(prim.order) or deficient
@@ -194,15 +198,15 @@ def build_training_records(
         if not vals:
             status = "not_started"                       # on the roster, no skill data yet
         elif block_defic:
-            status = "retraining"
-        elif current_num is not None and current_num >= last_num:
+            status = "retraining"                         # has a below-mark skill -> needs remediation
+        elif has_progress and current_num is not None and current_num >= last_num:
             status = "completed"
-        elif on_track is False:
+        elif has_progress and on_track is False:
             status = "behind"
-        elif current_num is None:
-            status = "unknown"
-        else:
+        elif has_progress:
             status = "on_track"
+        else:
+            status = "in_training"                        # has data, no deficiency, actual progress not tracked yet
 
         cur_block = next(({"num": bm["num"], "name": bm["name"], "short": bm["short"]}
                           for bm in blocks_meta if bm["num"] == current_num),
@@ -224,8 +228,8 @@ def build_training_records(
         "report_date": str(report_date),
         "blocks": blocks_meta,
         "roster_fields_synthetic": False,   # real roster by default; demo generator overrides to True
-        "current_block_source": ("roster" if any_progress
-                                 else "expected position from schedule (no progress feed yet)"),
+        "current_block_source": ("progress feed (actual block completion)" if any_progress
+                                 else "not tracked yet — no progress feed; the expected date is used only to judge on-track"),
     }
     return records, meta
 
@@ -431,13 +435,14 @@ const BENCH = META.pass_mark;
 const byId = new Map(EXPERTS.map(e => [e.id, e]));
 const SEV_ICON = {good:"✓", warning:"⚠", serious:"▲", critical:"✕", muted:"–"};
 const STATUS_META = {
-  not_started:{cls:"muted",label:"Not started"},
+  not_started:{cls:"muted",label:"Not started"}, in_training:{cls:"muted",label:"In training"},
   on_track:{cls:"good",label:"On track"}, behind:{cls:"warning",label:"Behind schedule"},
   retraining:{cls:"serious",label:"Re-training needed"}, completed:{cls:"good",label:"Completed"},
   unknown:{cls:"muted",label:"Unknown"},
 };
 const BLK_META = {passed:{cls:"good",label:"Passed"}, in_progress:{cls:"muted",label:"In progress"},
-  retraining:{cls:"serious",label:"Re-training"}, locked:{cls:"muted",label:"Locked"}};
+  retraining:{cls:"serious",label:"Re-training"}, locked:{cls:"muted",label:"Locked"},
+  not_tracked:{cls:"muted",label:"Not tracked"}};
 function esc(s){return String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 function pct(v){return (v==null)?"—":Math.round(v*100)+"%";}
 function chip(cls,label){return `<span class="chip ${cls}"><span class="ico">${SEV_ICON[cls]||""}</span>${esc(label)}</span>`;}
@@ -448,7 +453,8 @@ function onTrackChip(e){
   if(e.pace==="on_track") return chip("good","on track");
   return chip("warning","behind");
 }
-function curBlockText(e){const b=e.current_block||{};return (b.num!=null?("Block "+b.num):"—")+(b.short&&b.short!=="—"?" — "+b.short:"");}
+function curBlockText(e){const b=e.current_block||{};return b.num!=null?("Block "+b.num+(b.short&&b.short!=="—"?" — "+b.short:"")):"Not tracked yet";}
+function expectedText(e){return e.expected_block_num!=null?("Expected: Block "+e.expected_block_num+(e.days_since_start!=null?" · day "+e.days_since_start:"")):"";}
 
 const state = {class_id:"__all", trainer:"__all", status:"__all", q:""};
 const uniq = k => [...new Set(EXPERTS.map(e=>e[k]).filter(x=>x!=null&&x!==""))].sort();
@@ -511,11 +517,14 @@ function ladderDots(e){
 }
 function card(e){
   const passed = e.blocks.filter(b=>b.status==="passed").length;
+  const tracked = e.current_block && e.current_block.num!=null;
+  const footL = tracked ? (passed+"/"+e.blocks.length+" passed") : "progress not tracked";
   return `<button class="card" data-id="${esc(e.id)}">`+
     `<div class="row1"><span class="nm">${esc(e.name)}</span>${statusChip(e.status)}</div>`+
     `<div class="dim">${esc(e.class_id)}${e.trainer?" · "+esc(e.trainer):""}</div>`+
     `<div class="dim">${esc(curBlockText(e))} ${onTrackChip(e)}</div>`+
-    `<div class="foot">${ladderDots(e)}<span>${passed}/${e.blocks.length} blocks · skill ${pct(e.avg_skill)}</span></div>`+
+    `<div class="dim muted">${esc(expectedText(e))}</div>`+
+    `<div class="foot">${ladderDots(e)}<span>${footL} · skill ${pct(e.avg_skill)}</span></div>`+
   `</button>`;
 }
 function render(){
