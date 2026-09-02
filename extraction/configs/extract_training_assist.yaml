@@ -91,5 +91,4 @@ outputs:
       coaching_status_in:
         - "Submitted"
         - "Excused"
-      start_date: "2026-03-01"   # wider lookback than the class window (prior coaching)
-      end_date:   "2026-09-04"
+      

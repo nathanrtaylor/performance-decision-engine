@@ -16,12 +16,15 @@ CFG = REPO / "extraction/configs/extract_training_assist.yaml"
 SQL = REPO / "extraction/sql/coaching_history.sql.j2"
 
 
-def _render_coaching_history() -> str:
+def _context() -> dict:
     cfg = yaml.safe_load(CFG.read_text(encoding="utf-8"))
     out = cfg["outputs"]["coaching_history"]
-    ctx = {**(cfg.get("globals") or {}), **(out.get("params") or {})}   # params override globals
+    return {**(cfg.get("globals") or {}), **(out.get("params") or {})}   # params override globals
+
+
+def _render_coaching_history() -> str:
     env = Environment(undefined=StrictUndefined, trim_blocks=True, lstrip_blocks=True)
-    return env.from_string(SQL.read_text(encoding="utf-8")).render(**ctx)
+    return env.from_string(SQL.read_text(encoding="utf-8")).render(**_context())
 
 
 def test_training_config_has_coaching_history_output():
@@ -33,10 +36,11 @@ def test_training_config_has_coaching_history_output():
 
 def test_coaching_history_renders_in_training_context():
     # No StrictUndefined error => every var the template needs is defined in the training config.
+    ctx = _context()
     sql = _render_coaching_history()
     assert "l2_asurion_coachdb_coachdb_helixcoaching" in sql
-    # widened lookback window (per-output override), not the class window
-    assert "DATE '2026-03-01'" in sql and "DATE '2026-09-04'" in sql
+    # date window comes from the config (globals, or a per-output override if present)
+    assert f"DATE '{ctx['start_date']}'" in sql and f"DATE '{ctx['end_date']}'" in sql
     # status IN-list rendered from the list param
     assert "'Submitted'" in sql and "'Excused'" in sql
     # unbounded: no agent/roster predicate is pushed into the SQL (cohort filtering is in Python)
