@@ -4,7 +4,7 @@ The raw extract (`training_assist.csv`, produced by extraction/sql/training_assi
 is tall at the behavior grain: one row per
 `(agent_id, week_ending, call_type, scorecard_name=challenge_id, behavior)`.
 
-This module reads the governed mapping `configs/mappings/training_profiles.yaml` and
+This module reads the governed mapping `configs/training/training_profiles.yaml` and
 reframes those rows from raw behaviors/profiles into the **skills** experts are training
 on, applying the reference material's relevance rules:
 
@@ -119,7 +119,7 @@ def build_training_assist_skills(
     raw_df : DataFrame with columns
         agent_id, week_ending, call_type, scorecard_name, behavior,
         attempts, numerator, denominator, calc
-    profiles : parsed configs/mappings/training_profiles.yaml
+    profiles : parsed configs/training/training_profiles.yaml
     """
     if raw_df is None or raw_df.empty:
         return _empty_frame()

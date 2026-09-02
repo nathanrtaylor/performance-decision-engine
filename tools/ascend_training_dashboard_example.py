@@ -12,7 +12,7 @@ grid + single reusable modal, and light/dark toggle.
 The ASCEND framing shown here (CBTs / skill-based scenarios / test calls, learning blocks,
 and the re-training loop) does not yet exist in the repo — it is introduced for this mockup.
 Real vocabulary is borrowed for authenticity: skill/category labels come from
-``configs/mappings/training_profiles.yaml`` and scores are expressed as the pass-rate the
+``configs/training/training_profiles.yaml`` and scores are expressed as the pass-rate the
 TrAIning Assist pipeline uses (``calc``, 0-1). Roster-style fields (name, class/mascot,
 trainer/coach, tenure) mirror ``data/raw/weekly/latest/agents.csv``.
 
@@ -40,7 +40,7 @@ from typing import Any, Dict, List, Optional
 PASS_BENCHMARK = 0.80          # example test-call / behavior pass mark
 BLOCKS = ["Phase 1", "Phase 2", "Phase 3", "Final Assessment"]
 
-# (skill label, category label) — real names from configs/mappings/training_profiles.yaml,
+# (skill label, category label) — real names from configs/training/training_profiles.yaml,
 # curated to a typical NH sales/service profile's "always" requirements.
 SKILLS: List[tuple] = [
     ("Warm Greeting", "Customer Connection"),

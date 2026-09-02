@@ -25,9 +25,12 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from cde.training.program import load_program, build_skill_routing
+
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "configs" / "training" / "mappings"
-PROFILES = REPO / "configs" / "mappings" / "training_profiles.yaml"
+PROFILES = REPO / "configs" / "training" / "training_profiles.yaml"
+PROGRAM = REPO / "configs" / "training" / "training_program.yaml"
 PROD_CATALOG = REPO / "configs" / "mappings" / "metric_catalog.yaml"
 
 
@@ -133,8 +136,27 @@ def main() -> int:
 
     metric_catalog = {"metric_catalog": {"category_defaults": category_defaults, "metrics": metrics}}
     benchmarks = {"benchmarks": {m: {"default": args.pass_mark} for m in metrics}}
+    # conversation_type carries BOTH the learning block a skill maps to and that
+    # block's description (from training_program.yaml `develops:`, the earliest block
+    # that teaches the skill), so a retake reads e.g.
+    #   "Re-training — Block 6: Greeting, Verify, Assess, Empathy & Assurance"
+    # telling a trainer where to go back and what that block covers.
+    prog = load_program(PROGRAM)
+    routing = build_skill_routing(prog)
+    order_by_block = {b.id: b.order for b in prog.blocks}
+    short_by_order = {b.order: (b.label.split(":", 1)[1].strip() if ":" in b.label else b.label)
+                      for b in prog.blocks}
+    block_of = {s: order_by_block[bids[0]] for s, bids in routing.items() if bids}
+
+    def _ct(metric: str) -> str:
+        n = block_of.get(metric)
+        if n is None:
+            return "Re-training"
+        short = short_by_order.get(n) or ""
+        return f"Re-training — Block {n}: {short}".rstrip(": ").rstrip()
+
     metric_to_topic = {m: f"Retake: {labels[m]}" for m in metrics}
-    topic_to_ct = {f"Retake: {labels[m]}": "Re-training" for m in metrics}
+    topic_to_ct = {metric_to_topic[m]: _ct(m) for m in metrics}
     topic_map = {"topic_map": {"metric_to_topic": metric_to_topic, "topic_to_conversation_type": topic_to_ct}}
 
     OUT.mkdir(parents=True, exist_ok=True)

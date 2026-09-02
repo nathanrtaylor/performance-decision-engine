@@ -1,9 +1,42 @@
+# ============================================================================
+# TrAIning Assist — Skill mapping & simulator profiles
+# (configs/training/training_profiles.yaml)
+# ============================================================================
+# Source of truth for the TrAIning Assist SIMULATOR
+# (source table: hive.care.l1_asurion_dst_ai_assisted_training). Two jobs:
+#   1. skills:   behavior -> SKILL mapping — the ~22 skills that become metrics in
+#                mappings/metric_catalog.yaml and topics in mappings/topic_map.yaml.
+#   2. profiles: per-simulator-persona (challenge_id) skill requirements — which
+#                skills each scenario evaluates. Consumed by
+#                src/cde/ingestion/training_assist_skills.py to roll raw behaviors
+#                up to skill-level pass-rates.
+#
+# CONNECTION TO training_program.yaml (the learning-block routing table):
+#   • SKILLS are the join key: each block's `develops:` lists skill ids defined
+#     here; metric_catalog catalogs the same ids.
+#   • PROFILES are sim COMPONENTS: a challenge_id here is what a program block's
+#     `components: {kind: skill_sim, ref: <challenge_id>}` points at.
+#   Edit skills/profiles HERE; edit block sequence/gates in training_program.yaml.
+# ============================================================================
+
+# ---------------------------------------------------------------------------
+# Meta
+# ---------------------------------------------------------------------------
 version: 1
 description: Semantic mapping for TrAIning Assist profile scenarios and skill-development reporting.
+
+# ---------------------------------------------------------------------------
+# Defaults — global scoring assumptions
+# ---------------------------------------------------------------------------
 defaults:
   unspecified_requirement: never
   score_grain: agent_id x week_ending x challenge_id x behavior
   attempts_definition: count distinct session_id before session_id is dropped from final reporting output
+
+# ---------------------------------------------------------------------------
+# Requirement rules — which requirement levels count toward scoring
+# (include_in_scoring); mirrored by build_training_assist_skills.
+# ---------------------------------------------------------------------------
 requirement_rules:
   always:
     include_in_scoring: true
@@ -19,6 +52,10 @@ requirement_rules:
   never:
     include_in_scoring: false
     requires_opportunity: false
+
+# ---------------------------------------------------------------------------
+# Skill catalog — categories (call-flow order)
+# ---------------------------------------------------------------------------
 skill_categories:
   customer_connection:
     label: Customer Connection
@@ -44,7 +81,16 @@ skill_categories:
     label: Compliance
   call_close:
     label: Call Close
+
+# ---------------------------------------------------------------------------
+# Skill catalog — behavior -> skill mapping, grouped by category.
+# mapping_status: mapped | mapped_alias | review_required | unmapped.
+# Each skill id is referenced by profiles (below), metric_catalog, and
+# training_program.yaml `develops:`.
+# ---------------------------------------------------------------------------
 skills:
+
+  # —— Customer Connection (customer_connection) ——
   warm_greeting:
     label: Warm Greeting
     category: customer_connection
@@ -59,12 +105,6 @@ skills:
     behavior_names:
     - show compassion
     mapping_status: mapped_alias
-  understand_customer_issue:
-    label: Understand Customer Issue
-    category: discovery
-    source_eval_name: Understand Customer Issue
-    behavior_names: []
-    mapping_status: unmapped
   reassure:
     label: Reassure the Customer
     category: customer_connection
@@ -72,19 +112,14 @@ skills:
     behavior_names:
     - reassurance
     mapping_status: mapped_alias
+
+  # —— Call Control (call_control) ——
   verification:
     label: Verification
     category: call_control
     source_eval_name: Verification
     behavior_names:
     - verification
-    mapping_status: mapped
-  account_assessment:
-    label: Account Assessment
-    category: discovery
-    source_eval_name: Account Assessment
-    behavior_names:
-    - account assessment
     mapping_status: mapped
   set_expectations:
     label: Set Expectations
@@ -93,6 +128,21 @@ skills:
     behavior_names:
     - set expectations
     mapping_status: mapped
+
+  # —— Technical Discovery (discovery) ——
+  understand_customer_issue:
+    label: Understand Customer Issue
+    category: discovery
+    source_eval_name: Understand Customer Issue
+    behavior_names: []
+    mapping_status: unmapped
+  account_assessment:
+    label: Account Assessment
+    category: discovery
+    source_eval_name: Account Assessment
+    behavior_names:
+    - account assessment
+    mapping_status: mapped
   advanced_discovery:
     label: Advanced Discovery
     category: discovery
@@ -100,6 +150,8 @@ skills:
     behavior_names:
     - advanced discovery
     mapping_status: mapped
+
+  # —— Resolution (resolution) ——
   resolve:
     label: Resolve
     category: resolution
@@ -113,6 +165,8 @@ skills:
     behavior_names:
     - confirm resolution
     mapping_status: mapped_alias
+
+  # —— Sales Transition (sales_transition) ——
   transition_statement:
     label: Transition Statement
     category: sales_transition
@@ -120,6 +174,8 @@ skills:
     behavior_names:
     - transition statement
     mapping_status: mapped
+
+  # —— Sales Discovery (sales_discovery) ——
   discovery_question:
     label: Discovery Questions
     category: sales_discovery
@@ -134,6 +190,8 @@ skills:
     behavior_names:
     - engagement questions
     mapping_status: mapped_alias
+
+  # —— Value Presentation (value_presentation) ——
   core_benefit_1:
     label: Core Benefit 1
     category: value_presentation
@@ -162,6 +220,17 @@ skills:
     behavior_names:
     - price
     mapping_status: mapped_alias
+
+  # —— Sales Delivery (sales_delivery) ——
+  conversational_language:
+    label: Conversational Language
+    category: sales_delivery
+    source_eval_name: Conversational Language
+    behavior_names:
+    - smart offer conversational language
+    mapping_status: mapped_alias
+
+  # —— Closing (closing) ——
   ask_for_sale:
     label: Ask for the Sale
     category: closing
@@ -169,12 +238,6 @@ skills:
     behavior_names:
     - ask for sale
     mapping_status: mapped
-  recorded_disclosures_statement:
-    label: Recorded Disclosures Statement
-    category: compliance
-    source_eval_name: Recorded Disclosures Statement
-    behavior_names: []
-    mapping_status: unmapped
   ask_to_enroll:
     label: Ask to Enroll
     category: closing
@@ -188,13 +251,8 @@ skills:
     behavior_names:
     - ask to send enrollment link
     mapping_status: mapped_alias
-  conversational_language:
-    label: Conversational Language
-    category: sales_delivery
-    source_eval_name: Conversational Language
-    behavior_names:
-    - smart offer conversational language
-    mapping_status: mapped_alias
+
+  # —— Objection Handling (objection_handling) ——
   resolve_concerns:
     label: Resolve Customer Concerns
     category: objection_handling
@@ -202,6 +260,16 @@ skills:
     behavior_names:
     - resolve the customer's concern
     mapping_status: mapped_alias
+
+  # —— Compliance (compliance) ——
+  recorded_disclosures_statement:
+    label: Recorded Disclosures Statement
+    category: compliance
+    source_eval_name: Recorded Disclosures Statement
+    behavior_names: []
+    mapping_status: unmapped
+
+  # —— Call Close (call_close) ——
   ty_reinforcement:
     label: Thank & Reinforce
     category: call_close
@@ -223,14 +291,1158 @@ skills:
     behavior_names:
     - goodbye w/ rapport
     mapping_status: mapped_alias
+
+# ---------------------------------------------------------------------------
+# Simulator profiles — one per challenge_id (the persona an expert practices
+# against). `requirements` lists the skills each scenario evaluates, by level.
+# challenge_id is the ref a training_program.yaml skill_sim component points at.
+# Grouped by client / line-of-business; within a group: Live, then Testing/On hold.
+# ---------------------------------------------------------------------------
 profiles:
+
+  # ======== Verizon · Connected Home (6) ========
+  amy_stake:
+    challenge_id: amy_stake
+    source_profile_name: Amy Stake
+    reporting_label: Smart Home Devices
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario:
+      call_intent: Smart Home Devices
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: alias
+    notes:
+      eval_notes: NH CH Profile for Smart Home Devices
+    profile_database_name: ConnHom Amy Stake
+  gene_poole:
+    challenge_id: gene_poole
+    source_profile_name: Gene Poole
+    reporting_label: Laptops
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario:
+      call_intent: Laptops
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: alias
+    notes:
+      eval_notes: NH CH Profile for Laptops
+    profile_database_name: ConnHome Gene Poole
+  polly_ester:
+    challenge_id: polly_ester
+    source_profile_name: Polly Ester
+    reporting_label: Streaming Device issue
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario:
+      call_intent: Streaming Device issue
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: alias
+    notes:
+      eval_notes: NH CH Profile for Streaming Devices troubleshooting
+    profile_database_name: ConHome Polly Ester
+  roland_d_dice:
+    challenge_id: roland_d_dice
+    source_profile_name: Roland D Dice
+    reporting_label: Gaming Devices
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario:
+      call_intent: Gaming Devices
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: alias
+    notes:
+      eval_notes: NH CH Profile for Gaming Devices
+    profile_database_name: Chome Roland D Dice
+  telly_vision:
+    challenge_id: telly_vision
+    source_profile_name: Telly Vision
+    reporting_label: Telly Vision
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario: {}
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  wanda_connect:
+    challenge_id: wanda_connect
+    source_profile_name: Wanda Connect
+    reporting_label: Wanda Connect
+    report: null
+    client: Verizon
+    lob: Connected Home
+    status: Testing
+    scenario: {}
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+
+  # ======== Verizon · Mobility (21) ========
+  anabelle_adams:
+    challenge_id: anabelle_adams
+    source_profile_name: Anabelle Adams
+    reporting_label: Damage claim | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 2nd Phase
+      other_notes: Focused, but might chat
+  ashley_smith:
+    challenge_id: ashley_smith
+    source_profile_name: Ashley Smith
+    reporting_label: Damage claim/cracked screen | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim/cracked screen
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  becky_botsford:
+    challenge_id: becky_botsford
+    source_profile_name: Becky Botsford
+    reporting_label: Liquid damage | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Liquid damage
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  dock_tari:
+    challenge_id: dock_tari
+    source_profile_name: Dock Tari
+    reporting_label: Damage claim | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  harold_harrison:
+    challenge_id: harold_harrison
+    source_profile_name: Harold Harrison
+    reporting_label: Lost device | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Lost device
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - survey
+      - goodbye_with_rapport
+    source_match: exact
+    notes:
+      eval_notes: NH Profile
+      other_notes: Polite, but direct
+  jackie_johnson:
+    challenge_id: jackie_johnson
+    source_profile_name: Jackie Johnson
+    reporting_label: Cracked Screen | VHDP | Neutral
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Cracked Screen
+      offer: VHDP
+      receptiveness: neutral
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: exact
+    notes:
+      eval_notes: NH Profile
+      other_notes: Friendly and likes to chat
+  jennifer_van_halen:
+    challenge_id: jennifer_van_halen
+    source_profile_name: Jennifer Van Halen
+    reporting_label: Liquid damage (Pro on the Go) | VHDP | Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Liquid damage (Pro on the Go)
+      offer: VHDP
+      receptiveness: receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  jessica_drew:
+    challenge_id: jessica_drew
+    source_profile_name: Jessica Drew
+    reporting_label: Damage claim | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  jonathan_kent:
+    challenge_id: jonathan_kent
+    source_profile_name: Jonathan Kent
+    reporting_label: Document hold | VHDP | Neutral
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Document hold
+      offer: VHDP
+      receptiveness: neutral
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  mary_clark:
+    challenge_id: mary_clark
+    source_profile_name: Mary Clark
+    reporting_label: Liquid damage | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Liquid damage
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  matthew_murdock:
+    challenge_id: matthew_murdock
+    source_profile_name: Matthew Murdock
+    reporting_label: Extended verification hold | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Extended verification hold
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  melanie_mcclintock:
+    challenge_id: melanie_mcclintock
+    source_profile_name: Melanie McClintock
+    reporting_label: Cracked Screen | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Cracked Screen
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 3rd Phase
+      other_notes: Friendly, but wants her phone fixed
+  olivia_desmond:
+    challenge_id: olivia_desmond
+    source_profile_name: Olivia Desmond
+    reporting_label: Adjuster hold | VHDP | Very Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Adjuster hold
+      offer: VHDP
+      receptiveness: very_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  paul_temper:
+    challenge_id: paul_temper
+    source_profile_name: Paul Temper
+    reporting_label: Damage claim | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      other_notes: Escalated customer (angry)
+  richard_greyson:
+    challenge_id: richard_greyson
+    source_profile_name: Richard Greyson
+    reporting_label: Damage claim | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  robert_richardson:
+    challenge_id: robert_richardson
+    source_profile_name: Robert Richardson
+    reporting_label: Damage claim | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 2nd Phase
+      other_notes: Focused on resolution
+  sarah_conner:
+    challenge_id: sarah_conner
+    source_profile_name: Sarah Conner
+    reporting_label: Damage claim | VHDP | Not Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  sharon_a_fealing:
+    challenge_id: sharon_a_fealing
+    source_profile_name: Sharon A Fealing
+    reporting_label: Lost device | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Lost device
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: alias
+    notes:
+      eval_notes: NH Profile - Final Assessment
+      other_notes: Friendly but focused on filing her claim
+    profile_database_name: Sharon Fealings
+  stephen_sondheim:
+    challenge_id: stephen_sondheim
+    source_profile_name: Stephen Sondheim
+    reporting_label: DMIR | VHDP | Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: DMIR
+      offer: VHDP
+      receptiveness: receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  tyler_thompson:
+    challenge_id: tyler_thompson
+    source_profile_name: Tyler Thompson
+    reporting_label: Liquid damage | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Liquid damage
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 3rd Phase
+      other_notes: Focused on resolution, but might chat
+  victor_stone:
+    challenge_id: victor_stone
+    source_profile_name: Victor Stone
+    reporting_label: Lost device | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Lost device
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+
+  # ======== Verizon · Soluto (35) ========
+  amanda_lewis:
+    challenge_id: amanda_lewis
+    source_profile_name: Amanda Lewis
+    reporting_label: adding a payment method | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: adding a payment method
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  annette_pierce:
+    challenge_id: annette_pierce
+    source_profile_name: Annette Pierce
+    reporting_label: Annette Pierce
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+    source_match: evaluation_only
+  becky_bergen:
+    challenge_id: becky_bergen
+    source_profile_name: Becky Bergen
+    reporting_label: E-Sim Activation - Easy | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Easy
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+  derek_holloway:
+    challenge_id: derek_holloway
+    source_profile_name: Derek Holloway
+    reporting_label: Derek Holloway
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
   elijah_jones:
     challenge_id: elijah_jones
     source_profile_name: Elijah Jones
     reporting_label: E-Sim Activation - Easy | VHDP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Easy
@@ -242,21 +1454,18 @@ profiles:
       nc_guided_flow: false
     requirements: {}
     source_match: exact
-  becky_bergen:
-    challenge_id: becky_bergen
-    source_profile_name: Becky Bergen
-    reporting_label: E-Sim Activation - Easy | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
+  ethan_caldwell:
+    challenge_id: ethan_caldwell
+    source_profile_name: Ethan Caldwell
+    reporting_label: Ethan Caldwell
+    report: AD
     client: Verizon
+    lob: Soluto
     status: Live
-    scenario:
-      call_intent: E-Sim Activation - Easy
-      offer: VHDP
-      receptiveness: somewhat_receptive
+    scenario: {}
     tool_usage:
-      expert_assist: true
-      da_guided_flow: true
+      expert_assist: false
+      da_guided_flow: false
       nc_guided_flow: false
     requirements:
       always:
@@ -265,69 +1474,19 @@ profiles:
       - reassure
       - verification
       - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - goodbye_with_rapport
-    source_match: exact
-  victor_marks:
-    challenge_id: victor_marks
-    source_profile_name: Victor Marks
-    reporting_label: E-Sim Activation - Medium | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
+    source_match: evaluation_only
+  gabrielle_thornton:
+    challenge_id: gabrielle_thornton
+    source_profile_name: Gabrielle Thornton
+    reporting_label: Gabrielle Thornton
+    report: AD
     client: Verizon
-    status: Live
-    scenario:
-      call_intent: E-Sim Activation - Medium
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: true
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jessica_sterling:
-    challenge_id: jessica_sterling
-    source_profile_name: Jessica Sterling
-    reporting_label: E-Sim Activation - Medium | VHDP | Somewhat Receptive
-    report: NH
     lob: Soluto
-    client: Verizon
     status: Live
-    scenario:
-      call_intent: E-Sim Activation - Medium
-      offer: VHDP
-      receptiveness: somewhat_receptive
+    scenario: {}
     tool_usage:
-      expert_assist: true
-      da_guided_flow: true
+      expert_assist: false
+      da_guided_flow: false
       nc_guided_flow: false
     requirements:
       always:
@@ -353,14 +1512,14 @@ profiles:
       - ask_to_send_link
       as_needed:
       - resolve_concerns
-    source_match: exact
+    source_match: evaluation_only
   isabella_rodriguez:
     challenge_id: isabella_rodriguez
     source_profile_name: Isabella Rodriguez
     reporting_label: E-Sim Activation - Medium | VHDP | Not Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Medium
@@ -395,13 +1554,168 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
+  james_foster:
+    challenge_id: james_foster
+    source_profile_name: James Foster
+    reporting_label: Not receiving imessages | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Not receiving imessages
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  jessica_miller:
+    challenge_id: jessica_miller
+    source_profile_name: Jessica Miller
+    reporting_label: Reviewing a specific charge | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Reviewing a specific charge
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  jessica_sterling:
+    challenge_id: jessica_sterling
+    source_profile_name: Jessica Sterling
+    reporting_label: E-Sim Activation - Medium | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Medium
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  jonathan_sawyer:
+    challenge_id: jonathan_sawyer
+    source_profile_name: Jonathan Sawyer
+    reporting_label: Phone not charging | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Phone not charging
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
   joshua_trent:
     challenge_id: joshua_trent
     source_profile_name: Joshua Trent
     reporting_label: E-Sim Activation - Medium | VHDP | Not Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Medium
@@ -411,8 +1725,6 @@ profiles:
       expert_assist: true
       da_guided_flow: true
       nc_guided_flow: false
-    notes:
-      other_notes: Escalated customer (angry)
     requirements:
       always:
       - warm_greeting
@@ -438,18 +1750,139 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  stephen_park:
-    challenge_id: stephen_park
-    source_profile_name: Stephen Park
-    reporting_label: E-Sim Activation - Hard | VHDP | Receptive
+    notes:
+      other_notes: Escalated customer (angry)
+  khalif_abdallah:
+    challenge_id: khalif_abdallah
+    source_profile_name: Khalif Abdallah
+    reporting_label: MyVerizon account setup | VHDP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
-      call_intent: E-Sim Activation - Hard
+      call_intent: MyVerizon account setup
       offer: VHDP
-      receptiveness: receptive
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  lauren_jenkins:
+    challenge_id: lauren_jenkins
+    source_profile_name: Lauren Jenkins
+    reporting_label: Voicemail issues | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Voicemail issues
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  liam_sutton:
+    challenge_id: liam_sutton
+    source_profile_name: Liam Sutton
+    reporting_label: Liam Sutton
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  lucy_jones:
+    challenge_id: lucy_jones
+    source_profile_name: Lucy Jones
+    reporting_label: E-Sim Activation - Medium | VHDP + AAL
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Medium
+      offer: VHDP + AAL
     tool_usage:
       expert_assist: true
       da_guided_flow: true
@@ -479,13 +1912,236 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
+  madison_rivera:
+    challenge_id: madison_rivera
+    source_profile_name: Madison Rivera
+    reporting_label: call audio cutting out/dropping calls | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: call audio cutting out/dropping calls
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  marcus_harper:
+    challenge_id: marcus_harper
+    source_profile_name: Marcus Harper
+    reporting_label: Managing child's device with Verizon Family | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Managing child's device with Verizon Family
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  michael_henson:
+    challenge_id: michael_henson
+    source_profile_name: Michael Henson
+    reporting_label: Black screen on iPhone | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Black screen on iPhone
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  natalie_brooks:
+    challenge_id: natalie_brooks
+    source_profile_name: Natalie Brooks
+    reporting_label: incoming calls going to voicemail | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: incoming calls going to voicemail
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  owen_callahan:
+    challenge_id: owen_callahan
+    source_profile_name: Owen Callahan
+    reporting_label: Owen Callahan
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  priya_whitmore:
+    challenge_id: priya_whitmore
+    source_profile_name: Priya Whitmore
+    reporting_label: Priya Whitmore
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+    source_match: evaluation_only
   richard_dean:
     challenge_id: richard_dean
     source_profile_name: Richard Dean
     reporting_label: E-Sim Activation - Hard | VHDP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Hard
@@ -525,8 +2181,8 @@ profiles:
     source_profile_name: Sarah Lincoln
     reporting_label: E-Sim Activation - Hard | VHDP | Not Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Hard
@@ -561,17 +2217,97 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  lucy_jones:
-    challenge_id: lucy_jones
-    source_profile_name: Lucy Jones
-    reporting_label: E-Sim Activation - Medium | VHDP + AAL
+  sasha_jennings:
+    challenge_id: sasha_jennings
+    source_profile_name: Sasha Jennings
+    reporting_label: voicemail application is not pulling new messages | VHDP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: Live
     scenario:
-      call_intent: E-Sim Activation - Medium
-      offer: VHDP + AAL
+      call_intent: voicemail application is not pulling new messages
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  simone_prescott:
+    challenge_id: simone_prescott
+    source_profile_name: Simone Prescott
+    reporting_label: Simone Prescott
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  stephen_park:
+    challenge_id: stephen_park
+    source_profile_name: Stephen Park
+    reporting_label: E-Sim Activation - Hard | VHDP | Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Hard
+      offer: VHDP
+      receptiveness: receptive
     tool_usage:
       expert_assist: true
       da_guided_flow: true
@@ -601,13 +2337,223 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
+  tara_carrollton:
+    challenge_id: tara_carrollton
+    source_profile_name: Tara Carrollton
+    reporting_label: Phone not connecting to WiFi | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Phone not connecting to WiFi
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - goodbye_with_rapport
+    source_match: exact
+    special_evaluations:
+      tailored_solve_eval: Always Require
+  vanessa_ellison:
+    challenge_id: vanessa_ellison
+    source_profile_name: Vanessa Ellison
+    reporting_label: Vanessa Ellison
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+    source_match: evaluation_only
+  victor_marks:
+    challenge_id: victor_marks
+    source_profile_name: Victor Marks
+    reporting_label: E-Sim Activation - Medium | VHDP | Somewhat Receptive
+    report: NH
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Medium
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  xavier_monroe:
+    challenge_id: xavier_monroe
+    source_profile_name: Xavier Monroe
+    reporting_label: Xavier Monroe
+    report: AD
+    client: Verizon
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  ana_ramirez:
+    challenge_id: ana_ramirez
+    source_profile_name: Ana Ramirez
+    reporting_label: Ana Ramirez
+    report: None
+    client: Verizon
+    lob: Soluto
+    status: Testing
+    scenario: {}
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ask_to_send_link
+      - conversational_language
+      - resolve_concerns
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+    source_match: evaluation_only
+  jordan_thompson:
+    challenge_id: jordan_thompson
+    source_profile_name: Jordan Thompson
+    reporting_label: Jordan Thompson
+    report: None
+    client: Verizon
+    lob: Soluto
+    status: Testing
+    scenario: {}
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - conversational_language
+      - survey
+      - goodbye_with_rapport
+    source_match: evaluation_only
+    special_evaluations:
+      tailored_solve_eval: Always Require
   aaron_gauff:
     challenge_id: aaron_gauff
     source_profile_name: Aaron Gauff
     reporting_label: E-Sim Activation - Medium | VHDP + AAL
     report: NH
-    lob: Soluto
     client: Verizon
+    lob: Soluto
     status: On hold
     scenario:
       call_intent: E-Sim Activation - Medium
@@ -641,295 +2587,827 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  tara_carrollton:
-    challenge_id: tara_carrollton
-    source_profile_name: Tara Carrollton
-    reporting_label: Phone not connecting to WiFi | VHDP | Somewhat Receptive
+
+  # ======== AT&T · Mobility (21) ========
+  alexis_garner:
+    challenge_id: alexis_garner
+    source_profile_name: Alexis Garner
+    reporting_label: Liquid damage | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: Phone not connecting to WiFi
-      offer: VHDP
+      call_intent: Liquid damage
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: true
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  khalif_abdallah:
-    challenge_id: khalif_abdallah
-    source_profile_name: Khalif Abdallah
-    reporting_label: MyVerizon account setup | VHDP | Somewhat Receptive
+  colin_paredes:
+    challenge_id: colin_paredes
+    source_profile_name: Colin Paredes
+    reporting_label: Damage claim | HTP | Not Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: MyVerizon account setup
-      offer: VHDP
-      receptiveness: somewhat_receptive
+      call_intent: Damage claim
+      offer: HTP
+      receptiveness: not_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
       - ask_to_send_link
-      - conversational_language
+      as_needed:
       - resolve_concerns
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
     source_match: exact
-  jonathan_sawyer:
-    challenge_id: jonathan_sawyer
-    source_profile_name: Jonathan Sawyer
-    reporting_label: Phone not charging | VHDP | Somewhat Receptive
+    notes:
+      other_notes: Escalated customer (angry)
+  deandre_henderson:
+    challenge_id: deandre_henderson
+    source_profile_name: DeAndre Henderson
+    reporting_label: Damage claim | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: Phone not charging
-      offer: VHDP
+      call_intent: Damage claim
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: exact
-  james_foster:
-    challenge_id: james_foster
-    source_profile_name: James Foster
-    reporting_label: Not receiving imessages | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Not receiving imessages
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  madison_rivera:
-    challenge_id: madison_rivera
-    source_profile_name: Madison Rivera
-    reporting_label: call audio cutting out/dropping calls | VHDP | Somewhat Receptive
+  dorcas_dori_martin:
+    challenge_id: dorcas_dori_martin
+    source_profile_name: Dorcas "Dori" Martin
+    reporting_label: Adjuster hold | HTP | Very Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: call audio cutting out/dropping calls
-      offer: VHDP
-      receptiveness: somewhat_receptive
+      call_intent: Adjuster hold
+      offer: HTP
+      receptiveness: very_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: true
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  michael_henson:
-    challenge_id: michael_henson
-    source_profile_name: Michael Henson
-    reporting_label: Black screen on iPhone | VHDP | Somewhat Receptive
+  guillermo_hernandez:
+    challenge_id: guillermo_hernandez
+    source_profile_name: Guillermo Hernandez
+    reporting_label: Damage claim | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: Black screen on iPhone
-      offer: VHDP
+      call_intent: Damage claim
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  marcus_harper:
-    challenge_id: marcus_harper
-    source_profile_name: Marcus Harper
-    reporting_label: Managing child's device with Verizon Family | VHDP | Somewhat Receptive
+  hope_williams:
+    challenge_id: hope_williams
+    source_profile_name: Hope Williams
+    reporting_label: Damage claim | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
-    client: Verizon
+    client: AT&T
+    lob: Mobility
     status: Live
     scenario:
-      call_intent: Managing child's device with Verizon Family
-      offer: VHDP
+      call_intent: Damage claim
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
     requirements:
       always:
       - warm_greeting
       - show_empathy
       - reassure
-      - verification
-      - account_assessment
       - set_expectations
-      - advanced_discovery
       - resolve
       - test_resolution
       - transition_statement
+      - discovery_question
+      - engagement_question
       - core_benefit_1
       - core_benefit_2
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  amanda_lewis:
-    challenge_id: amanda_lewis
-    source_profile_name: Amanda Lewis
-    reporting_label: adding a payment method | VHDP | Somewhat Receptive
+  judy_ramirez:
+    challenge_id: judy_ramirez
+    source_profile_name: Judy Ramirez
+    reporting_label: Damage claim | HTP | Not Receptive
     report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: HTP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  juliana_kenny:
+    challenge_id: juliana_kenny
+    source_profile_name: Juliana Kenny
+    reporting_label: Liquid damage (SDDS) | HTP | Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Liquid damage (SDDS)
+      offer: HTP
+      receptiveness: receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  liam_croom:
+    challenge_id: liam_croom
+    source_profile_name: Liam Croom
+    reporting_label: Extended verification hold | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Extended verification hold
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  lucy_povich:
+    challenge_id: lucy_povich
+    source_profile_name: Lucy Povich
+    reporting_label: Damage claim | HTP | Not Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: HTP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  malachi_holland:
+    challenge_id: malachi_holland
+    source_profile_name: Malachi Holland
+    reporting_label: Lost device | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Lost device
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  nick_o_hara:
+    challenge_id: nick_o_hara
+    source_profile_name: Nick O'Hara
+    reporting_label: Document hold | HTP | Neutral
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Document hold
+      offer: HTP
+      receptiveness: neutral
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  oliver_bergen:
+    challenge_id: oliver_bergen
+    source_profile_name: Oliver Bergen
+    reporting_label: DMIR | HTP | Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: DMIR
+      offer: HTP
+      receptiveness: receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+      use_alongside_simulator: true
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  victoria_mabry:
+    challenge_id: victoria_mabry
+    source_profile_name: Victoria Mabry
+    reporting_label: Damage claim | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Mobility
+    status: Live
+    scenario:
+      call_intent: Damage claim
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  angie_anderson:
+    challenge_id: angie_anderson
+    source_profile_name: Angie Anderson
+    reporting_label: Damage claim | VHDP | Somewhat Receptive
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 2nd Phase
+      other_notes: Focused, but might chat
+  barb_dwyer:
+    challenge_id: barb_dwyer
+    source_profile_name: Barb Dwyer
+    reporting_label: Barb Dwyer
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario: {}
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  harvey_henderson:
+    challenge_id: harvey_henderson
+    source_profile_name: Harvey Henderson
+    reporting_label: Lost device | VHDP | Not Receptive
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Lost device
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - survey
+      - goodbye_with_rapport
+    source_match: exact
+    notes:
+      eval_notes: NH Profile
+      other_notes: Polite, but direct
+  janet_jensen:
+    challenge_id: janet_jensen
+    source_profile_name: Janet Jensen
+    reporting_label: Cracked Screen | VHDP | Neutral
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Cracked Screen
+      offer: VHDP
+      receptiveness: neutral
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: exact
+    notes:
+      eval_notes: NH Profile
+      other_notes: Friendly and likes to chat
+  mary_mack:
+    challenge_id: mary_mack
+    source_profile_name: Mary Mack
+    reporting_label: Cracked Screen | VHDP | Not Receptive
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Cracked Screen
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 3rd Phase
+      other_notes: Friendly, but wants her phone fixed
+  richard_robertson:
+    challenge_id: richard_robertson
+    source_profile_name: Richard Robertson
+    reporting_label: Damage claim | VHDP | Not Receptive
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Damage claim
+      offer: VHDP
+      receptiveness: not_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 2nd Phase
+      other_notes: Focused on resolution
+  terrence_trekken:
+    challenge_id: terrence_trekken
+    source_profile_name: Terrence Trekken
+    reporting_label: Liquid damage | VHDP | Somewhat Receptive
+    report: null
+    client: AT&T
+    lob: Mobility
+    status: Testing
+    scenario:
+      call_intent: Liquid damage
+      offer: VHDP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - resolve
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - price_statement
+      - ask_for_sale
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - ask_to_send_link
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+    notes:
+      eval_notes: NH Profile - 3rd Phase
+      other_notes: Focused on resolution, but might chat
+
+  # ======== AT&T · Soluto (31) ========
+  amanda_lawrence:
+    challenge_id: amanda_lawrence
+    source_profile_name: Amanda Lawrence
+    reporting_label: adding a payment method | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
     lob: Soluto
-    client: Verizon
     status: Live
     scenario:
       call_intent: adding a payment method
-      offer: VHDP
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
       expert_assist: true
@@ -952,220 +3430,32 @@ profiles:
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
       - conversational_language
-      - resolve_concerns
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: exact
-  lauren_jenkins:
-    challenge_id: lauren_jenkins
-    source_profile_name: Lauren Jenkins
-    reporting_label: Voicemail issues | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Voicemail issues
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: exact
-  jessica_miller:
-    challenge_id: jessica_miller
-    source_profile_name: Jessica Miller
-    reporting_label: Reviewing a specific charge | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Reviewing a specific charge
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: exact
-  natalie_brooks:
-    challenge_id: natalie_brooks
-    source_profile_name: Natalie Brooks
-    reporting_label: incoming calls going to voicemail | VHDP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: incoming calls going to voicemail
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
-      - ty_reinforcement
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: exact
-  jordan_thompson:
-    challenge_id: jordan_thompson
-    source_profile_name: Jordan Thompson
-    reporting_label: Jordan Thompson
-    report: None
-    lob: Soluto
-    client: Verizon
-    status: Testing
-    scenario: {}
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - conversational_language
-      - survey
-      - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
-    source_match: evaluation_only
-  ana_ramirez:
-    challenge_id: ana_ramirez
-    source_profile_name: Ana Ramirez
-    reporting_label: Ana Ramirez
-    report: None
-    lob: Soluto
-    client: Verizon
-    status: Testing
-    scenario: {}
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ask_to_send_link
-      - conversational_language
-      - resolve_concerns
       - ty_reinforcement
       - survey
       - goodbye_with_rapport
-    source_match: evaluation_only
-  sasha_jennings:
-    challenge_id: sasha_jennings
-    source_profile_name: Sasha Jennings
-    reporting_label: voicemail application is not pulling new messages | VHDP | Somewhat Receptive
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  ana_hernandez:
+    challenge_id: ana_hernandez
+    source_profile_name: Ana Hernandez
+    reporting_label: Call audio cuts in and out during phone conversations | HTP | Somewhat Receptive
     report: NH
+    client: AT&T
     lob: Soluto
-    client: Verizon
     status: Live
     scenario:
-      call_intent: voicemail application is not pulling new messages
-      offer: VHDP
+      call_intent: Call audio cuts in and out during phone conversations
+      offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
       expert_assist: true
       da_guided_flow: false
-      nc_guided_flow: true
+      nc_guided_flow: false
     requirements:
       always:
       - warm_greeting
@@ -1183,337 +3473,23 @@ profiles:
       - core_benefit_3
       - price_statement
       - ask_for_sale
-      - ask_to_send_link
       - conversational_language
-      - resolve_concerns
       - ty_reinforcement
+      - survey
       - goodbye_with_rapport
-    special_evaluations:
-      tailored_solve_eval: Always Require
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
     source_match: exact
-  ethan_caldwell:
-    challenge_id: ethan_caldwell
-    source_profile_name: Ethan Caldwell
-    reporting_label: Ethan Caldwell
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-    source_match: evaluation_only
-  priya_whitmore:
-    challenge_id: priya_whitmore
-    source_profile_name: Priya Whitmore
-    reporting_label: Priya Whitmore
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-    source_match: evaluation_only
-  vanessa_ellison:
-    challenge_id: vanessa_ellison
-    source_profile_name: Vanessa Ellison
-    reporting_label: Vanessa Ellison
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-    source_match: evaluation_only
-  annette_pierce:
-    challenge_id: annette_pierce
-    source_profile_name: Annette Pierce
-    reporting_label: Annette Pierce
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-    source_match: evaluation_only
-  gabrielle_thornton:
-    challenge_id: gabrielle_thornton
-    source_profile_name: Gabrielle Thornton
-    reporting_label: Gabrielle Thornton
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  liam_sutton:
-    challenge_id: liam_sutton
-    source_profile_name: Liam Sutton
-    reporting_label: Liam Sutton
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  derek_holloway:
-    challenge_id: derek_holloway
-    source_profile_name: Derek Holloway
-    reporting_label: Derek Holloway
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  xavier_monroe:
-    challenge_id: xavier_monroe
-    source_profile_name: Xavier Monroe
-    reporting_label: Xavier Monroe
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  owen_callahan:
-    challenge_id: owen_callahan
-    source_profile_name: Owen Callahan
-    reporting_label: Owen Callahan
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  simone_prescott:
-    challenge_id: simone_prescott
-    source_profile_name: Simone Prescott
-    reporting_label: Simone Prescott
-    report: AD
-    lob: Soluto
-    client: Verizon
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
   andrew_mayweather:
     challenge_id: andrew_mayweather
     source_profile_name: Andrew Mayweather
     reporting_label: E-Sim Activation - Easy | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Easy
@@ -1538,14 +3514,374 @@ profiles:
       - ty_reinforcement
       - survey
       - goodbye_with_rapport
+    source_match: exact
+  anthony_scott:
+    challenge_id: anthony_scott
+    source_profile_name: Anthony Scott
+    reporting_label: Anthony Scott
+    report: AD
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  bryan_ogle:
+    challenge_id: bryan_ogle
+    source_profile_name: Bryan Ogle
+    reporting_label: E-Sim Activation - Medium | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Medium
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  carter_phillips:
+    challenge_id: carter_phillips
+    source_profile_name: Carter Phillips
+    reporting_label: Carter Phillips
+    report: AD
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: evaluation_only
+  dennis_mccarthy:
+    challenge_id: dennis_mccarthy
+    source_profile_name: Dennis McCarthy
+    reporting_label: E-Sim Activation - Hard | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Hard
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  elijah_james:
+    challenge_id: elijah_james
+    source_profile_name: Elijah James
+    reporting_label: E-Sim Activation - Easy | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Easy
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - verification
+      - account_assessment
+    source_match: exact
+  grace_chen:
+    challenge_id: grace_chen
+    source_profile_name: Grace Chen
+    reporting_label: Grace Chen
+    report: AD
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+    source_match: evaluation_only
+  jamal_robinson:
+    challenge_id: jamal_robinson
+    source_profile_name: Jamal Robinson
+    reporting_label: Jamal Robinson
+    report: AD
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario: {}
+    tool_usage:
+      expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+    source_match: evaluation_only
+  jessica_mills:
+    challenge_id: jessica_mills
+    source_profile_name: Jessica Mills
+    reporting_label: Reviewing a specific charge | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Reviewing a specific charge
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  jonathan_sanders:
+    challenge_id: jonathan_sanders
+    source_profile_name: Jonathan Sanders
+    reporting_label: Phone not charging | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Phone not charging
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
+  jordan_miller:
+    challenge_id: jordan_miller
+    source_profile_name: Jordan Miller
+    reporting_label: Apple Watch is paired to iPhone but not receiving notifications | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Apple Watch is paired to iPhone but not receiving notifications
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
     source_match: exact
   joyce_pfeiffer:
     challenge_id: joyce_pfeiffer
     source_profile_name: Joyce Pfeiffer
     reporting_label: E-Sim Activation - Easy | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Easy
@@ -1582,21 +3918,18 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  bryan_ogle:
-    challenge_id: bryan_ogle
-    source_profile_name: Bryan Ogle
-    reporting_label: E-Sim Activation - Medium | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
+  katarina_novak:
+    challenge_id: katarina_novak
+    source_profile_name: Katarina Novak
+    reporting_label: Katarina Novak
+    report: AD
     client: AT&T
+    lob: Soluto
     status: Live
-    scenario:
-      call_intent: E-Sim Activation - Medium
-      offer: HTP
-      receptiveness: somewhat_receptive
+    scenario: {}
     tool_usage:
-      expert_assist: true
-      da_guided_flow: true
+      expert_assist: false
+      da_guided_flow: false
       nc_guided_flow: false
     requirements:
       always:
@@ -1624,19 +3957,19 @@ profiles:
       - ask_to_enroll
       as_needed:
       - resolve_concerns
-    source_match: exact
-  miranda_demarco:
-    challenge_id: miranda_demarco
-    source_profile_name: Miranda DeMarco
-    reporting_label: E-Sim Activation - Medium | HTP | Somewhat Receptive
+    source_match: evaluation_only
+  kelly_wyatt:
+    challenge_id: kelly_wyatt
+    source_profile_name: Kelly Wyatt
+    reporting_label: E-Sim Activation - Hard | HTP | Not Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
-      call_intent: E-Sim Activation - Medium
+      call_intent: E-Sim Activation - Hard
       offer: HTP
-      receptiveness: somewhat_receptive
+      receptiveness: not_receptive
     tool_usage:
       expert_assist: true
       da_guided_flow: true
@@ -1673,8 +4006,8 @@ profiles:
     source_profile_name: Lauren Williams
     reporting_label: E-Sim Activation - Medium | HTP | Not Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Medium
@@ -1716,8 +4049,8 @@ profiles:
     source_profile_name: Levi Chang
     reporting_label: E-Sim Activation - Medium | HTP | Not Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: E-Sim Activation - Medium
@@ -1727,324 +4060,66 @@ profiles:
       expert_assist: true
       da_guided_flow: true
       nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
     notes:
       other_notes: Escalated customer (angry)
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  theodore_silva:
-    challenge_id: theodore_silva
-    source_profile_name: Theodore Silva
-    reporting_label: E-Sim Activation - Hard | HTP | Receptive
-    report: NH
-    lob: Soluto
+  lizzy_carter:
+    challenge_id: lizzy_carter
+    source_profile_name: Lizzy Carter
+    reporting_label: Lizzy Carter
+    report: AD
     client: AT&T
-    status: Live
-    scenario:
-      call_intent: E-Sim Activation - Hard
-      offer: HTP
-      receptiveness: receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: true
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  dennis_mccarthy:
-    challenge_id: dennis_mccarthy
-    source_profile_name: Dennis McCarthy
-    reporting_label: E-Sim Activation - Hard | HTP | Somewhat Receptive
-    report: NH
     lob: Soluto
-    client: AT&T
     status: Live
-    scenario:
-      call_intent: E-Sim Activation - Hard
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: true
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  kelly_wyatt:
-    challenge_id: kelly_wyatt
-    source_profile_name: Kelly Wyatt
-    reporting_label: E-Sim Activation - Hard | HTP | Not Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: E-Sim Activation - Hard
-      offer: HTP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: true
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  elijah_james:
-    challenge_id: elijah_james
-    source_profile_name: Elijah James
-    reporting_label: E-Sim Activation - Easy | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: E-Sim Activation - Easy
-      offer: HTP
-      receptiveness: somewhat_receptive
+    scenario: {}
     tool_usage:
       expert_assist: false
       da_guided_flow: false
       nc_guided_flow: false
     requirements:
       always:
-      - verification
-      - account_assessment
-    source_match: exact
-  ted_jenkins:
-    challenge_id: ted_jenkins
-    source_profile_name: Ted Jenkins
-    reporting_label: Not receiving imessages | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Not receiving imessages
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
       - warm_greeting
       - show_empathy
       - reassure
       - verification
       - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
+    source_match: evaluation_only
   madison_rodgers:
     challenge_id: madison_rodgers
     source_profile_name: Madison Rodgers
     reporting_label: call audio cutting out/dropping calls | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: call audio cutting out/dropping calls
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jessica_mills:
-    challenge_id: jessica_mills
-    source_profile_name: Jessica Mills
-    reporting_label: Reviewing a specific charge | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Reviewing a specific charge
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  natalie_johnson:
-    challenge_id: natalie_johnson
-    source_profile_name: Natalie Johnson
-    reporting_label: incoming calls going to voicemail | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: incoming calls going to voicemail
       offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
@@ -2083,8 +4158,8 @@ profiles:
     source_profile_name: Michael Hodge
     reporting_label: Black screen on iPhone | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Black screen on iPhone
@@ -2121,21 +4196,21 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  amanda_lawrence:
-    challenge_id: amanda_lawrence
-    source_profile_name: Amanda Lawrence
-    reporting_label: adding a payment method | HTP | Somewhat Receptive
+  miranda_demarco:
+    challenge_id: miranda_demarco
+    source_profile_name: Miranda DeMarco
+    reporting_label: E-Sim Activation - Medium | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
-      call_intent: adding a payment method
+      call_intent: E-Sim Activation - Medium
       offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
       expert_assist: true
-      da_guided_flow: false
+      da_guided_flow: true
       nc_guided_flow: false
     requirements:
       always:
@@ -2164,16 +4239,16 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  jonathan_sanders:
-    challenge_id: jonathan_sanders
-    source_profile_name: Jonathan Sanders
-    reporting_label: Phone not charging | HTP | Somewhat Receptive
+  natalie_johnson:
+    challenge_id: natalie_johnson
+    source_profile_name: Natalie Johnson
+    reporting_label: incoming calls going to voicemail | HTP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario:
-      call_intent: Phone not charging
+      call_intent: incoming calls going to voicemail
       offer: HTP
       receptiveness: somewhat_receptive
     tool_usage:
@@ -2207,273 +4282,13 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
-  tara_connors:
-    challenge_id: tara_connors
-    source_profile_name: Tara Connors
-    reporting_label: Phone not connecting to WiFi | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Phone not connecting to WiFi
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jordan_miller:
-    challenge_id: jordan_miller
-    source_profile_name: Jordan Miller
-    reporting_label: Apple Watch is paired to iPhone but not receiving notifications | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Apple Watch is paired to iPhone but not receiving notifications
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  ana_hernandez:
-    challenge_id: ana_hernandez
-    source_profile_name: Ana Hernandez
-    reporting_label: Call audio cuts in and out during phone conversations | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Call audio cuts in and out during phone conversations
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  sasha_johnson:
-    challenge_id: sasha_johnson
-    source_profile_name: Sasha Johnson
-    reporting_label: voicemail application is not pulling new messages | HTP | Somewhat Receptive
-    report: NH
-    lob: Soluto
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: voicemail application is not pulling new messages
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: true
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-      - resolve
-      - test_resolution
-      - transition_statement
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - conversational_language
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - recorded_disclosures_statement
-      - ask_to_enroll
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  lizzy_carter:
-    challenge_id: lizzy_carter
-    source_profile_name: Lizzy Carter
-    reporting_label: Lizzy Carter
+  neha_desai:
+    challenge_id: neha_desai
+    source_profile_name: Neha Desai
+    reporting_label: Neha Desai
     report: AD
-    lob: Soluto
     client: AT&T
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-    source_match: evaluation_only
-  jamal_robinson:
-    challenge_id: jamal_robinson
-    source_profile_name: Jamal Robinson
-    reporting_label: Jamal Robinson
-    report: AD
     lob: Soluto
-    client: AT&T
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-    source_match: evaluation_only
-  grace_chen:
-    challenge_id: grace_chen
-    source_profile_name: Grace Chen
-    reporting_label: Grace Chen
-    report: AD
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-    source_match: evaluation_only
-  sofia_martinez:
-    challenge_id: sofia_martinez
-    source_profile_name: Sofia Martinez
-    reporting_label: Sofia Martinez
-    report: AD
-    lob: Soluto
-    client: AT&T
-    status: Live
-    scenario: {}
-    tool_usage:
-      expert_assist: false
-      da_guided_flow: false
-      nc_guided_flow: false
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - verification
-      - account_assessment
-      - set_expectations
-      - advanced_discovery
-    source_match: evaluation_only
-  anthony_scott:
-    challenge_id: anthony_scott
-    source_profile_name: Anthony Scott
-    reporting_label: Anthony Scott
-    report: AD
-    lob: Soluto
-    client: AT&T
     status: Live
     scenario: {}
     tool_usage:
@@ -2512,8 +4327,8 @@ profiles:
     source_profile_name: Rachel Mitchell
     reporting_label: Rachel Mitchell
     report: AD
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario: {}
     tool_usage:
@@ -2547,17 +4362,43 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: evaluation_only
-  carter_phillips:
-    challenge_id: carter_phillips
-    source_profile_name: Carter Phillips
-    reporting_label: Carter Phillips
+  sofia_martinez:
+    challenge_id: sofia_martinez
+    source_profile_name: Sofia Martinez
+    reporting_label: Sofia Martinez
     report: AD
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario: {}
     tool_usage:
       expert_assist: false
+      da_guided_flow: false
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+    source_match: evaluation_only
+  tara_connors:
+    challenge_id: tara_connors
+    source_profile_name: Tara Connors
+    reporting_label: Phone not connecting to WiFi | HTP | Somewhat Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: Phone not connecting to WiFi
+      offer: HTP
+      receptiveness: somewhat_receptive
+    tool_usage:
+      expert_assist: true
       da_guided_flow: false
       nc_guided_flow: false
     requirements:
@@ -2586,18 +4427,21 @@ profiles:
       - ask_to_enroll
       as_needed:
       - resolve_concerns
-    source_match: evaluation_only
-  neha_desai:
-    challenge_id: neha_desai
-    source_profile_name: Neha Desai
-    reporting_label: Neha Desai
-    report: AD
-    lob: Soluto
+    source_match: exact
+  ted_jenkins:
+    challenge_id: ted_jenkins
+    source_profile_name: Ted Jenkins
+    reporting_label: Not receiving imessages | HTP | Somewhat Receptive
+    report: NH
     client: AT&T
+    lob: Soluto
     status: Live
-    scenario: {}
+    scenario:
+      call_intent: Not receiving imessages
+      offer: HTP
+      receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: false
+      expert_assist: true
       da_guided_flow: false
       nc_guided_flow: false
     requirements:
@@ -2626,14 +4470,57 @@ profiles:
       - ask_to_enroll
       as_needed:
       - resolve_concerns
-    source_match: evaluation_only
+    source_match: exact
+  theodore_silva:
+    challenge_id: theodore_silva
+    source_profile_name: Theodore Silva
+    reporting_label: E-Sim Activation - Hard | HTP | Receptive
+    report: NH
+    client: AT&T
+    lob: Soluto
+    status: Live
+    scenario:
+      call_intent: E-Sim Activation - Hard
+      offer: HTP
+      receptiveness: receptive
+    tool_usage:
+      expert_assist: true
+      da_guided_flow: true
+      nc_guided_flow: false
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - verification
+      - account_assessment
+      - set_expectations
+      - advanced_discovery
+      - resolve
+      - test_resolution
+      - transition_statement
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - conversational_language
+      - ty_reinforcement
+      - survey
+      - goodbye_with_rapport
+      conditional:
+      - recorded_disclosures_statement
+      - ask_to_enroll
+      as_needed:
+      - resolve_concerns
+    source_match: exact
   troy_park:
     challenge_id: troy_park
     source_profile_name: Troy Park
     reporting_label: Troy Park
     report: AD
-    lob: Soluto
     client: AT&T
+    lob: Soluto
     status: Live
     scenario: {}
     tool_usage:
@@ -2667,17 +4554,20 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: evaluation_only
-  katarina_novak:
-    challenge_id: katarina_novak
-    source_profile_name: Katarina Novak
-    reporting_label: Katarina Novak
-    report: AD
-    lob: Soluto
+  sasha_johnson:
+    challenge_id: sasha_johnson
+    source_profile_name: Sasha Johnson
+    reporting_label: voicemail application is not pulling new messages | HTP | Somewhat Receptive
+    report: NH
     client: AT&T
-    status: Live
-    scenario: {}
+    lob: Soluto
+    status: Testing
+    scenario:
+      call_intent: voicemail application is not pulling new messages
+      offer: HTP
+      receptiveness: somewhat_receptive
     tool_usage:
-      expert_assist: false
+      expert_assist: true
       da_guided_flow: false
       nc_guided_flow: false
     requirements:
@@ -2706,1819 +4596,16 @@ profiles:
       - ask_to_enroll
       as_needed:
       - resolve_concerns
-    source_match: evaluation_only
-  jackie_johnson:
-    challenge_id: jackie_johnson
-    source_profile_name: Jackie Johnson
-    reporting_label: Cracked Screen | VHDP | Neutral
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Cracked Screen
-      offer: VHDP
-      receptiveness: neutral
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile
-      other_notes: Friendly and likes to chat
-    requirements: {}
     source_match: exact
-  harold_harrison:
-    challenge_id: harold_harrison
-    source_profile_name: Harold Harrison
-    reporting_label: Lost device | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Lost device
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile
-      other_notes: Polite, but direct
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - survey
-      - goodbye_with_rapport
-    source_match: exact
-  robert_richardson:
-    challenge_id: robert_richardson
-    source_profile_name: Robert Richardson
-    reporting_label: Damage claim | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 2nd Phase
-      other_notes: Focused on resolution
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-    source_match: exact
-  anabelle_adams:
-    challenge_id: anabelle_adams
-    source_profile_name: Anabelle Adams
-    reporting_label: Damage claim | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 2nd Phase
-      other_notes: Focused, but might chat
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  melanie_mcclintock:
-    challenge_id: melanie_mcclintock
-    source_profile_name: Melanie McClintock
-    reporting_label: Cracked Screen | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Cracked Screen
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 3rd Phase
-      other_notes: Friendly, but wants her phone fixed
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  tyler_thompson:
-    challenge_id: tyler_thompson
-    source_profile_name: Tyler Thompson
-    reporting_label: Liquid damage | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Liquid damage
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 3rd Phase
-      other_notes: Focused on resolution, but might chat
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  sharon_a_fealing:
-    challenge_id: sharon_a_fealing
-    source_profile_name: Sharon A Fealing
-    reporting_label: Lost device | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Lost device
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - Final Assessment
-      other_notes: Friendly but focused on filing her claim
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: alias
-    profile_database_name: Sharon Fealings
-  ashley_smith:
-    challenge_id: ashley_smith
-    source_profile_name: Ashley Smith
-    reporting_label: Damage claim/cracked screen | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim/cracked screen
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  becky_botsford:
-    challenge_id: becky_botsford
-    source_profile_name: Becky Botsford
-    reporting_label: Liquid damage | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Liquid damage
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  dock_tari:
-    challenge_id: dock_tari
-    source_profile_name: Dock Tari
-    reporting_label: Damage claim | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jennifer_van_halen:
-    challenge_id: jennifer_van_halen
-    source_profile_name: Jennifer Van Halen
-    reporting_label: Liquid damage (Pro on the Go) | VHDP | Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Liquid damage (Pro on the Go)
-      offer: VHDP
-      receptiveness: receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jessica_drew:
-    challenge_id: jessica_drew
-    source_profile_name: Jessica Drew
-    reporting_label: Damage claim | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  jonathan_kent:
-    challenge_id: jonathan_kent
-    source_profile_name: Jonathan Kent
-    reporting_label: Document hold | VHDP | Neutral
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Document hold
-      offer: VHDP
-      receptiveness: neutral
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  mary_clark:
-    challenge_id: mary_clark
-    source_profile_name: Mary Clark
-    reporting_label: Liquid damage | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Liquid damage
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  matthew_murdock:
-    challenge_id: matthew_murdock
-    source_profile_name: Matthew Murdock
-    reporting_label: Extended verification hold | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Extended verification hold
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  olivia_desmond:
-    challenge_id: olivia_desmond
-    source_profile_name: Olivia Desmond
-    reporting_label: Adjuster hold | VHDP | Very Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Adjuster hold
-      offer: VHDP
-      receptiveness: very_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  paul_temper:
-    challenge_id: paul_temper
-    source_profile_name: Paul Temper
-    reporting_label: Damage claim | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      other_notes: Escalated customer (angry)
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  richard_greyson:
-    challenge_id: richard_greyson
-    source_profile_name: Richard Greyson
-    reporting_label: Damage claim | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  sarah_conner:
-    challenge_id: sarah_conner
-    source_profile_name: Sarah Conner
-    reporting_label: Damage claim | VHDP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  stephen_sondheim:
-    challenge_id: stephen_sondheim
-    source_profile_name: Stephen Sondheim
-    reporting_label: DMIR | VHDP | Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: DMIR
-      offer: VHDP
-      receptiveness: receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  victor_stone:
-    challenge_id: victor_stone
-    source_profile_name: Victor Stone
-    reporting_label: Lost device | VHDP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: Verizon
-    status: Live
-    scenario:
-      call_intent: Lost device
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  wanda_connect:
-    challenge_id: wanda_connect
-    source_profile_name: Wanda Connect
-    reporting_label: Wanda Connect
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario: {}
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  telly_vision:
-    challenge_id: telly_vision
-    source_profile_name: Telly Vision
-    reporting_label: Telly Vision
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario: {}
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  polly_ester:
-    challenge_id: polly_ester
-    source_profile_name: Polly Ester
-    reporting_label: Streaming Device issue
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario:
-      call_intent: Streaming Device issue
-      offer: not_applicable
-      receptiveness: not_applicable
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH CH Profile for Streaming Devices troubleshooting
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: alias
-    profile_database_name: ConHome Polly Ester
-  gene_poole:
-    challenge_id: gene_poole
-    source_profile_name: Gene Poole
-    reporting_label: Laptops
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario:
-      call_intent: Laptops
-      offer: not_applicable
-      receptiveness: not_applicable
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH CH Profile for Laptops
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: alias
-    profile_database_name: ConnHome Gene Poole
-  amy_stake:
-    challenge_id: amy_stake
-    source_profile_name: Amy Stake
-    reporting_label: Smart Home Devices
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario:
-      call_intent: Smart Home Devices
-      offer: not_applicable
-      receptiveness: not_applicable
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH CH Profile for Smart Home Devices
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: alias
-    profile_database_name: ConnHom Amy Stake
-  roland_d_dice:
-    challenge_id: roland_d_dice
-    source_profile_name: Roland D Dice
-    reporting_label: Gaming Devices
-    report: null
-    lob: Connected Home
-    client: Verizon
-    status: Testing
-    scenario:
-      call_intent: Gaming Devices
-      offer: not_applicable
-      receptiveness: not_applicable
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH CH Profile for Gaming Devices
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: alias
-    profile_database_name: Chome Roland D Dice
-  janet_jensen:
-    challenge_id: janet_jensen
-    source_profile_name: Janet Jensen
-    reporting_label: Cracked Screen | VHDP | Neutral
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Cracked Screen
-      offer: VHDP
-      receptiveness: neutral
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile
-      other_notes: Friendly and likes to chat
-    requirements: {}
-    source_match: exact
-  harvey_henderson:
-    challenge_id: harvey_henderson
-    source_profile_name: Harvey Henderson
-    reporting_label: Lost device | VHDP | Not Receptive
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Lost device
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile
-      other_notes: Polite, but direct
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - survey
-      - goodbye_with_rapport
-    source_match: exact
-  richard_robertson:
-    challenge_id: richard_robertson
-    source_profile_name: Richard Robertson
-    reporting_label: Damage claim | VHDP | Not Receptive
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 2nd Phase
-      other_notes: Focused on resolution
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-    source_match: exact
-  angie_anderson:
-    challenge_id: angie_anderson
-    source_profile_name: Angie Anderson
-    reporting_label: Damage claim | VHDP | Somewhat Receptive
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Damage claim
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 2nd Phase
-      other_notes: Focused, but might chat
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  mary_mack:
-    challenge_id: mary_mack
-    source_profile_name: Mary Mack
-    reporting_label: Cracked Screen | VHDP | Not Receptive
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Cracked Screen
-      offer: VHDP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 3rd Phase
-      other_notes: Friendly, but wants her phone fixed
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  terrence_trekken:
-    challenge_id: terrence_trekken
-    source_profile_name: Terrence Trekken
-    reporting_label: Liquid damage | VHDP | Somewhat Receptive
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario:
-      call_intent: Liquid damage
-      offer: VHDP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      eval_notes: NH Profile - 3rd Phase
-      other_notes: Focused on resolution, but might chat
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  barb_dwyer:
-    challenge_id: barb_dwyer
-    source_profile_name: Barb Dwyer
-    reporting_label: Barb Dwyer
-    report: null
-    lob: Mobility
-    client: AT&T
-    status: Testing
-    scenario: {}
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: evaluation_only
-  judy_ramirez:
-    challenge_id: judy_ramirez
-    source_profile_name: Judy Ramirez
-    reporting_label: Damage claim | HTP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  alexis_garner:
-    challenge_id: alexis_garner
-    source_profile_name: Alexis Garner
-    reporting_label: Liquid damage | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Liquid damage
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  deandre_henderson:
-    challenge_id: deandre_henderson
-    source_profile_name: DeAndre Henderson
-    reporting_label: Damage claim | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  juliana_kenny:
-    challenge_id: juliana_kenny
-    source_profile_name: Juliana Kenny
-    reporting_label: Liquid damage (SDDS) | HTP | Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Liquid damage (SDDS)
-      offer: HTP
-      receptiveness: receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  victoria_mabry:
-    challenge_id: victoria_mabry
-    source_profile_name: Victoria Mabry
-    reporting_label: Damage claim | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  nick_o_hara:
-    challenge_id: nick_o_hara
-    source_profile_name: Nick O'Hara
-    reporting_label: Document hold | HTP | Neutral
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Document hold
-      offer: HTP
-      receptiveness: neutral
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  hope_williams:
-    challenge_id: hope_williams
-    source_profile_name: Hope Williams
-    reporting_label: Damage claim | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  liam_croom:
-    challenge_id: liam_croom
-    source_profile_name: Liam Croom
-    reporting_label: Extended verification hold | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Extended verification hold
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  dorcas_dori_martin:
-    challenge_id: dorcas_dori_martin
-    source_profile_name: Dorcas "Dori" Martin
-    reporting_label: Adjuster hold | HTP | Very Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Adjuster hold
-      offer: HTP
-      receptiveness: very_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  colin_paredes:
-    challenge_id: colin_paredes
-    source_profile_name: Colin Paredes
-    reporting_label: Damage claim | HTP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    notes:
-      other_notes: Escalated customer (angry)
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  oliver_bergen:
-    challenge_id: oliver_bergen
-    source_profile_name: Oliver Bergen
-    reporting_label: DMIR | HTP | Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: DMIR
-      offer: HTP
-      receptiveness: receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-      use_alongside_simulator: true
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  lucy_povich:
-    challenge_id: lucy_povich
-    source_profile_name: Lucy Povich
-    reporting_label: Damage claim | HTP | Not Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: not_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  guillermo_hernandez:
-    challenge_id: guillermo_hernandez
-    source_profile_name: Guillermo Hernandez
-    reporting_label: Damage claim | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Damage claim
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
-  malachi_holland:
-    challenge_id: malachi_holland
-    source_profile_name: Malachi Holland
-    reporting_label: Lost device | HTP | Somewhat Receptive
-    report: NH
-    lob: Mobility
-    client: AT&T
-    status: Live
-    scenario:
-      call_intent: Lost device
-      offer: HTP
-      receptiveness: somewhat_receptive
-    tool_usage:
-      expert_assist: not_applicable
-      da_guided_flow: not_applicable
-      nc_guided_flow: not_applicable
-    requirements:
-      always:
-      - warm_greeting
-      - show_empathy
-      - reassure
-      - set_expectations
-      - resolve
-      - test_resolution
-      - transition_statement
-      - discovery_question
-      - engagement_question
-      - core_benefit_1
-      - core_benefit_2
-      - core_benefit_3
-      - price_statement
-      - ask_for_sale
-      - ty_reinforcement
-      - survey
-      - goodbye_with_rapport
-      conditional:
-      - ask_to_send_link
-      as_needed:
-      - resolve_concerns
-    source_match: exact
+
+  # ======== Amazon Router · Soluto (7) ========
   dorothy_wilson:
     challenge_id: dorothy_wilson
     source_profile_name: Dorothy Wilson
     reporting_label: Computer running slow | ACP | Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Computer running slow
@@ -4557,8 +4644,8 @@ profiles:
     source_profile_name: James Carlson
     reporting_label: Set up router | ACP | Not Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Set up router
@@ -4597,8 +4684,8 @@ profiles:
     source_profile_name: Judith Heder
     reporting_label: Connect printer to wi-fi | ACP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Connect printer to wi-fi
@@ -4637,8 +4724,8 @@ profiles:
     source_profile_name: Leta Petrofsky
     reporting_label: Update PC OS | ACP | Not Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Update PC OS
@@ -4677,8 +4764,8 @@ profiles:
     source_profile_name: Richard Ewing
     reporting_label: Install Norton VPN | ACP | Neutral
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Install Norton VPN
@@ -4717,8 +4804,8 @@ profiles:
     source_profile_name: Roland Cuevas
     reporting_label: PC data transfer | ACP | Somewhat Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: PC data transfer
@@ -4757,8 +4844,8 @@ profiles:
     source_profile_name: Thomas Caldwell
     reporting_label: Install Norton Security | ACP | Not Receptive
     report: NH
-    lob: Soluto
     client: Amazon Router
+    lob: Soluto
     status: Live
     scenario:
       call_intent: Install Norton Security
@@ -4792,6 +4879,12 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
+
+# ---------------------------------------------------------------------------
+# Reconciliation — name aliases, unmatched profiles across the two source
+# workbook tabs, and normalization notes. Not consumed by the pipeline;
+# a maintenance aid for closing the gaps.
+# ---------------------------------------------------------------------------
 reconciliation:
   name_aliases:
     amy_stake:
@@ -4849,8 +4942,8 @@ reconciliation:
   notes:
   - LOB values 'Soluo' and trailing-space variants are normalized to 'Soluto'.
   - Requirement values 'Always Require' and 'Always Required' are normalized to 'always'.
-  - Core Benefit 1/2/3 behavior mappings are first-pass assumptions from the current tall-query behavior names and
-    require validation.
-  - Skills with mapping_status 'unmapped' exist in the Evaluations Key but have no confirmed behavior name in the
-    supplied Presto query.
+  - Core Benefit 1/2/3 behavior mappings are first-pass assumptions from the current tall-query behavior
+    names and require validation.
+  - Skills with mapping_status 'unmapped' exist in the Evaluations Key but have no confirmed behavior
+    name in the supplied Presto query.
   - Unmatched profiles are retained rather than guessed across the two workbook tabs.

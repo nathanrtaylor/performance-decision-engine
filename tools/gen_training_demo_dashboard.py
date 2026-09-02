@@ -47,7 +47,7 @@ def main(argv=None) -> int:
 
     program = load_program(REPO / "configs/training/training_program.yaml")
     policy = load_policy(REPO / "configs/training/remediation.yaml")
-    skill_meta = _skill_meta(REPO / "configs/mappings/training_profiles.yaml")
+    skill_meta = _skill_meta(REPO / "configs/training/training_profiles.yaml")
     skill_ids = _skill_ids()
 
     routing = build_skill_routing(program)

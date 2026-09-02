@@ -77,14 +77,20 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 
 ## 4. What's built — files & where
 
-**Config set — `configs/training/`** (isolated; the live-call `configs/` is untouched)
-- `active.yaml` — composition root; day-grain `temporal:` block; abstention ON; `Re-training` conversation type.
-- `mappings/source_catalog.yaml` — `agents` roster dimension, `training_assist_skills`, `training_cbt`.
+**Config set — `configs/training/`** (isolated; the live-call `configs/` is untouched). All training config lives here — nothing to look up in `configs/mappings/`.
+
+*Domain semantics (hand-curated):*
+- `training_profiles.yaml` — TrAIning Assist **skills** (behavior→skill map) + **simulator profiles** (challenge_id → required skills). The **join to `training_program.yaml`**: skill ids are what blocks `develops:`; challenge_ids are what a block's `skill_sim` component `ref`s. Grouped/banner-commented for maintenance.
+- `training_program.yaml` — the 16 ASCEND blocks (sequence, gates, pacing, `develops:` skills) — the routing table.
+- `remediation.yaml` — the steerable policy (how-far-back / areas / once-only / behind-schedule).
+
+*Engine config set (active.yaml + mappings, mostly generated from the above by `tools/gen_training_configs.py`):*
+- `active.yaml` — composition root; day-grain `temporal:` block; abstention ON.
+- `mappings/source_catalog.yaml` — `agents` roster, `training_assist_skills`, `training_cbt`.
 - `mappings/metric_catalog.yaml` — 22 skill metrics + category defaults (generated).
 - `mappings/benchmarks.yaml` — per-metric 80% pass-mark (generated).
-- `mappings/topic_map.yaml` — `Retake: <label>` topics → `Re-training` (generated).
-- `thresholds/signal_thresholds.yaml` — day-grain evidence gates.
-- `priorities/v2026_09_01_training_baseline.yaml` — equal category weights (tunable).
+- `mappings/topic_map.yaml` — `Retake: <label>` topics → `Re-training (Block N)` conversation type carrying the learning block (generated, block from `training_program.yaml`).
+- `thresholds/signal_thresholds.yaml` — day-grain evidence gates; `priorities/…baseline.yaml` — equal category weights (tunable).
 
 **Extraction**
 - `extraction/sql/training_assist.sql.j2` — sim behavior extract (currently week-grained; day-flip pending re-extract).
@@ -92,7 +98,7 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 - `extraction/configs/extract_training_assist.yaml` — runs both training outputs into `data/raw/adhoc`.
 
 **Code (reused / added)**
-- Ingestion: `src/cde/ingestion/training_assist_skills.py` + CLI `src/cde/cli/build_training_assist_skills.py` (behavior → skill rollup via `configs/mappings/training_profiles.yaml`).
+- Ingestion: `src/cde/ingestion/training_assist_skills.py` + CLI `src/cde/cli/build_training_assist_skills.py` (behavior → skill rollup via `configs/training/training_profiles.yaml`).
 - Generator: `tools/gen_training_configs.py` (regenerates the mechanical mapping configs from the real data).
 - Dashboard mock + JSON contract: `tools/ascend_training_dashboard_example.py` (the target output shape for Phase 4).
 - **Reused unchanged:** `scoring/assemble.py`, `temporal/aggregate.py`, `signals/*`, `prioritization/*`, `engine/*` (select / break_glass / themes / recommend / abstain / receipts), `reporting/dashboard_kit.py`.

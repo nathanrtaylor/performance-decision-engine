@@ -1,7 +1,7 @@
 """CLI: interpret raw TrAIning Assist behavior rows into skill-level pass-rates.
 
 Reads the raw behavior-grain extract, applies the behavior->skill mapping and
-per-profile relevance rules from configs/mappings/training_profiles.yaml, and writes the
+per-profile relevance rules from configs/training/training_profiles.yaml, and writes the
 skill-level tall-skinny CSV that build_signals consumes.
 
     # default: transform latest snapshot in place
@@ -10,7 +10,7 @@ skill-level tall-skinny CSV that build_signals consumes.
     # explicit paths
     python -m cde.cli.build_training_assist_skills \
         --raw-dir data/raw/weekly/latest \
-        --profiles configs/mappings/training_profiles.yaml
+        --profiles configs/training/training_profiles.yaml
 
 The output (`training_assist_skills.csv`) is written into --raw-dir so a subsequent
 run_pipeline over that same dir picks it up automatically (load_raw_exports keys by
@@ -29,7 +29,7 @@ from cde.utils.logging import get_logger
 log = get_logger(__name__)
 
 _DEFAULT_RAW_DIR = "data/raw/weekly/latest"
-_DEFAULT_PROFILES = "configs/mappings/training_profiles.yaml"
+_DEFAULT_PROFILES = "configs/training/training_profiles.yaml"
 _INPUT_NAME = "training_assist.csv"
 _OUTPUT_NAME = "training_assist_skills.csv"
 

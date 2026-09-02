@@ -7,7 +7,7 @@ from cde.ingestion.training_assist_skills import (
     build_training_assist_skills,
 )
 
-# Minimal stand-in for configs/mappings/training_profiles.yaml.
+# Minimal stand-in for configs/training/training_profiles.yaml.
 PROFILES = {
     "defaults": {"unspecified_requirement": "never"},
     "requirement_rules": {

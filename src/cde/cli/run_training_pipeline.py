@@ -70,7 +70,7 @@ def main(argv=None) -> int:
     out = Path(args.out_dir) if args.out_dir else Path("outputs/training_runs") / args.run_id
     program_path = Path(args.program) if args.program else configs / "training_program.yaml"
     policy_path = Path(args.policy) if args.policy else configs / "remediation.yaml"
-    profiles_path = configs.parent / "mappings" / "training_profiles.yaml"
+    profiles_path = configs / "training_profiles.yaml"
 
     # 1) shared engine over the training config set
     base_pipeline.main(["--configs-dir", str(configs), "--raw-dir", str(raw),

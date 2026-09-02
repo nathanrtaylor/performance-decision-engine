@@ -24,25 +24,34 @@ topic_map:
     core_benefit_3: 'Retake: Core Benefit 3'
     price_statement: 'Retake: Price Statement'
   topic_to_conversation_type:
-    'Retake: Goodbye With Rapport': Re-training
-    'Retake: Survey': Re-training
-    'Retake: Thank & Reinforce': Re-training
-    'Retake: Set Expectations': Re-training
-    'Retake: Verification': Re-training
-    'Retake: Ask for the Sale': Re-training
-    'Retake: Ask to Send Enrollment Link': Re-training
-    'Retake: Reassure the Customer': Re-training
-    'Retake: Show Empathy': Re-training
-    'Retake: Warm Greeting': Re-training
-    'Retake: Account Assessment': Re-training
-    'Retake: Advanced Discovery': Re-training
-    'Retake: Resolve Customer Concerns': Re-training
-    'Retake: Confirm / Test Resolution': Re-training
-    'Retake: Conversational Language': Re-training
-    'Retake: Discovery Questions': Re-training
-    'Retake: Engagement Questions': Re-training
-    'Retake: Transition Statement': Re-training
-    'Retake: Core Benefit 1': Re-training
-    'Retake: Core Benefit 2': Re-training
-    'Retake: Core Benefit 3': Re-training
-    'Retake: Price Statement': Re-training
+    'Retake: Goodbye With Rapport': 'Re-training — Block 15: Confirm, Recap, Close'
+    'Retake: Survey': 'Re-training — Block 15: Confirm, Recap, Close'
+    'Retake: Thank & Reinforce': 'Re-training — Block 15: Confirm, Recap, Close'
+    'Retake: Set Expectations': 'Re-training — Block 2: Expert Foundations - The Tech
+      Coach Role & Call Flow'
+    'Retake: Verification': 'Re-training — Block 6: Greeting, Verify, Assess, Empathy
+      & Assurance'
+    'Retake: Ask for the Sale': 'Re-training — Block 14: Sales in Action'
+    'Retake: Ask to Send Enrollment Link': 'Re-training — Block 14: Sales in Action'
+    'Retake: Reassure the Customer': 'Re-training — Block 6: Greeting, Verify, Assess,
+      Empathy & Assurance'
+    'Retake: Show Empathy': 'Re-training — Block 6: Greeting, Verify, Assess, Empathy
+      & Assurance'
+    'Retake: Warm Greeting': 'Re-training — Block 6: Greeting, Verify, Assess, Empathy
+      & Assurance'
+    'Retake: Account Assessment': 'Re-training — Block 6: Greeting, Verify, Assess,
+      Empathy & Assurance'
+    'Retake: Advanced Discovery': 'Re-training — Block 6: Greeting, Verify, Assess,
+      Empathy & Assurance'
+    'Retake: Resolve Customer Concerns': 'Re-training — Block 14: Sales in Action'
+    'Retake: Confirm / Test Resolution': 'Re-training — Block 8: Solve & Test - Device
+      Basics'
+    'Retake: Conversational Language': 'Re-training — Block 14: Sales in Action'
+    'Retake: Discovery Questions': 'Re-training — Block 14: Sales in Action'
+    'Retake: Engagement Questions': 'Re-training — Block 14: Sales in Action'
+    'Retake: Transition Statement': 'Re-training — Block 2: Expert Foundations - The
+      Tech Coach Role & Call Flow'
+    'Retake: Core Benefit 1': 'Re-training — Block 14: Sales in Action'
+    'Retake: Core Benefit 2': 'Re-training — Block 14: Sales in Action'
+    'Retake: Core Benefit 3': 'Re-training — Block 14: Sales in Action'
+    'Retake: Price Statement': 'Re-training — Block 14: Sales in Action'
