@@ -70,21 +70,28 @@ def _skill_metrics(raw_dir: Path):
 
 
 def _cbt_metrics(raw_dir: Path):
-    """(metrics dict, categories list) from training_cbt.csv. metric name namespaced 'cbt_<id>'."""
+    """(metrics dict, categories list) from training_cbt.csv. metric name namespaced 'cbt_<id>'.
+
+    Only SCORED-ASSESSMENT courses are cataloged: most CBT courses are completion-only
+    items (acknowledgements, surveys, reference clipboards) whose `score` is always 0 —
+    those are not assessments and would otherwise flag every expert as failing. A course
+    qualifies as an assessment if it shows any score signal (max calc > 0) in the data.
+    """
     csv = raw_dir / "training_cbt.csv"
     if not csv.exists():
         return {}, []
     df = pd.read_csv(csv)
-    # coursename -> label (first non-null per courseid)
+    # scored-assessment courses: max calc > 0 (completion-only courses are always 0)
+    scored = set(df.groupby("courseid")["calc"].max().pipe(lambda s: s[s > 0]).index)
     names = (df.dropna(subset=["courseid"]).groupby("courseid")["coursename"]
              .first().to_dict()) if "coursename" in df.columns else {}
     metrics = {}
-    for cid in sorted(df["courseid"].dropna().unique(), key=str):
+    for cid in sorted(scored, key=str):
         label = _labelize(names.get(cid) or cid)
         name = "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", str(cid)).strip("_").lower()
         metrics[name] = _metric_entry(
             source="training_cbt", source_metric_key=cid, category="cbt",
-            desc=f"CBT completion score: {label}.", label=label,
+            desc=f"CBT assessment score: {label}.", label=label,
         )
     return metrics, (["cbt"] if metrics else [])
 

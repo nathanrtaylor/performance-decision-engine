@@ -101,6 +101,15 @@ metric_catalog:
         decimals: 0
       recalc:
         recipe: quality
+    cbt:
+      base_weight_class: low
+      confidence_floor: 0.3
+      display:
+        scale: 100
+        suffix: '%'
+        decimals: 0
+      recalc:
+        recipe: quality
   metrics:
     goodbye_with_rapport:
       source: training_assist_skills
@@ -403,6 +412,1037 @@ metric_catalog:
       direction: higher_is_better
       unit: score
       description: 'TrAIning Assist skill pass-rate: Price Statement.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_00ab17ebab4f100119278d7341350001:
+      source: training_cbt
+      source_metric_key: 00ab17ebab4f100119278d7341350001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Checkpoint One Ramp
+        2025.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_00ab17ebab4f10011f07836eeb180001:
+      source: training_cbt
+      source_metric_key: 00ab17ebab4f10011f07836eeb180001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Coach Fsl Access.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_169d470b3aa71001f86dbf39ed310001:
+      source: training_cbt
+      source_metric_key: 169d470b3aa71001f86dbf39ed310001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw Advanced Discovery Call Flow
+        Updates.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_19ae69a016741001672b3bd446090000:
+      source: training_cbt
+      source_metric_key: 19ae69a016741001672b3bd446090000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Flexible Scheduling 6 Key Sales
+        Behaviors Final Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_200088594125100108ea94dee11a0001:
+      source: training_cbt
+      source_metric_key: 200088594125100108ea94dee11a0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 11 Thinking Like A Learning
+        Orchestrator Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_200088594125100167c7c11cebab0000:
+      source: training_cbt
+      source_metric_key: 200088594125100167c7c11cebab0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Episode 15 Coaching Difficult Learners With
+        Confidence Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2000885941251002077a2b7875570000:
+      source: training_cbt
+      source_metric_key: 2000885941251002077a2b7875570000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Ascend Exwo Customer Account Search Test   Asurion
+        Guided Practice.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_200088594125100207912f0873a00000:
+      source: training_cbt
+      source_metric_key: 200088594125100207912f0873a00000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Ascend Exwo Test   Asurion Evaluation.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2082d8b70d731001a7ff67ff40420001:
+      source: training_cbt
+      source_metric_key: 2082d8b70d731001a7ff67ff40420001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Ce Consistent Closing.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2082d8b70d731001b495e72862c20001:
+      source: training_cbt
+      source_metric_key: 2082d8b70d731001b495e72862c20001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Ce Capture Complete Notes In
+        System.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2082d8b70d731001b536696e2ba90000:
+      source: training_cbt
+      source_metric_key: 2082d8b70d731001b536696e2ba90000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Ce Build Confidence.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2082d8b70d731001f429137e7bd80000:
+      source: training_cbt
+      source_metric_key: 2082d8b70d731001f429137e7bd80000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Corrective Action For Performance.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_2082d8b70d73100202c97da0d8720001:
+      source: training_cbt
+      source_metric_key: 2082d8b70d73100202c97da0d8720001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Intro To Hr Policies.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_234b310dfbe310016cbda7541a6c0000:
+      source: training_cbt
+      source_metric_key: 234b310dfbe310016cbda7541a6c0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Mobility All Mobility Support Teams.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_3613106b36751001a606958dd50b0001:
+      source: training_cbt
+      source_metric_key: 3613106b36751001a606958dd50b0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw Advanced Discovery (New Hire).'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_43360ed599dd100117affb15252a0000:
+      source: training_cbt
+      source_metric_key: 43360ed599dd100117affb15252a0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Managing Your Shift.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_43360ed599dd10016b35bb4737960001:
+      source: training_cbt
+      source_metric_key: 43360ed599dd10016b35bb4737960001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Asurion Sales Integrity Acknowledgment   New
+        Hire 2026.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_47b1821e864c100208720c6915330000:
+      source: training_cbt
+      source_metric_key: 47b1821e864c100208720c6915330000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Att New Hire End Of Class Assessment
+        Tech Led.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_4e98b60030441001648f73476c8e0001:
+      source: training_cbt
+      source_metric_key: 4e98b60030441001648f73476c8e0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Empathy And Assurance: Core
+        Skills For Customer Connection.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_4e98b60030441001b45f1cd162040001:
+      source: training_cbt
+      source_metric_key: 4e98b60030441001b45f1cd162040001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Ce Act As A Representative Of
+        Our Brand.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_503ec483d0831001697f092aec240000:
+      source: training_cbt
+      source_metric_key: 503ec483d0831001697f092aec240000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 1 Slow Down To Speed Up Learning
+        Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_503ec483d083100169e79bd0b14c0000:
+      source: training_cbt
+      source_metric_key: 503ec483d083100169e79bd0b14c0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 4 Building Confidence Before
+        Simulations Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_503ec483d08310016a0b43c76cd50000:
+      source: training_cbt
+      source_metric_key: 503ec483d08310016a0b43c76cd50000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 5 Coaching Through Mistakes
+        Without Killing Confidence Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_503ec483d08310016a2dd95c31f80001:
+      source: training_cbt
+      source_metric_key: 503ec483d08310016a2dd95c31f80001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 6 Turning Cbts Into Learning
+        Experiences Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_51cbf7fd8436100160db08f408bb0001:
+      source: training_cbt
+      source_metric_key: 51cbf7fd8436100160db08f408bb0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Flexible Scheduling Serve Solve
+        Sell.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_537b8cabbbe610016b54d9dbc6b80000:
+      source: training_cbt
+      source_metric_key: 537b8cabbbe610016b54d9dbc6b80000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Responding To Offensive Content.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_537b8cabbbe610016b564de3d8a20000:
+      source: training_cbt
+      source_metric_key: 537b8cabbbe610016b564de3d8a20000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion Att Hometech Protection Plan Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_537b8cabbbe610016b6c37f23b1e0000:
+      source: training_cbt
+      source_metric_key: 537b8cabbbe610016b6c37f23b1e0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Store Ubif Segment 2 Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_537b8cabbbe610016b8a2da9b1f90000:
+      source: training_cbt
+      source_metric_key: 537b8cabbbe610016b8a2da9b1f90000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Culture Training   Quiz 3.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_537b8cabbbe610016b8adbbe18d20000:
+      source: training_cbt
+      source_metric_key: 537b8cabbbe610016b8adbbe18d20000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Baseline Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_5d31e209b0881000cb609a5c551d0000:
+      source: training_cbt
+      source_metric_key: 5d31e209b0881000cb609a5c551d0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto All Connected External Devices.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_638adfafc54610016ad7ccc716a80001:
+      source: training_cbt
+      source_metric_key: 638adfafc54610016ad7ccc716a80001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Preventing Executive Channel
+        Complaints.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_638adfafc54610016ad7e4d2c70c0000:
+      source: training_cbt
+      source_metric_key: 638adfafc54610016ad7e4d2c70c0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Sales Compliance For Everyone.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_638adfafc54610016afc7881a90c0000:
+      source: training_cbt
+      source_metric_key: 638adfafc54610016afc7881a90c0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw Call Walkthrough.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_64844428d3b010011070b7794e310000:
+      source: training_cbt
+      source_metric_key: 64844428d3b010011070b7794e310000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 12 Orchestrating High Impact
+        Launchpad Blocks Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_64844428d3b01001fef475b3ae7a0000:
+      source: training_cbt
+      source_metric_key: 64844428d3b01001fef475b3ae7a0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Ascend Smart Offer Transition Statement   Test
+        Course.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_64844428d3b01002075a39e13e5c0001:
+      source: training_cbt
+      source_metric_key: 64844428d3b01002075a39e13e5c0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Ascend Exwo Customer Account Search Test   Asurion
+        Evaluation.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_73acee92da1810016b3790f349a60000:
+      source: training_cbt
+      source_metric_key: 73acee92da1810016b3790f349a60000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Store Ubif Technician Corporate Incentive
+        Compensation.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_73acee92da1810016b54c35bfff90000:
+      source: training_cbt
+      source_metric_key: 73acee92da1810016b54c35bfff90000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Culture Training   Quiz 2.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_73acee92da1810016b55135232ea0001:
+      source: training_cbt
+      source_metric_key: 73acee92da1810016b55135232ea0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion Vzw Verizon Home Device Protect
+        Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_73acee92da1810016b572b98cb410000:
+      source: training_cbt
+      source_metric_key: 73acee92da1810016b572b98cb410000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw New Hire End Of Class Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_7a7363c1262110011acc78b4f44e0001:
+      source: training_cbt
+      source_metric_key: 7a7363c1262110011acc78b4f44e0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion Troubleshooting By Concern.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_7ee5c5a9d9f1100110641ef30e820001:
+      source: training_cbt
+      source_metric_key: 7ee5c5a9d9f1100110641ef30e820001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Mobility All Introduction To The Smart Offer.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_7f4a5f3aa2af10016956d2de76140000:
+      source: training_cbt
+      source_metric_key: 7f4a5f3aa2af10016956d2de76140000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 2 The Art Of The Follow Up
+        Question Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_7f4a5f3aa2af1001697602703f900000:
+      source: training_cbt
+      source_metric_key: 7f4a5f3aa2af1001697602703f900000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 3 From Content Delivery To
+        Learning Facilitation Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_82098ba402d11001192c7ef1f88d0001:
+      source: training_cbt
+      source_metric_key: 82098ba402d11001192c7ef1f88d0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Checkpoint 2 Ramp 2025.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_8bb03643374110015fc789d7b1250000:
+      source: training_cbt
+      source_metric_key: 8bb03643374110015fc789d7b1250000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 7 Knowledge Check Engagement
+        Is A System, Not A Personality.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_8bb036433741100160d5963814040000:
+      source: training_cbt
+      source_metric_key: 8bb036433741100160d5963814040000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 9 Knowledge Check Maximizing
+        Flex Blocks.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_8bb0364337411001618e808100e10000:
+      source: training_cbt
+      source_metric_key: 8bb0364337411001618e808100e10000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 10 Knowledge Check Creating
+        High Impact Learning Moments.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_a244142a52fb1001075496fde80e0000:
+      source: training_cbt
+      source_metric_key: a244142a52fb1001075496fde80e0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Episode 18 Sustaining Excellence Knowledge
+        Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_a27a4e7db9471001b8269b1060a50000:
+      source: training_cbt
+      source_metric_key: a27a4e7db9471001b8269b1060a50000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw New Hire Baseline Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_b6adc89666d51001f4fc1d20370f0000:
+      source: training_cbt
+      source_metric_key: b6adc89666d51001f4fc1d20370f0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Connected Home Plans Final Knowledge
+        Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_bf0100e8282710011cd422394cf40000:
+      source: training_cbt
+      source_metric_key: bf0100e8282710011cd422394cf40000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Verizon 5G Serve Solve Sell.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_bf0100e8282710016acd7e4089200000:
+      source: training_cbt
+      source_metric_key: bf0100e8282710016acd7e4089200000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Verizon 5G Mastering The 6 Keys   Sales
+        Unlocked.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_c2985ae6935d100160576de7e37f0001:
+      source: training_cbt
+      source_metric_key: c2985ae6935d100160576de7e37f0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Field App Final Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_c720360a9e7d1000c958624d51550000:
+      source: training_cbt
+      source_metric_key: c720360a9e7d1000c958624d51550000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Episode 17 Psychological Safety (Evergreen)
+        Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_cf7f5af1d98d1000cb1937721f3c0000:
+      source: training_cbt
+      source_metric_key: cf7f5af1d98d1000cb1937721f3c0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Field Final Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_cf7f5af1d98d1000cd04ab8db2590000:
+      source: training_cbt
+      source_metric_key: cf7f5af1d98d1000cd04ab8db2590000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Checkpoint 2.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_cf7f5af1d98d1000cd2e10b0101e0001:
+      source: training_cbt
+      source_metric_key: cf7f5af1d98d1000cd2e10b0101e0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des New Hire Checkpoint 1.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_cf7f5af1d98d1000ce24a3c00ef80000:
+      source: training_cbt
+      source_metric_key: cf7f5af1d98d1000ce24a3c00ef80000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Attendance Guidelines And Callout
+        Procedures.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_d0869a1863b9100205ea22fd0fb40001:
+      source: training_cbt
+      source_metric_key: d0869a1863b9100205ea22fd0fb40001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Des Device Activation And Setup
+        Final Knowledge Check.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_ea7cdb415d751001f743aaab19480000:
+      source: training_cbt
+      source_metric_key: ea7cdb415d751001f743aaab19480000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw Tech Led Mid Point Knowledge
+        Check (Domestic).'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_efe57279c66d1000c7202c222d4e0000:
+      source: training_cbt
+      source_metric_key: efe57279c66d1000c7202c222d4e0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Verizon Enrolling Fios Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_efe57279c66d1000ca735e004a950000:
+      source: training_cbt
+      source_metric_key: efe57279c66d1000ca735e004a950000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Verizon Logging In And Syncing   Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_efe57279c66d1001f2498921febb0001:
+      source: training_cbt
+      source_metric_key: efe57279c66d1001f2498921febb0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home Verizon Smart Leads 5G   Assessment.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_f07066f4b2c0100119f5bc0c013a0000:
+      source: training_cbt
+      source_metric_key: f07066f4b2c0100119f5bc0c013a0000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Ca Fair Claims Settlement Practices
+        Act Acknowledgement   2026.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_fafab3e2688c10015fe8343249a40000:
+      source: training_cbt
+      source_metric_key: fafab3e2688c10015fe8343249a40000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Teia Episode 8 Knowledge Check Facilitating
+        Better.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_fafab3e2688c1001b7bec64047b00000:
+      source: training_cbt
+      source_metric_key: fafab3e2688c1001b7bec64047b00000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Soluto Vzw Introduction To Sell   Using
+        The Smart Offer.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_fe346475579110016afd42df6f1a0001:
+      source: training_cbt
+      source_metric_key: fe346475579110016afd42df6f1a0001
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Asurion All Slips Trips And Falls.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_fe346475579110016b05bf358ba50000:
+      source: training_cbt
+      source_metric_key: fe346475579110016b05bf358ba50000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: Mobility All Intro To Insurance Exclusions.'
+      required: false
+      eligible_for_prioritization: true
+      computation_override:
+        expected_calculation: score
+        denominator_min: 3
+      benchmark:
+        type: config
+    cbt_fe346475579110016b0db5373f930000:
+      source: training_cbt
+      source_metric_key: fe346475579110016b0db5373f930000
+      category: cbt
+      direction: higher_is_better
+      unit: score
+      description: 'CBT assessment score: In Home 5G Occupational Safety & Awareness.'
       required: false
       eligible_for_prioritization: true
       computation_override:
