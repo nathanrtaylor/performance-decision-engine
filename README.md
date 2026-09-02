@@ -1,106 +1,134 @@
 # Performance Decision Engine
 
-Deterministic, explainable system for recommending the most appropriate
-coaching topic and conversation type for a given coaching session.
+A deterministic, explainable engine that turns operational performance data into
+**governed, auditable recommendations** — and applies the *same* decision core to more
+than one performance problem.
 
-This engine translates operational performance data into governed
-coaching recommendations that are:
+Today it powers two domains:
 
-- Business-aligned
-- Deterministic
-- Versioned
-- Auditable
-- Explainable
+- **Coaching** — from live-call Auto QA, recommend the single most appropriate **coaching
+  topic and conversation type** for each expert's next session.
+- **Training** — from new-hire simulation and computer-based-training data, surface the
+  concrete **remediation** an expert needs: which parts of onboarding to go back and retake,
+  and whether they are on pace to graduate.
 
-It is designed to absorb frequent priority changes without losing rigor
-or credibility.
+Both are the same machine — signals → scoring → priorities → selection → explainable
+receipt — pointed at a different, governed configuration set. Every recommendation it makes is:
+
+- **Business-aligned** — priorities are set by Ops, in versioned config, not buried in code.
+- **Deterministic** — same data + same config → same decision, every time.
+- **Versioned & auditable** — every run snapshots the config and data it used.
+- **Explainable** — each decision carries a receipt: why this, why now, why not the others.
+
+It is designed to absorb frequent priority changes without losing rigor or credibility.
+
+---
+
+# One Engine, Two Domains
+
+| | **Coaching domain** | **Training domain** |
+|---|---|---|
+| **Question it answers** | "What should this expert's next coaching session be about?" | "What should this new hire go back and retake — and are they on track?" |
+| **Population** | Live production agents | New-hire / conversion trainees (ASCEND Launchpad) |
+| **Primary inputs** | Auto QA behavior scores, agent metrics | TrAIning Assist simulations, computer-based-training scores |
+| **Grain** | Week | Day |
+| **Output** | One coaching topic + conversation type per agent | Per-expert remediation plan + learning-block progress dashboard |
+| **Config set** | `configs/` | `configs/training/` |
+| **Entry point** | `pde.cli.run_pipeline` | `pde.cli.run_training_pipeline` |
+
+**~70–80% of the engine is domain-generic and shared unchanged** (extraction, signal
+construction, gating, scoring, prioritization, the selection layer, receipts). A domain is
+defined by (a) an isolated, governed **config set**, selected with `--configs-dir`, and (b) a
+few thin domain-specific modules layered on top. The live coaching pipeline and the training
+pipeline never interfere: they read different configs and write different outputs.
 
 ---
 
 # Architecture Overview
 
-The system follows a layered, modular architecture:
+The shared core is a layered, modular pipeline:
 
-Presto / Source Systems  
-        ↓  
-Extraction Layer (Versioned Raw Snapshots)  
-        ↓  
-Signal Construction  
-        ↓  
-Signal Gating (Thresholds)  
-        ↓  
-Multi-Axis Scoring  
-        ↓  
-Prioritization (Versioned Weights)  
-        ↓  
-Deterministic Topic Selection  
-        ↓  
-Theme / Break-Glass Selection (three-tier)  
-        ↓  
-Decision Receipts  
+```
+Presto / Source Systems
+        ↓
+Extraction Layer (versioned raw snapshots)
+        ↓
+Signal Construction
+        ↓
+Signal Gating (evidence thresholds)
+        ↓
+Multi-Axis Scoring (deficit, trend, confidence, risk)
+        ↓
+Prioritization (versioned business weights)
+        ↓
+Deterministic Selection
+        ↓
+Decision Receipts (why this / why now / why not others)
+```
+
+The **coaching** domain adds a three-tier selection layer (break-glass → theme → single) on
+top; the **training** domain adds program-structure + remediation logic and a per-expert
+dashboard. Neither changes the shared middle.
 
 ## Core Design Principles
 
-- Business outcomes beat behavioral purity
-- Determinism is a feature
-- Explainability is mandatory
-- Flexibility must be governed
-- Configuration lives inside the system
-- Learning is constrained and human-controlled
+- **One engine, many domains** — reuse the decision core; express each new problem as governed config.
+- Business outcomes beat behavioral purity.
+- Determinism is a feature.
+- Explainability is mandatory.
+- Flexibility must be governed.
+- Configuration lives inside the system.
+- Learning is constrained and human-controlled.
 
 ---
 
 # Repository Structure
 
 ```
-configs/
+configs/                       # COACHING domain config set
   active.yaml
-  mappings/
-    source_catalog.yaml
-    metric_catalog.yaml
-    topic_map.yaml
-    benchmarks.yaml
-    themes.yaml
-  thresholds/
-    signal_thresholds.yaml
-  priorities/
-    vYYYY_MM_DD_*.yaml
+  mappings/  (source_catalog, metric_catalog, topic_map, benchmarks, themes, coaching_history_map)
+  thresholds/  priorities/
+
+configs/training/              # TRAINING domain config set (isolated; selected via --configs-dir)
+  active.yaml
+  training_program.yaml        # the ASCEND learning blocks, gates, pacing
+  remediation.yaml             # steerable remediation policy
+  training_profiles.yaml       # skills + simulator profiles
+  mappings/  thresholds/  priorities/
 
 data/
-  raw/
-    weekly/<snapshot_id>/      # Immutable raw snapshots
-    weekly/latest/             # Auto-maintained pointer
-  samples/
+  raw/weekly/<snapshot_id>/    # immutable coaching snapshots (+ latest/ pointer)
+  raw/adhoc/<snapshot_id>/     # training snapshots (+ latest/ pointer)
 
 extraction/
-  sql/
-  configs/
+  sql/         (agent_metrics, behavior_scores, coaching_history, training_assist, training_cbt, …)
+  configs/     (extract_run.yaml [coaching], extract_training_assist.yaml [training])
   scripts/
 
 src/pde/
-  signals/
-  scoring/
-  prioritization/
-  engine/
-  simulation/
-  governance/
-  benchmarks_recalc/          # guardrail-gated benchmark recalculation (propose-only)
-  themes_discovery/           # guardrail-gated theme discovery (propose-only)
-  cli/
+  signals/  scoring/  prioritization/  temporal/   # shared core
+  engine/          # shared selection layer: select / break_glass / themes / recommend / abstain / receipts
+  reporting/       # dashboard_kit + expert_dashboard (coaching) + training_dashboard (training)
+  governance/  benchmarks_recalc/  themes_discovery/
+  training/        # training-only: program.py (blocks/gates/remediation), roster.py
+  cli/             # run_pipeline (coaching), run_training_pipeline (training), check_config, check_training_program, …
 
+docs/training/     # program source material, class roster, design docs
 outputs/
-  runs/<timestamp>/
-  benchmark_recalc/<id>/      # recalc dashboard + proposed change-set (not a pipeline run)
-  theme_discovery/<id>/       # discovery dashboard + proposed themes (not a pipeline run)
+  runs/<timestamp>/            # coaching pipeline runs
+  training_runs/<id>/          # training pipeline runs
+  benchmark_recalc/<id>/  theme_discovery/<id>/
 ```
 
-The `engine/` package holds the three-tier selection layer: `select.py` (orchestrator),
-`break_glass.py` (Tier 1 override), `themes.py` (Tier 2 themes), and `recommend.py` (Tier 3
-single-behavior argmax, unchanged).
-
+---
 ---
 
-# Configuration Layers
+# PART I — THE COACHING DOMAIN
+
+The original and most mature application: recommend the next coaching topic for live agents.
+
+## Configuration Layers
 
 Each configuration file has a single responsibility.
 
@@ -114,722 +142,333 @@ Each configuration file has a single responsibility.
 | Coaching themes | themes.yaml | Theme name → member metrics + conversation type (SME-curated) |
 | Signal gating | signal_thresholds.yaml | Eligibility rules |
 | Business emphasis | priorities/*.yaml | Versioned weight configurations |
-| Active pointer | active.yaml | Selects current config set; may include `data_snapshot` (raw path resolution and default `required_tables` from `expected_sources`) |
+| Active pointer | active.yaml | Selects current config set; may include `data_snapshot` |
 
 Only `priorities/` and `active.yaml` should change frequently.
+`conversation_types.by_topic` in `active.yaml` overrides `topic_map.topic_to_conversation_type`.
 
-`conversation_types.by_topic` in `active.yaml` overrides `topic_map.topic_to_conversation_type` for matching topic strings; otherwise the topic map supplies defaults.
-
----
-
-# Adding a New Coachable Metric
+## Adding a New Coachable Metric
 
 A metric has to be registered consistently across several config files before the pipeline will
 score it, recommend it, and explain it. The config-integrity linter (run automatically in the
-[preflight](#signal-gating--abstention), or on demand with `python -m pde.cli.check_config`) will
-flag any missing cross-reference — but it reports them one broken edge at a time. This section is
-the **happy path**: do all of the steps below in one pass and the metric passes the linter and
-becomes coachable on the first run.
+preflight, or on demand with `python -m pde.cli.check_config`) will flag any missing
+cross-reference — one broken edge at a time. This section is the **happy path**: do all the
+steps below in one pass and the metric passes the linter and becomes coachable on the first run.
 
 **Assumption:** the metric already comes from a query/source the pipeline ingests — i.e. a row for
 it already lands in an existing tall source table (e.g. `agent_metrics`), keyed by some metric-name
-string. If that is true, **no extraction or `source_catalog.yaml` change is needed**: `build_signals`
-selects metrics by matching `(source, source_metric_key)` from `metric_catalog` against the rows
-that source already emits. (If the metric is *not* yet in any query, extract it first — that is a
-separate, upstream task.)
+string. If so, **no extraction or `source_catalog.yaml` change is needed**: `build_signals` selects
+metrics by matching `(source, source_metric_key)` from `metric_catalog` against the rows that source
+already emits. (If the metric is *not* yet in any query, extract it first — a separate upstream task.)
 
 ### The five surfaces (2 optional)
-
-Edit these in order. Steps 1–3 are **required** for a metric that should be recommended (the linter
-errors without them); steps 4–5 are optional refinements.
 
 | # | File | What you add | Required? |
 |---|------|--------------|-----------|
 | 1 | `mappings/metric_catalog.yaml` | The metric definition (identity, direction, category, benchmark source) | **Required** |
-| 2 | `mappings/topic_map.yaml` | Metric → coaching topic, and topic → conversation type | **Required** (eligible metric with no topic can never be recommended) |
-| 3 | `mappings/benchmarks.yaml` | The reference/target value(s) | **Required** when `benchmark.type: config` (the standard case) |
+| 2 | `mappings/topic_map.yaml` | Metric → coaching topic, and topic → conversation type | **Required** |
+| 3 | `mappings/benchmarks.yaml` | The reference/target value(s) | **Required** when `benchmark.type: config` |
 | 4 | `thresholds/signal_thresholds.yaml` | Per-metric evidence-gating override | Optional — inherits `by_category` |
 | 5 | `priorities/<active>.yaml` | Per-metric weight override | Optional — inherits `by_category` |
-| (+) | `mappings/coaching_history_map.yaml` | Delivered-coaching behavior → this topic (so it dampens) | Optional — only for recency dampening |
+| (+) | `mappings/coaching_history_map.yaml` | Delivered-coaching behavior → this topic (so it dampens) | Optional |
 
 ### Worked example
 
-Adding a new business metric `reopen_rate` (reopened tickets / resolved tickets; lower is better),
-already emitted by `agent_metrics` under the source key `"reopen rate"`.
+Adding `reopen_rate` (reopened tickets / resolved tickets; lower is better), already emitted by
+`agent_metrics` under the source key `"reopen rate"`.
 
-**1. `mappings/metric_catalog.yaml`** — under `metric_catalog.metrics:`, add:
+**1. `mappings/metric_catalog.yaml`** — under `metric_catalog.metrics:`:
 
 ```yaml
     reopen_rate:
       source: agent_metrics
       source_metric_key: "reopen rate"    # EXACT metric string as it appears in the source rows
       category: solve                     # MUST be a key in metric_catalog.category_defaults
-                                          #   (sell | serve | solve | tool_usage | quality_behavior)
-      direction: lower_is_better          # REQUIRED: higher_is_better | lower_is_better
-                                          #   (a blank/misspelled direction is a hard linter error —
-                                          #    it would otherwise silently coach the wrong tail)
+      direction: lower_is_better          # REQUIRED (a blank/misspelled direction is a hard linter error)
       unit: rate
       description: "Reopened tickets / resolved tickets."
-      required: false
       eligible_for_prioritization: true   # THIS is what makes the metric recommendable
       computation_override:
-        expected_calculation: rate        # rate | average
-        denominator_min: 20               # min denominator for an evidence-valid weekly row
+        expected_calculation: rate
+        denominator_min: 20
       benchmark:
-        type: config                      # value is supplied by benchmarks.yaml (step 3)
+        type: config                      # value supplied by benchmarks.yaml (step 3)
 ```
 
 **2. `mappings/topic_map.yaml`** — register the topic in **both** maps:
 
 ```yaml
   metric_to_topic:
-    reopen_rate: "Reduce Reopen Rate"           # topic names are durable, exec-recognizable strings
-
+    reopen_rate: "Reduce Reopen Rate"
   topic_to_conversation_type:
-    "Reduce Reopen Rate": "Performance Correction"   # else the recommendation falls back to the default type
+    "Reduce Reopen Rate": "Performance Correction"
 ```
 
-**3. `mappings/benchmarks.yaml`** — because `benchmark.type: config`, add an entry (required, or the
-linter errors). `default` is mandatory; per-cohort overrides are optional and fall back to `default`:
+**3. `mappings/benchmarks.yaml`** — `default` is mandatory; per-cohort overrides optional:
 
 ```yaml
   reopen_rate:
     default: 0.08
-    by_icp_client:            # optional; keys are lowercase, matched case-insensitively
+    by_icp_client:
       mob-verizon: 0.06
-      pss-verizon: 0.09
 ```
 
-**4. `thresholds/signal_thresholds.yaml`** *(optional)* — only if this metric needs different gating
-than its category default. Otherwise it inherits `by_category.solve`:
-
-```yaml
-  by_metric:
-    reopen_rate:
-      min_denominator_default: 15
-```
-
-**5. `priorities/<active>.yaml`** *(optional)* — only to weight this metric differently from its
-category. Otherwise it inherits `by_category.solve`:
-
-```yaml
-  by_metric:
-    reopen_rate: 1.0
-```
-
-**(+) `mappings/coaching_history_map.yaml`** *(optional)* — only if delivered coaching for this topic
-should soft-suppress future recommendations of it. Map the coaching-history `behavior_selected`
-string to the **same topic string** used in step 2:
-
-```yaml
-  behavior_to_topic:
-    "Reopen Rate": "Reduce Reopen Rate"
-```
+**4–5 (optional)** — per-metric gating / weight overrides in `signal_thresholds.yaml` /
+`priorities/<active>.yaml`; otherwise inherit `by_category`. **(+)** add to
+`coaching_history_map.yaml` only if delivered coaching for the topic should dampen it.
 
 ### Derived (composite) metrics
 
-The assumption above is that a source row already exists for the metric. A **derived** metric is the
-exception: it has *no* source row and is computed from *other* metrics' `numerator`/`denominator`
-columns. Use `source: derived` plus a `derived:` block (no real `source_metric_key` — set it to the
-metric's own name, the label stamped on the synthesized rows). The numerator is the **sum** of one or
-more component columns, divided by one component column; each side names which column (`numerator` or
-`denominator`) of which component. Components are raw source keys and are pulled into the extract
-automatically. Example — `sp100 = enrolled ÷ Sale Opportunities` (both source counts that carry data
-in the numerator column only):
-
-```yaml
-    sp100:
-      source: derived
-      source_metric_key: sp100            # self-referential; stamped on synthesized rows
-      category: sell
-      direction: higher_is_better
-      unit: rate
-      eligible_for_prioritization: true
-      derived:
-        numerator:
-          - { metric_key: "enrolled", part: numerator }
-        denominator: { metric_key: "Sale Opportunities", part: numerator }
-      benchmark: { type: config }
-```
-
-A group (agent × week × cohort) missing any component is **skipped**, never fabricated. Component-key
-matching is case-insensitive, but a wrong string yields **zero** rows *silently* — verify the exact
-source `metric` string exists in the extract. Implementation: `src/pde/signals/derived_metrics.py`.
+A **derived** metric has *no* source row and is computed from *other* metrics'
+`numerator`/`denominator` columns. Use `source: derived` plus a `derived:` block (e.g.
+`sp100 = enrolled ÷ Sale Opportunities`). A group missing any component is **skipped**, never
+fabricated. Implementation: `src/pde/signals/derived_metrics.py`.
 
 ### Validate before the full run
-
-Run the linter first — it checks every cross-reference above in one pass, so you catch a typo in
-seconds instead of after a ~10-minute pipeline run:
 
 ```
 python -m pde.cli.check_config --configs-dir configs
 ```
 
-A clean metric produces `config-lint PASS`. The pipeline also runs this automatically as a preflight;
-use `--strict-preflight` to make warnings fatal. Then run the pipeline normally — the new metric now
-flows through signals → scoring → recommendations → receipts like any other.
+A clean metric produces `config-lint PASS`. The pipeline runs this automatically as a preflight
+(`--strict-preflight` makes warnings fatal).
 
-## Onboarding an ICP client cohort
+## Onboarding an ICP Client cohort
 
-The cohort roster has **one source of truth**: `icp_clients:` in `configs/active.yaml`. Add a cohort
-there and that single edit feeds every consumer:
+The cohort roster has **one source of truth**: `icp_clients:` in `configs/active.yaml`. That single
+edit feeds extraction (`icp_clients_from: configs/active.yaml`), benchmark recalculation, and
+per-cohort values under `by_icp_client`. `python -m pde.cli.check_config` fails if anything drifts.
 
-- **Extraction** — `extraction/configs/extract_run.yaml` sets `icp_clients_from: configs/active.yaml`,
-  so the SQL `WHERE LOWER(icp_client) IN (…)` filter is derived from the roster at compile time (no
-  hand-listed copy).
-- **Benchmark recalculation** — `RecalcThresholds.cohorts` reads the roster; the `COHORTS` tuple in
-  `benchmarks_recalc/config.py` is only a fallback, lint-checked to equal the roster.
-- **Per-cohort values** — add the cohort's keys under `by_icp_client` in `benchmarks.yaml` /
-  `core_metrics.yaml` where you want cohort-specific targets (they inherit `default` otherwise).
+## Data Model
 
-`python -m pde.cli.check_config` fails if `COHORTS` drifts from the roster or if any `by_icp_client`
-key is not in the roster.
+All sources are tall-skinny tables at the grain **agent_id × period × call_type × metric**, with
+canonical columns `agent_id, period, call_type, metric, numerator, denominator, calc`. Raw snapshots
+live under `data/raw/weekly/<snapshot_id>/` and are immutable; `latest/` is auto-maintained.
 
-## Adding the metric to an existing theme
+## Extraction Layer
 
-Themes (`mappings/themes.yaml`) group related metrics so that when several are deficient together the
-engine coaches the *pattern* instead of a single behavior (see
-[Coaching Themes & Break-Glass Selection](#coaching-themes--break-glass-selection)). Adding a metric
-to a theme is a **one-line change** — but do it only *after* the metric is fully registered above,
-because a theme member **must** be a real metric in `metric_catalog` (the linter errors otherwise).
-
-Add the canonical metric name to the theme's `members:` list:
-
-```yaml
-  "Resolution Effectiveness":
-    members:
-      - resolution_rate
-      - one_call_resolution
-      - transfer_rate
-      - reopen_rate          # <-- new member
-    conversation_type: "Performance Correction"
-```
-
-Notes:
-
-- **Use the canonical metric name** (`reopen_rate`), not the topic string — theme members are metrics,
-  not topics.
-- **Qualification shifts with theme size.** A theme qualifies when at least
-  `theme_selection.count_fraction` of its *configured* members are deficient (`themes.yaml`). Growing a
-  3-member theme to 4 raises the absolute count needed at the default `0.5` fraction (2-of-3 → 2-of-4),
-  so adding a member makes the theme slightly harder to trigger. Re-check `count_fraction` if that is
-  not what you want (see [Coaching Themes & Break-Glass Selection](#coaching-themes--break-glass-selection)).
-- A metric may belong to **more than one theme**; it simply counts toward each.
-- No theme change is required for a metric to be coachable — an unthemed metric is still recommended
-  as a single behavior. Themes only change *how* it can be delivered.
-
----
-
-# Data Model
-
-All sources are tall-skinny tables at this grain:
-
-agent_id × period × call_type × metric
-
-Required columns (canonical form):
-
-- agent_id
-- period (week-ending date)
-- call_type
-- metric
-- numerator
-- denominator
-- calc
-
-Raw snapshots are stored at:
-
-```
-data/raw/weekly/<snapshot_id>/
-```
-
-Snapshots are immutable.
-
-The `latest/` folder is automatically maintained by the extraction pipeline.
-
----
-
-# Extraction Layer
-
-The extraction layer:
-
-- Compiles parameterized SQL
-- Executes via SQLAlchemy
-- Writes versioned raw CSV snapshots
-- Maintains a `latest/` pointer
-- Produces a manifest for auditability
-
-## Output Location
-
-```
-data/raw/weekly/
-  <run_id>/
-  latest/
-```
-
-## Running Extraction
-
-From repo root:
+Compiles parameterized SQL → executes via SQLAlchemy (Presto) → writes versioned raw CSV snapshots →
+maintains a `latest/` pointer → produces a manifest. Run from repo root:
 
 ```bash
-python .\extraction\scripts\run_extract.py `
-  --config extraction/configs/extract_run.yaml
+python extraction/scripts/run_extract.py --config extraction/configs/extract_run.yaml
 ```
 
-This will:
+For `agent_metrics`, the metric list is filled from `metric_catalog.yaml` when `metrics_from_catalog`
+is set, so extraction stays aligned with the decision catalog. `compile_sql.py --config …` compiles
+only (debugging).
 
-- Compile SQL templates
-- Execute queries
-- Write CSVs into `data/raw/weekly/<run_id>/`
-- Update `data/raw/weekly/latest/`
-
-For `agent_metrics`, the metric list in SQL is filled from `configs/mappings/metric_catalog.yaml` when `metrics_from_catalog` is set in the extraction YAML (so extraction stays aligned with the decision catalog).
-
-Optional: compile only (for debugging):
+## Running the Coaching Pipeline
 
 ```bash
-python .\extraction\scripts\compile_sql.py `
-  --config extraction/configs/extract_run.yaml
+python -m pde.cli.run_pipeline --out-dir outputs/runs/2026-03-03_TEST --configs-dir configs
 ```
 
----
+`--raw-dir` is optional when `data_snapshot` is set in `active.yaml`.
 
-# Running the Decision Pipeline
-
-After extraction completes:
-
-```bash
-python -m pde.cli.run_pipeline `
-  --out-dir outputs/runs/2026-03-03_TEST `
-  --configs-dir configs
-```
-
-`--raw-dir` is optional when `data_snapshot` is set in `configs/active.yaml`: with `mode: latest` the engine reads `<root>/latest`; with `mode: explicit` it uses `<root>/<snapshot_id>`. You can still pass `--raw-dir` to override.
-
-## Outputs
-
-- recommendations.csv (actionable recs only; `tier` column = break_glass | theme | single)
-- abstentions.csv (agents with an explicit non-recommendation + reason)
-- decision_receipts.jsonl (recommendations + abstention receipts)
-- excluded_signals.csv
-- scores_windowed.csv (primary score table used for topic candidates)
-- scores_windowed_raw.csv (raw 8-week aggregates before scoring; diagnostic)
-- eligible_signals.csv
-- signals.csv (all built signals before gating; diagnostic)
-- topic_candidates.csv (per-agent topic candidates after weighting + dampening; diagnostic)
-- summary_dashboard.html (self-contained run summary: recs by tier, no-recommendation/abstention coverage, recs by topic, splits by icp_client/mascot, metric warning signs)
-- expert_dashboard.html (interactive per-expert decision receipts: experts grouped by icp_client/mascot, modal per expert with coaching focus, "why" narratives, and explainability)
-- manifest.json
-- config_snapshot/
-
-Optional: add `--write-point-in-time-scores` to also write `scores.csv` (per-period scores before windowing; useful for diagnostics).
+**Outputs** include `recommendations.csv` (with a `tier` column = break_glass | theme | single),
+`abstentions.csv`, `decision_receipts.jsonl`, `scores_windowed.csv`, `summary_dashboard.html`, and
+`expert_dashboard.html` (interactive per-expert receipts). Diagnostics: `signals.csv`,
+`topic_candidates.csv`, `eligible_signals.csv`, `manifest.json`, `config_snapshot/`.
 
 ## Scoring Model (how a topic is chosen)
 
-Scoring is a single, direction-aware, deterministic composition (in `src/pde/scoring/assemble.py`):
+A single, direction-aware, deterministic composition (`src/pde/scoring/assemble.py`):
 
-- **Deficit, not distance.** Each metric's `direction` (from `metric_catalog.yaml`) decides which way
-  is "bad". Only underperformance vs benchmark scores; a strength scores ~0, so the engine never
-  recommends coaching something an agent is already good at. Deficits are normalized by the benchmark
-  so metrics on different scales are comparable.
-- **Axes:** `score_level` (deficit magnitude), `score_trend` (worsening over the window),
-  `score_confidence` (window coverage), `score_risk = level x (1 - confidence)`.
-- **Composition:** `score_total = w_level*level + w_trend*trend + w_risk*risk` using `priority_model`
-  weights in `active.yaml`. Prioritization then scales this by the **versioned** business weight for the
-  metric's category (`priorities/*.yaml`). Only metrics flagged `eligible_for_prioritization` can drive
-  a recommendation.
+- **Deficit, not distance.** Each metric's `direction` decides which way is "bad." Only
+  underperformance vs benchmark scores; a strength scores ~0 — the engine never recommends coaching
+  something an agent is already good at. Deficits are normalized by the benchmark for comparability.
+- **Axes:** `score_level` (deficit magnitude), `score_trend` (worsening), `score_confidence`
+  (window coverage), `score_risk = level × (1 − confidence)`.
+- **Composition:** `score_total = w_level·level + w_trend·trend + w_risk·risk`; prioritization scales
+  by the **versioned** business weight for the metric's category. Only metrics flagged
+  `eligible_for_prioritization` can drive a recommendation.
 
 ## Recency Dampening
 
-To prevent coaching whiplash, a topic coached recently is dampened. Coaching history is extracted from
-`l2_asurion_coachdb_coachdb_helixcoaching` into `coaching_history.csv` (optional input) and mapped to
-engine topics via the governed crosswalk `configs/mappings/coaching_history_map.yaml`
-(`behavior_selected -> topic`). A candidate is dampened when the same agent+topic was coached within
-`dampening.periods` weeks of the decision period. With `dampening.mode: multiply` the topic's
-`priority_score` is scaled by `dampening.multiplier` (kept in contention); with `suppress` it is removed.
-If no `coaching_history.csv` is present, dampening is a no-op.
+To prevent coaching whiplash, a topic coached recently is dampened. Coaching history from
+`l2_asurion_coachdb_coachdb_helixcoaching` → `coaching_history.csv` is mapped to topics via
+`coaching_history_map.yaml`. A candidate coached within `dampening.periods` weeks is scaled down
+(`multiply`) or removed (`suppress`). No coaching history present → no-op.
+
+## Coaching Themes & Break-Glass Selection
+
+Above single-metric selection sits a **three-tier** selection layer (`src/pde/engine/select.py`),
+still emitting **exactly one recommendation per agent** (its `tier` is recorded on the rec + receipt):
+
+1. **Break-glass single (override)** — only metrics with a `break_glass` block are eligible. Over the
+   latest `recency_weeks`, an agent trips when it is in the worst `worst_pct`% of its ICP_Client ×
+   metric cohort **and** below benchmark. Guarantees the worst performers on a critical metric get
+   coached on it specifically, only when the deficiency is deep and recent.
+2. **Theme** — `themes.yaml` maps a theme to member metrics + a `conversation_type`. A theme qualifies
+   when ≥ `count_fraction` of members are deficient (evidence-gated **and** `score_level ≥ floor`).
+   Highest combined score wins. Themes are **human-curated** (SME-added).
+3. **Single (fallback)** — the deterministic single-behavior argmax when no theme qualifies and no
+   break-glass trips.
+
+With no `themes.yaml` and no `break_glass` flags, tiers 1–2 are inert (identical to the pre-theme
+engine plus an additive `tier` column).
+
+## Signal Gating & Abstention
+
+Two mechanisms keep recommendations trustworthy: **evidence gating** at the front and an
+**abstention floor** at the end.
+
+- **Production evidence gating** (`signal_thresholds.yaml`, `mode: production`) — fail-closed on
+  evidence quality: require a reference point, minimum confidence, minimum denominator (per category,
+  with `by_metric` overrides). `require_bad_magnitude` stays off — "is the deficit big enough" is
+  decided once, downstream, by the abstention floor.
+- **Abstention** (`src/pde/engine/abstain.py`) — since scoring is deficit-only, a well-performing agent
+  would otherwise get their least-bad topic. Abstention withholds a rec when unwarranted and **records
+  why** (`below_coaching_floor` | `no_qualified_signal`). Every coachable agent ends in exactly one of
+  *recommended* or *abstained* — never a silent gap. Surfaced in `abstentions.csv`, the receipts, and a
+  dashboard "No recommendation" section.
+
+## Discovering Themes / Recalculating Benchmarks (propose-only)
+
+Two governed, **propose-only** modules re-derive curated artifacts and never write them automatically:
+
+- **Theme discovery** (`pde.cli.discover_themes`) finds metrics that move together across the
+  population and proposes candidate themes (per-candidate `PROPOSE`/`HOLD`/`SKIPPED`), with a
+  dashboard + `proposed_themes.yaml`. A theme enters the engine only when a human SME merges it.
+- **Benchmark recalculation** (`pde.cli.recalc_benchmarks`, or ask to "recalculate benchmarks")
+  re-derives candidate benchmarks on the engine's scoring grain, gated through guardrails
+  (`PROPOSE`/`HOLD`/`UNCHANGED`/`SKIPPED`), with a dashboard + `proposed_benchmarks.yaml`. Applying is
+  a separate, authorized step (`--apply --approver "<name>"`) that makes value-only edits and appends a
+  governance changelog entry.
+
+## Decision Receipts
+
+Every decision carries: why this topic, why now, why not others, excluded signals (with reason codes),
+config version, data snapshot ID, engine version. The receipt shape adapts to the `tier` — **single**
+(one driver + competitors), **theme** (member drivers + `theme_membership`), **break_glass** (tripped
+metric + cohort percentile), **abstained** (`recommended_topic: null` + reason). Stored as JSONL.
 
 ---
-
-# Coaching Themes & Break-Glass Selection
-
-Above single-metric selection sits a **three-tier** selection layer (`src/pde/engine/select.py`).
-It still emits **exactly one recommendation per agent**, but that recommendation can now be a
-*theme* (a pattern across several behaviors) or a *break-glass* single (a critical override), not
-only the single best behavior. The tier is recorded on each recommendation (`tier` column) and in
-the receipt.
-
-Precedence, per agent (period, call_type):
-
-1. **Break-glass single (override)** — Only metrics carrying a `break_glass` block in
-   `metric_catalog.yaml` are eligible. Over the **latest `break_glass.recency_weeks` weeks** (a short
-   recency window — not the 8-week decision window), an agent trips break-glass when it is in the
-   **worst `worst_pct`% of its ICP_Client × metric cohort** (raw cohort percentile on the
-   direction-adjusted "bad" axis) **and** is below benchmark. A tripped metric overrides any theme.
-   This guarantees the worst performers on a truly critical metric get coached on it specifically,
-   only when the deficiency is both deep and recent. Computed from `eligible_signals` (the only frame
-   carrying the ICP_Client cohort).
-2. **Theme** — `configs/mappings/themes.yaml` maps a theme name to its member metrics and a
-   `conversation_type`. A theme **qualifies** for an agent when at least `theme_selection.count_fraction`
-   (default 0.5, i.e. ≥50%) of its members are *deficient*, where deficient = evidence-gated (already
-   enforced upstream) **and** `score_level ≥ theme_selection.score_level_floor`. That floor is
-   deliberately looser than the solo-coaching bar: a metric not worth coaching on its own can still
-   count toward a pattern. A theme may set its own `count_fraction` to override the global bar (see
-   below). Among qualifying themes, the highest combined score
-   (`theme_selection.aggregate` = mean|sum of member scores) wins.
-3. **Single (fallback)** — today's deterministic single-behavior argmax
-   (`recommend_for_population`), used when no theme qualifies and no break-glass trips. Unchanged.
-
-**Backward compatible:** with no `themes.yaml` and no `break_glass` flags configured, tiers 1 and 2
-are inert and every agent falls through to the single-behavior result — identical to the pre-theme
-engine (plus an additive `tier` column).
-
-Configuration:
-
-All theme config lives in **one file**, `configs/mappings/themes.yaml` — the global selection knobs
-and the per-theme definitions together. `active.yaml` only points at it via `mappings.themes`.
-
-```yaml
-# configs/mappings/themes.yaml
-theme_selection:              # global selection bar for the theme tier
-  count_fraction: 0.5         # >= this fraction of a theme's members must be deficient to qualify
-  score_level_floor: 0.24     # single low global "deficient" floor (looser than the solo bar)
-  aggregate: mean             # mean | sum: how member scores combine into the theme score
-themes:
-  "Call Control":             # a theme may override the global bar for itself
-    members: [talk_time, hold_time, crt, callback_rate]
-    conversation_type: "Performance Coaching"
-    count_fraction: 0.75      # require 3-of-4 for THIS theme; falls back to global 0.5 if omitted
-```
-
-```yaml
-# configs/active.yaml — break-glass (Tier 1) defaults stay here (driven by metric_catalog, not themes)
-break_glass:
-  recency_weeks: 2         # latest-weeks slice for the override (short recency window)
-  worst_pct: 10            # default worst-percent cohort tail; per-metric block can override
-```
-
-```yaml
-# configs/mappings/metric_catalog.yaml — per-metric break-glass flag (curated few only)
-cancel_rate:
-  break_glass: { enabled: true, worst_pct: 5 }
-```
-
-**Per-theme `count_fraction`.** A wide theme of correlated metrics trips the 2-of-4 (global 0.5)
-bar constantly and crowds out other themes and single behaviors. Set that one theme to `0.75`
-(3-of-4) to require a broader pattern, without touching smaller themes. Do **not** raise the
-*global* `count_fraction` to fix one theme: `0.75 × 3 = 2.25` rounds up to a 3-of-3 bar on every
-3-member theme and guts the thin-tailed ones (Resolution Effectiveness, Quality Sales). The
-override is validated to `(0, 1]`; anything invalid falls back to the global default with a warning.
-
-Themes are **human-curated**: a theme is added to `themes.yaml` only by an SME. The discovery tool
-below can *propose* candidate themes, but never writes them.
-
 ---
 
-# Signal Gating & Abstention
+# PART II — THE TRAINING DOMAIN
 
-Two mechanisms keep recommendations trustworthy and actionable: **evidence gating** at the front and
-an **abstention floor** at the end.
+The same engine, pointed at new-hire onboarding, to answer a different question: **when a trainee
+falls short, exactly which parts of their training should they retake — and are they on pace to
+graduate?** This is *remediation routing*, produced as a per-expert plan plus a data-backed dashboard.
 
-## Production evidence gating
+## The program
 
-`configs/thresholds/signal_thresholds.yaml` runs in `mode: production` — fail-closed gating on
-**evidence quality** (implemented in `src/pde/signals/thresholds.py`):
+`configs/training/training_program.yaml` describes the **ASCEND Launchpad** onboarding as an ordered
+sequence of **learning blocks**, each with the skills it develops, an end-of-block gate (a test call),
+and an `expected_completion_day` (a 3-week pacing schedule). This is the structure remediation and
+pacing are measured against.
 
-- `require_reference_point: true` — a signal must have a benchmark gap or a distribution z
-  (`NO_REFERENCE_POINT`).
-- `min_confidence` / `min_denominator_default` per category — drops thin, low-confidence weekly
-  signals (`LOW_CONFIDENCE` / `LOW_DENOMINATOR`). Low-volume metrics can override the denominator
-  floor via `by_metric` (e.g. `cancel_rate`).
+## Remediation model
 
-Deliberately, `require_bad_magnitude` stays **off**: "is the deficit big enough to coach" is decided
-once, downstream, by the abstention floor — not by fragile per-metric magnitude thresholds. (`mode:
-development` relaxes all gates and is for debugging only.)
+Three properties, all governed by `configs/training/remediation.yaml` (tune without code changes):
 
-## Abstention (explicit non-recommendation)
+- **Block-gated** — a block ends with a test call; falling short of the acceptable mark triggers
+  remediation for that block (retake the block's skill simulations for the deficient skills, then the
+  test call, before advancing).
+- **Steerable** — *how far back* (this block / back N / to the block that first taught a weak skill)
+  and *what* (which modalities, deficient-skills-only vs whole-block) are config knobs.
+- **Once-only** — a trainee is not sent back to material they have already remediated (remediation
+  history is subtracted, so plans never loop).
 
-Scoring is deficit-only, so a well-performing agent would otherwise still receive their least-bad
-topic. After selection, `src/pde/engine/abstain.py` withholds a recommendation when it isn't
-warranted and **records why**, so a withheld rec is a visible, explained decision — never a silent
-gap. Every coachable agent ends in exactly one of *recommended* or *abstained*.
+Engine: `src/pde/training/program.py` (`plan_remediation`, gate evaluation, pacing). A remediation plan
+is framed as three role-split action groups: **Learning** (expert), **Training support** (trainer),
+**Coaching** (coach).
 
-Two abstention reasons:
+## Day grain, and the class roster as source of truth
 
-- `below_coaching_floor` — a single-behavior rec whose `priority_score` is below
-  `abstention.min_priority_score` (the agent is performing adequately). Break-glass and theme recs are
-  material by construction and are **never** abstained.
-- `no_qualified_signal` — an agent in the coachable universe that produced no rec at all (every signal
-  gated out / none had a trustworthy reference).
+Training progresses day-by-day, so the domain runs on a **daily grain** — a config-only change (the
+windowing selects the last N distinct `period` values; binding `period` to the event day makes the
+whole pipeline day-grained). The **class roster** (`docs/training/training_class_roster.xlsx`, loaded
+by `src/pde/training/roster.py`) is the source of truth for **who** appears, their **class**, **trainer**,
+and **start date** (the day the training-timeline count begins). Progress is based on **actual block
+completion** (from a progress feed) — never inferred from the schedule; the expected date is used only
+to judge on-track vs behind.
 
-```yaml
-# configs/active.yaml
-abstention:
-  enabled: true
-  min_priority_score: 0.10   # calibrate from the priority_score distribution of a real run
-```
+## Training data sources
 
-Abstentions are surfaced in **`abstentions.csv`**, as `tier: "abstained"` entries in
-**`decision_receipts.jsonl`** (with reason + best-available driver), and in a dashboard
-**"No recommendation"** section with a coverage line.
+Landed in `data/raw/adhoc/latest/` by one extract run (`extract_training_assist.yaml`):
 
----
+- **`training_assist`** — TrAIning Assist simulated-conversation skill pass-rates (day grain).
+- **`training_cbt`** — computer-based-training completion + scores from Workday Learning (the CBT
+  `score` *is* the assessment).
+- **`coaching_history`** — reuses the coaching domain's (unbounded) extract; the dashboard queries it
+  for **only the class-roster cohort** to show each trainee's recent coaching history.
 
-# Discovering Themes
-
-`themes.yaml` is a curated artifact. The **theme discovery** module (`src/pde/themes_discovery/`)
-looks for metrics that **move together** across the population and **proposes** candidate themes for
-an SME to review. It runs independently of the decision pipeline (it only *reads* the same config +
-extract) and is **propose-only**: it never edits `themes.yaml`.
-
-Trigger it by running:
+## Running the training pipeline
 
 ```bash
-python -m pde.cli.discover_themes `
-  --configs-dir configs `
-  --out-dir outputs/theme_discovery/2026-03-03_themes
+python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
+python -m pde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+python -m pde.cli.run_training_pipeline --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/<date>
 ```
 
-`--raw-dir` is optional (resolved from `data_snapshot` in `active.yaml`, like the pipeline).
+It runs the shared engine over `configs/training`, then builds the training dashboard. Governance for
+the program structure has its own checker: `python -m pde.cli.check_training_program`.
 
-## How a theme is proposed
+## The training dashboard (`training_dashboard.{html,json}`)
 
-For each ICP_Client cohort, every metric's 8-week windowed mean per agent is placed on a common
-**direction-adjusted "bad" axis** (`bad = gap if lower_is_better else -gap`) so a low-is-better and a
-high-is-better metric that reflect the same underlying problem show up as *positively* correlated.
-Metrics are Pearson-correlated across agents within the cohort; pairs that clear the correlation and
-cohort-coverage guardrails are clustered (connected components) into candidate themes. Guardrails:
-sample sufficiency (`min_sample`), correlation strength (`min_correlation`), cohort coverage
-(`min_cohort_coverage`), and theme-size sanity. Thresholds live in
-`src/pde/themes_discovery/config.py` (`DiscoveryThresholds`). Per-candidate verdict is `PROPOSE`,
-`HOLD` (weak/inconsistent), or `SKIPPED` (insufficient sample).
+A self-contained, shareable HTML with a per-expert modal. For each trainee it shows:
 
-## Outputs (in `--out-dir`)
+- **Program summary tiles** that recompute live from filters (class ID, status), including time-progress.
+- **Current learning block** as "Block N — short description," with **on-track vs the expected
+  completion day** and a pace signal (ahead / on track / behind).
+- A **re-training block** — the remediation plan (go back to Block N; focus behaviors; Learning /
+  Training-support / Coaching actions) — or, for a graduate, a **completion hand-off report** (readiness
+  summary + watch-in-production skills + a coach hand-off note).
+- **Recent coaching history** (Type / Topic / Date / Status) for the trainee, bounded to the roster —
+  the same block used on the coaching expert dashboard; hidden when there is none.
+- **Learning blocks & skills** — skills rolled up under the block that develops them; locked/not-yet-
+  reached blocks stay blank.
+- A per-expert **Copy / Email / PDF** toolbar so a trainer can hand a full summary to a coach.
 
-- `dashboard.html` — candidate themes with per-theme verdict, mean correlation, cohort coverage.
-- `proposed_themes.yaml` — the PROPOSE candidates in `themes.yaml` shape (a suggestion to merge).
-- `theme_diff.json`, `summary.txt` — full detail.
+**Statuses**: `not_started` (on the roster, no data / no progress feed) · `in_training` (started,
+awaiting skill signal) · `retraining` (a below-mark skill) · `on_track` / `behind` (vs expected) ·
+`completed` (cleared all blocks).
 
-## Applying
+## Launch context
 
-There is no automatic apply: a theme enters the engine **only when a human SME merges it** into
-`configs/mappings/themes.yaml` (renaming the candidate and confirming its `conversation_type`). Even
-`--apply --approver "<name>"` does **not** edit `themes.yaml`; it only records a governance review
-entry in `configs/governance/changelog.md` and defers every proposal for manual merge.
+**ASCEND launches 2026-09-14.** Pre-launch, trainees run legacy simulations, so the new program's
+per-block components (keyed by forward-looking simulation personas) don't match live data yet — an
+expected pre-launch state, not a defect. The crosswalk resolves automatically once cohorts run the new
+simulations. Design/status detail: `docs/training/training_decision_engine.md` and
+`docs/training/NEXT_STEPS.md`.
 
 ---
-
-# Recalculating Benchmarks
-
-`benchmarks.yaml` is a curated artifact. The **benchmark recalculation** module
-(`src/pde/benchmarks_recalc/`) re-derives candidate benchmark values from the latest extract and
-**proposes** changes only where the evidence clears guardrails. It runs independently of the decision
-pipeline (it only *reads* the same config + extract) and is **propose-only**: it never edits
-`benchmarks.yaml` without explicit authorization.
-
-Trigger it by asking to "recalculate benchmarks", or run:
-
-```bash
-python -m pde.cli.recalc_benchmarks `
-  --configs-dir configs `
-  --out-dir outputs/benchmark_recalc/2026-03-03_recal
-```
-
-`--raw-dir` is optional (resolved from `data_snapshot` in `active.yaml`, like the pipeline).
-
-## How a value is proposed
-
-For each metric/cohort a candidate anchor is computed on the 8-week windowed-mean-per-agent grain (the
-grain the engine scores on), then gated through guardrails. The per-metric verdict is one of:
-
-- **PROPOSE** — cleared every guardrail and moved materially vs the current value.
-- **HOLD** — evidence insufficient / degenerate / outside the observed value range; do not change.
-- **UNCHANGED** — within the materiality threshold of the current value.
-- **SKIPPED** — source inactive (e.g. tool-usage metrics with no data).
-
-Anchors mirror the curated methodology: operational metrics = per-cohort median; quality/sentiment
-behaviors = p25 of the windowed mean, capped at 0.95; degenerate cohort distributions keep their
-absolute default; sentiment is Verizon-only and splits by cohort only when cohorts differ materially.
-Guardrails: sample sufficiency, materiality, non-degeneracy, cohort-split validity, and observed-range
-sanity. Thresholds live in `src/pde/benchmarks_recalc/config.py` (`RecalcThresholds`).
-
-Which recipe runs for a metric — and which dashboard section it lands in — is **declared** in
-`metric_catalog.yaml` as `recalc.recipe` (`operational | sell | serve | solve | absolute | quality |
-sentiment | tool | skip`), inherited from `category_defaults[category].recalc.recipe` unless the metric
-overrides it.
-Absolute metrics also declare their degeneracy boundary as `recalc.bound: { kind: floor | ceiling,
-at: <n> }`. There is no metric-name dispatch in code; `config_lint` validates the recipe and bound.
-
-## Outputs (in `--out-dir`)
-
-- `dashboard.html` — OLD vs NEW per metric/cohort, verdict, and justification.
-- `proposed_benchmarks.yaml` — the change-set (PROPOSE rows only), in `benchmarks.yaml` shape.
-- `benchmark_diff.json`, `summary.txt` — full detail.
-
-## Applying (authorized)
-
-Applying is a separate, governed step. Only after review:
-
-```bash
-python -m pde.cli.recalc_benchmarks `
-  --configs-dir configs `
-  --out-dir outputs/benchmark_recalc/2026-03-03_recal `
-  --apply --approver "Your Name"
-```
-
-`--apply` makes value-only edits to existing keys in `configs/mappings/benchmarks.yaml` (preserving the
-file's methodology comments) and appends an entry to `configs/governance/changelog.md`. New cohort
-splits are **not** auto-written; they are deferred for manual merge from `proposed_benchmarks.yaml`.
-
----
-
-# Decision Receipts
-
-Every recommendation includes:
-
-- Why this topic
-- Why now
-- Why not others
-- Excluded signals (with reason codes)
-- Config version
-- Data snapshot ID
-- Engine version
-
-The receipt shape adapts to the selection `tier`:
-
-- **single** — one driver metric + competing topics (as before).
-- **theme** — the member metrics that drove it (multiple drivers) plus a `theme_membership` block
-  (`n_deficient` / `n_members` / deficient metrics).
-- **break_glass** — the tripped metric with `override: true`, `reason: "break_glass"`, and the
-  agent's cohort percentile.
-- **abstained** — no recommendation: `recommended_topic: null`, `reason`
-  (`below_coaching_floor` | `no_qualified_signal`), and the best-available driver.
-
-Receipts are stored as JSONL for auditability and downstream ingestion.
-
 ---
 
 # Governance Model
 
-- Coaching Technology owns engine behavior.
-- Ops Leadership owns priorities.
-- Analytics supports validation and controlled discovery.
-- Configuration changes are versioned and auditable.
-- Benchmark changes are *proposed* by the recalculation module and applied only with explicit
-  authorization (`--apply --approver`), which records a `configs/governance/changelog.md` entry.
-- Coaching themes are *proposed* by the discovery module but added to `themes.yaml` only by a human
-  SME; discovery never writes themes automatically.
+- Engineering owns engine behavior; Ops Leadership owns priorities; Analytics supports validation and
+  controlled discovery.
+- Configuration changes are versioned and auditable; each domain has its own governed config set and
+  its own integrity checker (`check_config` for coaching, `check_training_program` for training).
+- Benchmarks and themes are **proposed** by guardrail-gated modules and changed only with explicit,
+  logged human authorization.
 - Ungoverned overrides are considered system failure.
-
----
-
-# Appendix A — Troubleshooting & Diagnostics
-
-> **Automated preflight.** Most of the checks below now run in one command:
->
-> ```bash
-> python -m pde.cli.check_config            # config integrity + raw-snapshot preflight
-> python -m pde.cli.check_config --strict   # also fail on warnings (CI)
-> ```
->
-> It validates config cross-references (metric_catalog ⇄ topic_map ⇄ benchmarks ⇄
-> themes ⇄ signal_thresholds ⇄ coaching_history_map, plus every `direction` value)
-> and folds the raw-snapshot diagnostics #1 (calc/denominator health), #4 (topic
-> coverage), and #5 (period alignment) below. The same preflight runs automatically
-> at the start of `run_pipeline` (disable with `--no-preflight`, escalate warnings
-> with `--strict-preflight`). Errors abort before the ~10 min run; a currently-valid
-> config passes unchanged. The manual recipes below remain for post-run debugging of
-> a *specific* output dir (#2, #3, #6 inspect computed artifacts the preflight can't
-> see ahead of time).
-
-## 1. Verify Raw Snapshot Health
-
-```bash
-python -c "import pandas as pd; df=pd.read_csv('data/raw/weekly/latest/agent_metrics.csv'); print(len(df)); print(df.head())"
-```
-
-Check calc health:
-
-```bash
-python -c "import pandas as pd; df=pd.read_csv('data/raw/weekly/latest/agent_metrics.csv'); print('calc null %', df['calc'].isna().mean()); print('den==0 %', (df['denominator']==0).mean())"
-```
-
-## 2. Verify Signal Inputs
-
-```bash
-python -c "import pandas as pd; df=pd.read_csv('outputs/runs/2026-03-03_TEST/eligible_signals.csv'); print(df[['metric','call_type','value','benchmark','gap']].head(20))"
-```
-
-If benchmark is null everywhere → benchmark mapping failure.
-
-## 3. Verify Scores Are Not All Zero
-
-```bash
-python -c "import pandas as pd; df=pd.read_csv('outputs/runs/2026-03-03_TEST/scores_windowed.csv'); print(df['score_total'].describe()); print('nonzero:', (df['score_total']!=0).sum())"
-```
-
-If nonzero == 0:
-
-- Check benchmark lookup
-- Check call_type alignment
-- Check metric name casing
-
-## 4. Check Topic Mapping Coverage
-
-```bash
-python -c "import pandas as pd, yaml; scores=pd.read_csv('outputs/runs/2026-03-03_TEST/scores_windowed.csv'); cfg=yaml.safe_load(open('configs/active.yaml',encoding='utf-8')); tm=(cfg.get('topic_map') or {}); tm=tm.get('topic_map', tm); m2t=tm.get('metric_to_topic') or {}; print('unmapped metrics:', [m for m in scores['metric'].unique() if m not in m2t])"
-```
-
-If many metrics are unmapped → recommendations will be blank.
-
-## 5. Validate Period Alignment
-
-```bash
-python -c "import pandas as pd; df=pd.read_csv('data/raw/weekly/latest/agent_metrics.csv'); s=pd.to_datetime(df['week_ending']); print(s.dt.day_name().value_counts())"
-```
-
-All weekly periods must align to the same weekday.
-
-## 6. Force-Fail on All-Zero Scores (Recommended Guardrail)
-
-Add after scoring:
-
-```python
-if scores["score_total"].max() == 0:
-    raise ValueError("All score_total values are zero. Check benchmark mapping and call_type alignment.")
-```
-
----
-
-# Appendix B — Common Failure Modes
-
-| Symptom | Likely Cause | Fix |
-|---------|-------------|-----|
-| All scores = 0 | Benchmark mapping failure | Fix metric names / call_type alignment |
-| Blank recommendations | Topic map missing | Update topic_map.yaml |
-| Duplicate score rows | Join explosion | Fix upstream extraction grouping |
-| KeyError on metric | Column renamed | Canonicalize column names |
-| Trend always 0 | Period misalignment | Standardize week-ending period |
 
 ---
 
 # Current System Capabilities
 
-- Versioned SQL extraction
-- Immutable raw snapshots
-- Deterministic signal computation
-- Production evidence gating (reference point + confidence + denominator)
-- Abstention floor with explicit, explained non-recommendations
-- Versioned priority weighting
-- Deterministic topic selection
-- Three-tier selection: break-glass override → coaching theme → single behavior
-- Explainable receipts (single / theme / break-glass variants)
-- Snapshot reproducibility
-- Guardrail-gated benchmark recalculation (propose-only, authorized apply)
-- Guardrail-gated theme discovery (propose-only; themes are human-added)
+- One deterministic, explainable decision core serving **two domains** (coaching + training) from
+  isolated, governed config sets.
+- Versioned SQL extraction; immutable raw snapshots; deterministic signal computation.
+- Production evidence gating (reference point + confidence + denominator) and an abstention floor with
+  explicit, explained non-recommendations.
+- Versioned priority weighting; deterministic selection; explainable receipts.
+- **Coaching:** three-tier selection (break-glass → theme → single); recency dampening; guardrail-gated,
+  propose-only benchmark recalculation and theme discovery; interactive expert dashboard.
+- **Training:** day-grain pipeline; block-gated, steerable, once-only remediation routing; class-roster
+  source of truth; pacing vs expected schedule; learning-block + skill dashboard with completion
+  hand-off, recent-coaching-history, and share/print.
+- Snapshot reproducibility across both domains.
 
 ---
 
 # Guiding Principle
 
-The system should not slow leaders down.  
-It should make fast decisions work on purpose.
+The system should not slow leaders down.
+It should make fast decisions work on purpose — the same way, whether it is coaching a veteran or
+graduating a new hire.
