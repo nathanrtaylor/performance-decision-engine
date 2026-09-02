@@ -1,6 +1,27 @@
-# Training Decision Engine — pick-up notes (2026-09-01)
+# Training Decision Engine — pick-up notes (2026-09-02)
 
-Quick handoff to resume tomorrow. Full design/status: `docs/training/training_decision_engine.md`.
+Quick handoff to resume. Full design/status: `docs/training/training_decision_engine.md`.
+
+## Latest session (2026-09-02) — dashboard polish, committed `113f415`
+232 tests green. Suite + review-sim regenerate clean.
+- **Completion hand-off report** for graduated experts (all blocks passed): readiness summary,
+  watch-in-production skills, coach hand-off note — shown in place of the remediation plan.
+- **Copy / Email / PDF share toolbar** on each expert (upper-right of the modal). Copy & Email
+  build a plain-text summary (`summaryText()`); PDF uses a scoped `@media print` view.
+- **ASCEND branding**: logo bundled at `src/cde/reporting/assets/ascend_logo.svg`, embedded as a
+  base64 data URI (`_logo_data_uri()` + `__LOGO__` placeholder) so shared/emailed copies keep it.
+  Shown upper-left inline with the title and the expert name; stays on the printed/PDF page. Tab
+  title → "ASCEND Performance Decision Engine".
+- **Locked-block blanking fix**: skills roll up only under blocks the expert has *reached*
+  (`order <= current`); a skill shared with an earlier block no longer leaks scores into a locked
+  block (was 471 such blocks). Locked/not-tracked blocks render blank.
+- **Status honesty**: progress feed but no skill data yet → `in_training` (started), not
+  `not_started` (now reserved for no-feed + no-data).
+- **Roster format**: `roster.py` reads the current export headers (`Class ID`; `Class Type`
+  dropped) and still the old ones; dedupes columns. Real roster is now **230 experts / 13 classes**.
+- Review sim (`tools/gen_training_review_dashboard.py`) forces ~3 completed experts so the hand-off
+  report is reviewable; output `outputs/training_runs/review_<date>/` (gitignored, labeled
+  SIMULATED — REVIEW: real names + synthetic performance).
 
 ## Launch context (important)
 **ASCEND launches 2026-09-14.** Until then TA runs the LEGACY sims (challenge_ids like
@@ -13,9 +34,11 @@ gates/progress/block-gated remediation light up automatically. The current runs 
 pre-launch dry run of the plumbing. Full ASCEND validation needs a post-9/14 cohort + roster.
 
 ## Where we are
-Branch **`training-insights`** (off `theme-cohort-scoping` / PR #18 tip). Phases 0–4 done & committed; full suite green (226 tests); live-call coaching pipeline untouched.
+Branch **`training-insights`** (off `theme-cohort-scoping` / PR #18 tip). Phases 0–4 done & committed + dashboard polish; full suite green (232 tests); live-call coaching pipeline untouched.
 
 ```
+113f415  Training dashboard: hand-off report, share toolbar, ASCEND branding, locked-block fix
+f432e0b  Training dashboard: 3-week pacing, pace signal, block-number remediation, demo
 a839b96  Phase 4: training pipeline + data-backed remediation dashboard
 2150de5  Phase 3 (engine): block-gated, steerable, once-only remediation logic
 0b9e60b  Phase 3 (seed): ASCEND program structure + design/status docs

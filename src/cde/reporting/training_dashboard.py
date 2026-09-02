@@ -452,7 +452,7 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .mtools .close{position:static;width:auto;height:32px;padding:6px 9px}
 .titlewrap{display:flex;align-items:center;gap:14px}
 .mhead-l{display:flex;align-items:center;gap:14px}
-.brand{height:36px;width:auto;display:block;flex:0 0 auto}
+.brand{height:50px;width:auto;display:block;flex:0 0 auto}
 .brand-modal{height:32px;width:auto;display:block;flex:0 0 auto}
 .foot-note{color:var(--muted);font-size:12px;margin-top:40px;border-top:1px solid var(--grid);padding-top:14px}
 @media print{
