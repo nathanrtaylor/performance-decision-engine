@@ -15,34 +15,48 @@
 -- ASSUMPTIONS TO CONFIRM against real data (both are single-line changes):
 --   1. `userid` is the numeric employee id (same identifier as TrAIning Assist's EmployeeId),
 --      so training + CBT join on agent_id. If it is a username, add a userid->employee_id map.
+--      (We TRY_CAST it to BIGINT and drop rows that aren't numeric.)
 --   2. `score` is on a 0-100 scale (hence /100 to reach the 0-1 pass-rate scale the 80%
 --      benchmark expects). If score is already 0-1, remove the /100.
--- Only completed enrollments are scored (datecompleted + numeric score present). `status` /
+-- `datecompleted` is an ISO timestamp WITH timezone offset (e.g. 2025-12-21T03:14:00-08:00),
+-- which will not CAST straight to DATE; we take the leading yyyy-mm-dd via SUBSTRING. Only
+-- completed enrollments are scored (datecompleted + numeric score present). `status` /
 -- `progress` are available for later completion/in-progress modeling (not scored here).
 --
 -- {{ start_date }} / {{ end_date }} / {{ source_schema }} come from extract_run.yaml globals
 -- via compile_sql.build_context; {{ cbt_table }} is an output-level param.
 
+WITH cbt AS (
+    SELECT
+        TRY_CAST(userid AS BIGINT)                                       AS agent_id,
+        CAST(SUBSTRING(CAST(datecompleted AS VARCHAR), 1, 10) AS DATE)   AS period,   -- DAY grain (leading date)
+        courseid,
+        coursename,
+        TRY_CAST(score AS DOUBLE)                                        AS score
+    FROM {{ source_schema }}.{{ cbt_table }}
+    WHERE LOWER(CAST(userid AS VARCHAR)) NOT LIKE '%test%'
+      AND datecompleted IS NOT NULL
+      AND TRY_CAST(userid AS BIGINT) IS NOT NULL
+      AND TRY_CAST(score AS DOUBLE) IS NOT NULL
+)
+
 SELECT
-    CAST(userid AS BIGINT)               AS agent_id,
-    CAST(datecompleted AS DATE)          AS period,          -- DAY grain
-    'all'                                AS call_type,
+    agent_id,
+    period,
+    'all'                          AS call_type,
     courseid,
-    MAX(coursename)                      AS coursename,
-    COUNT(*)                             AS attempts,
-    SUM(TRY_CAST(score AS DOUBLE)) / 100.0            AS numerator,
-    CAST(COUNT(*) AS DOUBLE)                          AS denominator,
+    MAX(coursename)                AS coursename,
+    COUNT(*)                       AS attempts,
+    SUM(score) / 100.0             AS numerator,
+    CAST(COUNT(*) AS DOUBLE)       AS denominator,
     CASE
         WHEN COUNT(*) = 0 THEN NULL
-        ELSE (SUM(TRY_CAST(score AS DOUBLE)) / 100.0) / COUNT(*)
-    END                                  AS calc
+        ELSE (SUM(score) / 100.0) / COUNT(*)
+    END                            AS calc
 
-FROM {{ source_schema }}.{{ cbt_table }}
+FROM cbt
 
-WHERE LOWER(CAST(userid AS VARCHAR)) NOT LIKE '%test%'
-  AND datecompleted IS NOT NULL
-  AND TRY_CAST(score AS DOUBLE) IS NOT NULL
-  AND CAST(datecompleted AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+WHERE period BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
 
 GROUP BY
     1,
