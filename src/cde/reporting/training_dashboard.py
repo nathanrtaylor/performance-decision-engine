@@ -267,18 +267,19 @@ def build_export(records: List[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[st
     return {**meta, "experts": records}
 
 
-@lru_cache(maxsize=1)
-def _logo_data_uri() -> str:
-    """ASCEND logo as a self-contained data URI so shared/emailed dashboards keep their branding."""
-    svg = (Path(__file__).parent / "assets" / "ascend_logo.svg").read_bytes()
-    return "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
+@lru_cache(maxsize=None)
+def _asset_data_uri(name: str, mime: str) -> str:
+    """A bundled asset as a self-contained data URI so shared/emailed dashboards keep their branding."""
+    raw = (Path(__file__).parent / "assets" / name).read_bytes()
+    return f"data:{mime};base64," + base64.b64encode(raw).decode("ascii")
 
 
 def render_html(records: List[Dict[str, Any]], meta: Dict[str, Any]) -> str:
     data_json = json.dumps(records, ensure_ascii=False, separators=(",", ":"))
     meta_json = json.dumps(meta, ensure_ascii=False)
     return (_HTML.replace("__DATA__", data_json).replace("__META__", meta_json)
-            .replace("__LOGO__", _logo_data_uri()))
+            .replace("__LOGO__", _asset_data_uri("ascend_logo.svg", "image/svg+xml"))          # full wordmark (topbar)
+            .replace("__LOGO_A__", _asset_data_uri("ascend_a_logo.png", "image/png")))          # "a" mark (modal)
 
 
 def write_training_dashboard(out_dir: str | Path, records: List[Dict[str, Any]], meta: Dict[str, Any]) -> Path:
@@ -453,7 +454,7 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .titlewrap{display:flex;align-items:center;gap:14px}
 .mhead-l{display:flex;align-items:center;gap:14px}
 .brand{height:50px;width:auto;display:block;flex:0 0 auto}
-.brand-modal{height:32px;width:auto;display:block;flex:0 0 auto}
+.brand-modal{height:50px;width:auto;display:block;flex:0 0 auto}
 .foot-note{color:var(--muted);font-size:12px;margin-top:40px;border-top:1px solid var(--grid);padding-top:14px}
 @media print{
   .wrap{display:none!important}
@@ -681,7 +682,7 @@ function openModal(id){
         <button class="close" id="closeBtn" aria-label="Close">✕</button>
       </div>
       <div class="mhead-l">
-        <img class="brand-modal" src="__LOGO__" alt="ASCEND" />
+        <img class="brand-modal" src="__LOGO_A__" alt="ASCEND" />
         <div>
           <div class="eyebrow">Training record</div>
           <h3 id="mTitle">${esc(e.name)}</h3>
