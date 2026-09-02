@@ -2,6 +2,16 @@
 
 Quick handoff to resume tomorrow. Full design/status: `docs/training/training_decision_engine.md`.
 
+## Launch context (important)
+**ASCEND launches 2026-09-14.** Until then TA runs the LEGACY sims (challenge_ids like
+`victor_marks`), and the current roster classes (started 8/24) are pre-ASCEND — so the
+Sims-100 personas/SIM-IDs in `training_program.yaml` do NOT match the live TA data yet
+(0/93), roster experts show `not_started`, and gate/progress aren't scoring-linked. This
+is expected pre-launch, not a defect. Components are keyed by `persona` (forward-looking
+TA challenge_id), so once ASCEND cohorts run the new sims in TA the crosswalk resolves and
+gates/progress/block-gated remediation light up automatically. The current runs are a
+pre-launch dry run of the plumbing. Full ASCEND validation needs a post-9/14 cohort + roster.
+
 ## Where we are
 Branch **`training-insights`** (off `theme-cohort-scoping` / PR #18 tip). Phases 0–4 done & committed; full suite green (226 tests); live-call coaching pipeline untouched.
 

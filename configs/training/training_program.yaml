@@ -1,211 +1,909 @@
 # configs/training/training_program.yaml
 # ============================================================================
-# ASCEND "Launchpad" program structure  --  SEED (for SME review & completion)
+# ASCEND "Launchpad" program structure -- learning blocks + curriculum routing.
 # ============================================================================
-# Seeded from docs/training/"Ascend Learning Blocks Training Strategy.docx"
-# (16 learning blocks, ~45 CBTs, ~189 simulations). This is the routing table
-# Phase 3's remediation engine consumes: block sequence + gates + which skills
-# each component develops (deficient skill -> components to retake).
+# Block metadata (order/label/expected_completion_day/develops/gate.pass_mark) is
+# hand-curated; `components` and `gate.test_call` are merged from
+# docs/training/"Ascend Simulations.xlsx" (sheet Sims 100) by
+# tools/gen_program_components.py. Component `kind`: skill_sim | test_call | cbt.
 #
-# PARTIAL BY DESIGN. Fill in incrementally; the coverage checker reports what is
-# still TODO (unmapped skills, components without refs, blocks missing a gate).
-#
-# What is seeded vs TODO:
-#   - blocks / order / labels / estimated_hours / expected_completion_day : from the doc.
-#   - assessment_methods, total_simulations : from the doc.
-#   - gate.pass_mark : seeded from each block's "Minimum Performance Expectations"
-#       (mostly 9-of-10 = 0.90; some 100% = 1.0). gate.test_call ref = TODO
-#       (map to the block's TrAIning Assist end-of-block test-call challenge_id).
-#   - develops : BEST-EFFORT seed where the block maps cleanly to the 22 cataloged
-#       TrAIning Assist skills; [] # TODO where it does not (tools/troubleshooting
-#       blocks have no direct sim-skill yet). SME to confirm.
-#   - components (individual CBTs/sims by ref) : TODO -- enumerate from the course
-#       tables + "Ascend Simulations.xlsx" and reconcile CBT courseids once the
-#       training_cbt extract lands.
-#
-# NOTE on expected_completion_day: PROVISIONAL. Derived as cumulative
-# estimated_hours / pace.hours_per_day (content+sim time only -- excludes ILT,
-# coaching, remediation, breaks). Replace with the real class calendar.
+# CROSSWALK GAP: sim `ref` is the Ascend SIM ID and `persona` is the design persona;
+# neither matches the live TA data's challenge_ids yet (0/93 overlap). So components
+# are the CURRICULUM MAP, not yet scoring-linked -- an ASC-SIM <-> live-TA-challenge_id
+# crosswalk (or the new sims going live in TA) is needed before they drive progress /
+# gate evaluation. `develops` stays block-level (best-effort seed) until then.
+# Regenerate components with: python tools/gen_program_components.py
+# ============================================================================
 
 program:
-  name: "ASCEND Launchpad"
-  source: 'docs/training/Ascend Learning Blocks Training Strategy.docx'
-  totals: { learning_blocks: 16, cbts: 45, videos: 23, simulations: 189, ilt: 1 }
-
-  # Pacing assumption used to derive expected_completion_day from cumulative hours.
+  name: ASCEND Launchpad
+  source: docs/training/Ascend Learning Blocks Training Strategy.docx
+  totals:
+    learning_blocks: 16
+    cbts: 45
+    videos: 23
+    simulations: 189
+    ilt: 1
   pace:
-    hours_per_day: 2.3        # Launchpad ~3 weeks (~21 calendar days); scored content is a fraction of each day. Only used to derive a block's expected_completion_day when it isn't set explicitly (all are, below).
-
+    hours_per_day: 2.3
   defaults:
-    gate_pass_mark: 0.90      # "9 of 10 evaluated scenarios" is the common bar; some blocks require 1.0
-
+    gate_pass_mark: 0.9
   blocks:
-    - id: block_01
-      order: 1
-      label: "Welcome to Asurion"
-      estimated_hours: 4.5
-      expected_completion_day: 1
-      assessment_methods: [knowledge_check]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # orientation; no demonstrated sim skill
-
-    - id: block_02
-      order: 2
-      label: "Expert Foundations - The Tech Coach Role & Call Flow"
-      estimated_hours: 2.0
-      expected_completion_day: 3
-      total_simulations: 13
-      assessment_methods: [knowledge_check, simulation, training_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [set_expectations, transition_statement]   # SEED - call-flow structure
-
-    - id: block_03
-      order: 3
-      label: "Tools for the Call Flow - Asurion Tools"
-      estimated_hours: 3.0
-      expected_completion_day: 5
-      total_simulations: 10
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, helix_search]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # TODO - tool-proficiency skills not in the sim-skill catalog
-
-    - id: block_04
-      order: 4
-      label: "Tools for the Call Flow - Client Tools"
-      estimated_hours: 2.67
-      expected_completion_day: 6
-      total_simulations: 10
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, guided_flows]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # TODO
-
-    - id: block_05
-      order: 5
-      label: "Sales Foundation - Product Knowledge, Compliance & Integrity"
-      estimated_hours: 2.08
-      expected_completion_day: 7
-      total_simulations: 6
-      assessment_methods: [knowledge_check, simulation, roleplay_tool, training_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # TODO - foundational; sales skills demonstrated in block_14
-
-    - id: block_06
-      order: 6
-      label: "Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance"
-      estimated_hours: 2.25
-      expected_completion_day: 8
-      total_simulations: 10
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [warm_greeting, verification, account_assessment, advanced_discovery, show_empathy, reassure, set_expectations]  # SEED
-
-    - id: block_07
-      order: 7
-      label: "Call Flow Stage 2: Troubleshooting Basics"
-      estimated_hours: 3.17
-      expected_completion_day: 9
-      total_simulations: 13
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # TODO - troubleshooting logic; confirm sim-skill mapping
-
-    - id: block_08
-      order: 8
-      label: "Call Flow Stage 2: Solve & Test - Device Basics"
-      estimated_hours: 3.08
-      expected_completion_day: 10
-      total_simulations: 20
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution]       # SEED - solve & confirm resolution
-
-    - id: block_09
-      order: 9
-      label: "Call Flow Stage 2: Solve & Test - Hardware vs Software"
-      estimated_hours: 4.0
-      expected_completion_day: 12
-      total_simulations: 15
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, expert_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution]       # SEED
-
-    - id: block_10
-      order: 10
-      label: "Call Flow Stage 2: Solve & Test - Networking"
-      estimated_hours: 3.0
-      expected_completion_day: 13
-      total_simulations: 13
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution]       # SEED
-
-    - id: block_11
-      order: 11
-      label: "Call Flow Stage 2: Solve & Test - Activations & Device Onboarding"
-      estimated_hours: 7.0
-      expected_completion_day: 16
-      total_simulations: 35
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution]       # SEED
-
-    - id: block_12
-      order: 12
-      label: "Call Flow Stage 2: Solve & Test - Carrier Account"
-      estimated_hours: 2.25
-      expected_completion_day: 17
-      total_simulations: 11
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace, guided_flow]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [account_assessment, test_resolution]   # SEED
-
-    - id: block_13
-      order: 13
-      label: "Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims"
-      estimated_hours: 2.5
-      expected_completion_day: 18
-      total_simulations: 8
-      assessment_methods: [knowledge_check, simulation, training_assist, assima, expert_workspace]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution]       # SEED
-
-    - id: block_14
-      order: 14
-      label: "Call Flow Stage 4: Sales in Action"
-      estimated_hours: 2.25
-      expected_completion_day: 19
-      total_simulations: 10
-      assessment_methods: [knowledge_check, simulation, training_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [discovery_question, engagement_question, core_benefit_1, core_benefit_2, core_benefit_3, price_statement, resolve_concerns, ask_for_sale, ask_to_send_link, transition_statement, conversational_language]  # SEED - sell flow
-
-    - id: block_15
-      order: 15
-      label: "Call Flow Stage 5: Confirm, Recap, Close"
-      estimated_hours: 1.17
-      expected_completion_day: 20
-      assessment_methods: [knowledge_check, simulation, training_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: [test_resolution, goodbye_with_rapport, survey, ty_reinforcement]  # SEED - confirm/recap/close
-
-    - id: block_16
-      order: 16
-      label: "Expert Readiness - Training Closing"
-      estimated_hours: 3.75
-      expected_completion_day: 21
-      total_simulations: 7
-      assessment_methods: [knowledge_check, simulation, training_assist]
-      gate: { test_call: TODO, pass_mark: 0.90 }
-      develops: []                      # capstone - mixed-intent readiness; SME to scope
-
-# ----------------------------------------------------------------------------
-# TODO (SME / data reconciliation):
-#   1. gate.test_call for each block -> the TrAIning Assist end-of-block test-call
-#      challenge_id (and per-block pass_mark where the doc requires 100%).
-#   2. components: enumerate CBTs (courseid, once training_cbt lands) and skill
-#      sims (challenge_id) per block, each with its own develops: skills, from the
-#      course tables + Ascend Simulations.xlsx.
-#   3. develops: confirm/complete the skill mappings, incl. tool & troubleshooting
-#      blocks (may need new skills beyond the current 22 sim skills).
-#   4. pace.hours_per_day + expected_completion_day: replace estimates with the
-#      real class calendar.
+  - id: block_01
+    order: 1
+    label: Welcome to Asurion
+    estimated_hours: 4.5
+    expected_completion_day: 1
+    assessment_methods:
+    - knowledge_check
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops: []
+  - id: block_02
+    order: 2
+    label: Expert Foundations - The Tech Coach Role & Call Flow
+    estimated_hours: 2.0
+    expected_completion_day: 3
+    total_simulations: 13
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops:
+    - set_expectations
+    - transition_statement
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-QHNT5G
+      topic: Scope of Support
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-8QTKM2
+      topic: Call Intent
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-2BQ48I
+      topic: Sales
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-L937UZ
+      topic: Empathy and Assurance
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-HZWDA6
+      topic: Active Listening
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-GR3L6W
+      topic: Call Control
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-YWVDW2
+      topic: Foundation Integration
+      develops: []
+  - id: block_03
+    order: 3
+    label: Tools for the Call Flow - Asurion Tools
+    estimated_hours: 3.0
+    expected_completion_day: 5
+    total_simulations: 10
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - helix_search
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops: []
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-6J5TR3
+      persona: judy_terry
+      topic: Expert Workspace
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-876TLE
+      persona: douglas_beatty
+      topic: Expert Assist
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-45TM95
+      persona: isaac_barrows
+      topic: Tool Efficiency
+      mode: Tool Only
+      develops: []
+  - id: block_04
+    order: 4
+    label: Tools for the Call Flow - Client Tools
+    estimated_hours: 2.67
+    expected_completion_day: 6
+    total_simulations: 10
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - guided_flows
+    gate:
+      test_call: ASC-SIM-W9BG4E
+      pass_mark: 0.9
+    develops: []
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-5Q34K5
+      persona: zaria_streich
+      topic: ACSS Basics
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-BJ75P9
+      persona: james_emard
+      topic: ACSS Basics
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-4NDG87
+      persona: elisha_bins
+      topic: ACSS Activation Support
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-7569J5
+      persona: crystal_bernier
+      topic: TRG Basics
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-AFEEEV
+      persona: vivien_thompson
+      topic: InfoManager
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-W9BG4E
+      persona: brigitte_kunze
+      topic: Client Tool Integration
+      mode: End-to-End Call
+      develops: []
+  - id: block_05
+    order: 5
+    label: Sales Foundation - Product Knowledge, Compliance & Integrity
+    estimated_hours: 2.08
+    expected_completion_day: 7
+    total_simulations: 6
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - roleplay_tool
+    - training_assist
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops: []
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-C7FDKK
+      persona: darla_dimple
+      topic: Home Plans vs. Insurance
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-S7YD8X
+      persona: alexa_berge
+      topic: VHDP Product Details
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-J63FQX
+      persona: bruce_gulgowski
+      topic: VHDP Product Details
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-YZDT5H
+      persona: korey_gutmann
+      topic: VHDP Product Details
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-EPW3U2
+      persona: mike_mann
+      topic: Sales Compliance
+      mode: Training Assist Only
+      develops: []
+  - id: block_06
+    order: 6
+    label: 'Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance'
+    estimated_hours: 2.25
+    expected_completion_day: 8
+    total_simulations: 10
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops:
+    - warm_greeting
+    - verification
+    - account_assessment
+    - advanced_discovery
+    - show_empathy
+    - reassure
+    - set_expectations
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-WSUSGZ
+      persona: libbie_lubowitz
+      topic: Greeting
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-5RA5XW
+      persona: camryn_kihn
+      topic: Verification
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-45TWJ7
+      persona: bennett_mante
+      topic: Verification
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-VHTX8B
+      persona: stan_green
+      topic: Verification
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-WNFJPJ
+      persona: rebecca_brekke
+      topic: Account Assessment
+      mode: Combo
+      develops: []
+  - id: block_07
+    order: 7
+    label: 'Call Flow Stage 2: Troubleshooting Basics'
+    estimated_hours: 3.17
+    expected_completion_day: 9
+    total_simulations: 13
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    gate:
+      test_call: TODO
+      pass_mark: 0.9
+    develops: []
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-EQS84V
+      persona: amanda_waller
+      topic: Asking Questions
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-QUV2JC
+      persona: rhett_stokes
+      topic: Troubleshooting Methodology
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-ULR9HF
+      persona: alvis_ernser
+      topic: Troubleshooting Methodology
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-6NMBD3
+      persona: heather_kunze
+      topic: Active Listening
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-4GH382
+      persona: hyman_greenholt
+      topic: Transfer
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-TLR7CK
+      persona: sally_pollich
+      topic: Troubleshooting Integration
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-NKJRNE
+      persona: albin_boehm
+      topic: Troubleshooting Integration
+      mode: Combo
+      develops: []
+  - id: block_08
+    order: 8
+    label: 'Call Flow Stage 2: Solve & Test - Device Basics'
+    estimated_hours: 3.08
+    expected_completion_day: 10
+    total_simulations: 20
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    - expert_assist
+    gate:
+      test_call: ASC-SIM-T99AL6
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-4BC7SG
+      persona: quinten_balistreri
+      topic: Device Identification and Ecosystem Discovery
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-K8M92Q
+      persona: cara_sawayn
+      topic: Device Identification and Ecosystem Discovery
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-EO8P5Q
+      persona: jenna_parisian
+      topic: Device Identification and Ecosystem Discovery
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-ASC-SIM-3JEJ0P
+      persona: reanna_jaskolski
+      topic: Guided Device Settings Navigation and Path Recovery
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-MW4OXP
+      persona: jaqueline_kassulke
+      topic: Guided Device Settings Navigation and Path Recovery
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-S9MCI0
+      persona: helmer_ebert
+      topic: Guided Device Settings Navigation and Path Recovery
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-O3B0YC
+      persona: della_morissette
+      topic: Connected Accessory and End-to-End Device Concerns
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-T99AL6
+      persona: sean_west
+      topic: Device Concerns Capstone
+      mode: End-to-End Call
+      develops: []
+  - id: block_09
+    order: 9
+    label: 'Call Flow Stage 2: Solve & Test - Hardware vs Software'
+    estimated_hours: 4.0
+    expected_completion_day: 12
+    total_simulations: 15
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    - expert_assist
+    gate:
+      test_call: ASC-SIM-ZBD6Z2
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-BCXJ4S
+      persona: nadine_stark
+      topic: Carrier App
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-MCNK7K
+      persona: ansley_rutherford
+      topic: Non-Client App
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-YZVVJC
+      persona: nannie_considine
+      topic: Email
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-VX9T29
+      persona: donny_schiller
+      topic: Software Update
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-WHJ2GL
+      persona: rodrick_feest
+      topic: Slow Device
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-ZBD6Z2
+      persona: dashawn_olson
+      topic: Hardware Discovery
+      mode: End-to-End Call
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-AUVVTU
+      persona: elyssa_beer
+      topic: Screen and Display
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-RK88J6
+      persona: jakayla_stroman
+      topic: Battery
+      mode: End-to-End Call
+      develops: []
+  - id: block_10
+    order: 10
+    label: 'Call Flow Stage 2: Solve & Test - Networking'
+    estimated_hours: 3.0
+    expected_completion_day: 13
+    total_simulations: 13
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    - guided_flow
+    gate:
+      test_call: ASC-SIM-FS93L7
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-EC65YS
+      persona: lana_lang
+      topic: Network Discovery
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-4AC7DR
+      persona: rolando_wolf
+      topic: Guided Flow
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-7BY2F6
+      persona: khalid_parker
+      topic: Guided Flow
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-A2K32A
+      persona: marquis_windler
+      topic: TRG Path
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-JPU8VW
+      persona: willow_wintheiser
+      topic: Data Issue and Confirm the Resolution
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-D7NDSF
+      persona: chanel_muller
+      topic: Calls Issue
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-K2E2H2
+      persona: felix_lebsack
+      topic: Messaging Issue
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-W97TUC
+      persona: monroe_smitham
+      topic: Hotspot
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-FS93L7
+      persona: harvey_quitzon
+      topic: Network End-to-End
+      mode: End-to-End Call
+      develops: []
+  - id: block_11
+    order: 11
+    label: 'Call Flow Stage 2: Solve & Test - Activations & Device Onboarding'
+    estimated_hours: 7.0
+    expected_completion_day: 16
+    total_simulations: 35
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    - guided_flow
+    gate:
+      test_call: ASC-SIM-468H84
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-833EKP
+      persona: devon_schaden
+      topic: Phone Activation
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-BBMCDM
+      persona: myles_will
+      topic: Phone Activation
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-E5L5QM
+      persona: lee_renner
+      topic: Replacement Activation
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-5HKTQZ
+      persona: alisha_lindgren
+      topic: eSIM
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-PPVR46
+      persona: victor_hayes_west
+      topic: QR Code Failure
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-6C9JRW
+      persona: dwight_wolf
+      topic: SOS/No Service
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-5U64LU
+      persona: carleton_nader
+      topic: Activation Error
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-LTJEUF
+      persona: matilde_stanton
+      topic: Watch Activation
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-FPYBBM
+      persona: paris_weimann
+      topic: Activation Validation
+      mode: Training Assist Only
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-468H84
+      persona: emmy_carroll
+      topic: Activation End-to-End
+      mode: End-to-End Call
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-V6YRWE
+      persona: virginie_mertz
+      topic: Content Transfer
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-72MUYL
+      persona: lafayette_rath
+      topic: Content Transfer
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-ST8SYR
+      persona: desiree_thiel
+      topic: Content Transfer
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-K7VDDS
+      persona: conor_bailey
+      topic: Content Transfer Barrier
+      mode: Training Assist Only
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-GC4FJJ
+      persona: leda_grady
+      topic: Activation + Onboarding
+      mode: End-to-End Call
+      develops: []
+  - id: block_12
+    order: 12
+    label: 'Call Flow Stage 2: Solve & Test - Carrier Account'
+    estimated_hours: 2.25
+    expected_completion_day: 17
+    total_simulations: 11
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    - guided_flow
+    gate:
+      test_call: ASC-SIM-CGESVF
+      pass_mark: 0.9
+    develops:
+    - account_assessment
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-6LUM59
+      persona: arthur_curry
+      topic: Account
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-V84T4V
+      persona: golda_roberts
+      topic: myVerizon
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-THR8YY
+      persona: kareem_bode
+      topic: PIN and Password
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-QJSRJT
+      persona: reina_haley
+      topic: Plan and Features
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-Z5HQM4
+      persona: lia_shanahan
+      topic: Line Status
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-TWC3YB
+      persona: hattie_bahringer
+      topic: Account Maintenance
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-CGESVF
+      persona: robb_hermiston
+      topic: Carrier Account End-to-End
+      mode: End-to-End Call
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-8XTS9S
+      persona: hans_streich
+      topic: Carrier Account End-to-End
+      mode: End-to-End Call
+      develops: []
+  - id: block_13
+    order: 13
+    label: 'Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims'
+    estimated_hours: 2.5
+    expected_completion_day: 18
+    total_simulations: 8
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    - assima
+    - expert_workspace
+    gate:
+      test_call: ASC-SIM-85DHYM
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-8RW979
+      persona: aisha_campbell
+      topic: Coverage Discovery
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-8XVFJV
+      persona: hellen_klein
+      topic: Coverage Verification
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-DSXTZ7
+      persona: enoch_stoltenberg
+      topic: Claims Education
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-85DHYM
+      persona: marisa_casper
+      topic: Warranty End-to-End
+      mode: End-to-End Call
+      develops: []
+  - id: block_14
+    order: 14
+    label: 'Call Flow Stage 4: Sales in Action'
+    estimated_hours: 2.25
+    expected_completion_day: 19
+    total_simulations: 10
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    gate:
+      test_call: ASC-SIM-HY7UDN
+      pass_mark: 0.9
+    develops:
+    - discovery_question
+    - engagement_question
+    - core_benefit_1
+    - core_benefit_2
+    - core_benefit_3
+    - price_statement
+    - resolve_concerns
+    - ask_for_sale
+    - ask_to_send_link
+    - transition_statement
+    - conversational_language
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-C7G2PV
+      persona: jubilation_lee
+      topic: Offer Transition
+      mode: Tool Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-874LWL
+      persona: rebeka_bahringer
+      topic: Smart Offer
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-874LWK
+      persona: doug_feil
+      topic: Smart Offer
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-HTZ9K7
+      persona: brandt_terry
+      topic: Objection Handling
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-CP7X5X
+      persona: neil_morar
+      topic: Objection Handling
+      mode: Training Assist Only
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-FWKAAT
+      persona: reba_veum
+      topic: Enrollment
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-HY7UDN
+      persona: jeramie_stark
+      topic: Sales End-to-End
+      mode: End-to-End Call
+      develops: []
+  - id: block_15
+    order: 15
+    label: 'Call Flow Stage 5: Confirm, Recap, Close'
+    estimated_hours: 1.17
+    expected_completion_day: 20
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    gate:
+      test_call: ASC-SIM-PNJW5X
+      pass_mark: 0.9
+    develops:
+    - test_resolution
+    - goodbye_with_rapport
+    - survey
+    - ty_reinforcement
+    components:
+    - kind: skill_sim
+      ref: ASC-SIM-5XX6T2
+      persona: thomas_oliver
+      topic: Resolution Confirmation
+      mode: Combo
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-PNJW5X
+      persona: aron_kling
+      topic: Three-Part Close
+      mode: End-to-End Call
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-Z3W9WG
+      persona: daisy_hansen
+      topic: Partial Resolution
+      mode: Combo
+      develops: []
+    - kind: skill_sim
+      ref: ASC-SIM-TNH7UB
+      persona: timmothy_o_hara
+      topic: Escalation Closeout
+      mode: Training Assist Only
+      develops: []
+  - id: block_16
+    order: 16
+    label: Expert Readiness - Training Closing
+    estimated_hours: 3.75
+    expected_completion_day: 21
+    total_simulations: 7
+    assessment_methods:
+    - knowledge_check
+    - simulation
+    - training_assist
+    gate:
+      test_call: ASC-SIM-392BTM
+      pass_mark: 0.9
+    develops: []
+    components:
+    - kind: test_call
+      ref: ASC-SIM-5UARA8
+      persona: kara_danvers
+      topic: Mixed Queue
+      mode: End-to-End Call
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-7JC6N5
+      persona: leonard_doyle
+      topic: Mixed Queue
+      mode: End-to-End Call
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-392BTM
+      persona: lavina_wuckert
+      topic: Readiness Gate
+      mode: End-to-End Call
+      develops: []
+    - kind: test_call
+      ref: ASC-SIM-42MD8C
+      persona: ginger_zemlak
+      topic: Readiness Gate
+      mode: End-to-End Call
+      develops: []
