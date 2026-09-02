@@ -1,7 +1,7 @@
 """Windowed aggregation: sample-size-aware confidence + thin-window drop (temporal/aggregate.py)."""
 import pandas as pd
 
-from cde.temporal.aggregate import aggregate_scores_window
+from pde.temporal.aggregate import aggregate_scores_window
 
 CFG = {
     "metric_catalog": {"metric_catalog": {"metrics": {

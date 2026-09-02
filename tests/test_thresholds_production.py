@@ -1,8 +1,8 @@
-"""Production-mode evidence gating (src/cde/signals/thresholds.py)."""
+"""Production-mode evidence gating (src/pde/signals/thresholds.py)."""
 import numpy as np
 import pandas as pd
 
-from cde.signals.thresholds import apply_signal_thresholds
+from pde.signals.thresholds import apply_signal_thresholds
 
 P = pd.Timestamp("2026-07-31")
 

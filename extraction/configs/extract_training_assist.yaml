@@ -8,7 +8,7 @@
 # weekly snapshot (data/raw/weekly/latest) untouched.
 #
 #   python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
-#   python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+#   python -m pde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
 #   # (training_cbt.csv is already tall-skinny at DAY grain -- no rollup step needed)
 #
 # Edit start_date / end_date to the window you want (cover the class start dates in the

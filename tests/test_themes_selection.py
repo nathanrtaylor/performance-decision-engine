@@ -1,7 +1,7 @@
-"""Tier-2 theme qualification + ranking (src/cde/engine/themes.py)."""
+"""Tier-2 theme qualification + ranking (src/pde/engine/themes.py)."""
 import pandas as pd
 
-from cde.engine.themes import build_theme_candidates, top_theme_per_agent
+from pde.engine.themes import build_theme_candidates, top_theme_per_agent
 
 DECISION = pd.Timestamp("2026-07-31")
 

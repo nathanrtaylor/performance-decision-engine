@@ -8,7 +8,7 @@
 #                mappings/metric_catalog.yaml and topics in mappings/topic_map.yaml.
 #   2. profiles: per-simulator-persona (challenge_id) skill requirements — which
 #                skills each scenario evaluates. Consumed by
-#                src/cde/ingestion/training_assist_skills.py to roll raw behaviors
+#                src/pde/ingestion/training_assist_skills.py to roll raw behaviors
 #                up to skill-level pass-rates.
 #
 # CONNECTION TO training_program.yaml (the learning-block routing table):

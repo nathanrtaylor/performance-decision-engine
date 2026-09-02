@@ -1,7 +1,7 @@
-"""HTML run dashboard (src/cde/reporting/dashboard.py)."""
+"""HTML run dashboard (src/pde/reporting/dashboard.py)."""
 import pandas as pd
 
-from cde.reporting.dashboard import build_dashboard_html, write_dashboard
+from pde.reporting.dashboard import build_dashboard_html, write_dashboard
 
 CFG = {
     "meta": {"data_snapshot": "SNAP1", "version": "v1", "engine_version": "0.1.0"},

@@ -1,6 +1,6 @@
 ---
 
-# AI Root Cause Analysis Layer for the Coaching Decision Engine
+# AI Root Cause Analysis Layer for the Performance Decision Engine
 
 ## Objective
 
@@ -20,7 +20,7 @@ The AI layer becomes the reasoning engine.
 Operational Metrics
         │
         ▼
-Coaching Decision Engine
+Performance Decision Engine
         │
         ▼
 Decision Receipt
@@ -412,7 +412,7 @@ The AI layer should:
 
 # Long-Term Vision
 
-The Coaching Decision Engine remains the governed, deterministic decision maker.
+The Performance Decision Engine remains the governed, deterministic decision maker.
 
 The AI layer becomes an evidence-based reasoning system that transforms structured operational decisions into personalized coaching insights.
 

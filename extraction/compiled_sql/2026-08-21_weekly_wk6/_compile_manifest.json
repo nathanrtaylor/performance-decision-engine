@@ -1,9 +1,9 @@
 {
   "compiled_at_utc": "2026-08-25T18:20:16+00:00",
-  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6",
+  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6",
   "items": [
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\agent_metrics.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\agent_metrics.sql",
       "context_keys": [
         "end_date",
         "extraction_ts_utc",
@@ -23,7 +23,7 @@
       "strip_trailing_semicolon": true
     },
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\agents.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\agents.sql",
       "context_keys": [
         "end_date",
         "extraction_ts_utc",
@@ -42,7 +42,7 @@
       "strip_trailing_semicolon": true
     },
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\behavior_scores.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\behavior_scores.sql",
       "context_keys": [
         "end_date",
         "epm_table",
@@ -63,7 +63,7 @@
       "strip_trailing_semicolon": true
     },
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\coaching_history.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-08-21_weekly_wk6\\coaching_history.sql",
       "context_keys": [
         "coaching_status_in",
         "coaching_table",

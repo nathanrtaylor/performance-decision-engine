@@ -1,8 +1,8 @@
-"""Three-tier precedence + backward-compat golden test (src/cde/engine/select.py)."""
+"""Three-tier precedence + backward-compat golden test (src/pde/engine/select.py)."""
 import pandas as pd
 
-from cde.engine.recommend import recommend_for_population
-from cde.engine.select import select_recommendations
+from pde.engine.recommend import recommend_for_population
+from pde.engine.select import select_recommendations
 
 P2 = pd.Timestamp("2026-07-31")
 

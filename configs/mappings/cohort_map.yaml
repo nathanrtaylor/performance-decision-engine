@@ -4,7 +4,7 @@
 #
 # A cohort is a single lowercase string (the `icp_client` the whole engine keys on). Most icp_clients
 # ARE the cohort as-is. But some "general use" icp_clients bundle distinct clients that we want to
-# coach as separate cohorts. This file declares those splits; src/cde/ingestion/normalize.py applies
+# coach as separate cohorts. This file declares those splits; src/pde/ingestion/normalize.py applies
 # them at ingest by OVERWRITING `icp_client` with a derived label. Everything downstream (benchmarks,
 # priorities, break-glass, recalc, dashboards) keeps working on that one string.
 #

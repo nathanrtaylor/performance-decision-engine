@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cde.training.program import Block, Program, RemediationPolicy
-from cde.reporting.training_dashboard import build_training_records, short_desc
-from cde.explainability.training_templates import build_action_groups
+from pde.training.program import Block, Program, RemediationPolicy
+from pde.reporting.training_dashboard import build_training_records, short_desc
+from pde.explainability.training_templates import build_action_groups
 
 
 def _program() -> Program:

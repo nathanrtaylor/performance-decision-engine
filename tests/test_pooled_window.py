@@ -8,7 +8,7 @@ which the mean-of-weekly-rate level understates when the same-week denominator i
 import numpy as np
 import pandas as pd
 
-from cde.temporal.aggregate import aggregate_scores_window
+from pde.temporal.aggregate import aggregate_scores_window
 
 PERIODS = pd.to_datetime(["2026-06-05", "2026-06-12", "2026-06-19", "2026-06-26"])
 BENCH = 0.10

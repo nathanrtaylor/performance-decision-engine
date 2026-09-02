@@ -1,7 +1,7 @@
-"""Unit tests for receipt narrative templates (src/cde/explainability/templates.py)."""
+"""Unit tests for receipt narrative templates (src/pde/explainability/templates.py)."""
 import pandas as pd
 
-from cde.explainability.templates import (
+from pde.explainability.templates import (
     _percentile_band,
     _trend_phrase,
     _above_benchmark,

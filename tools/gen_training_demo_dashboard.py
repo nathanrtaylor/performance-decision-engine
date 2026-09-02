@@ -24,9 +24,9 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from cde.training.program import load_program, load_policy, build_skill_routing
-from cde.reporting.training_dashboard import build_training_records, render_html
-from cde.cli.run_training_pipeline import _skill_meta
+from pde.training.program import load_program, load_policy, build_skill_routing
+from pde.reporting.training_dashboard import build_training_records, render_html
+from pde.cli.run_training_pipeline import _skill_meta
 
 REPO = Path(__file__).resolve().parent.parent
 

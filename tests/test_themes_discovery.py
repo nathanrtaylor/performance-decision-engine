@@ -1,18 +1,18 @@
-"""Tests for the propose-only theme discovery module (src/cde/themes_discovery)."""
+"""Tests for the propose-only theme discovery module (src/pde/themes_discovery)."""
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from cde.themes_discovery import config as C
-from cde.themes_discovery.apply import apply_themes
-from cde.themes_discovery.compare import CompareResult, ThemeProposalRow, compare
-from cde.themes_discovery.config import DiscoveryThresholds
-from cde.themes_discovery.dashboard import build_discovery_dashboard_html
-from cde.themes_discovery.guardrails import evaluate
-from cde.themes_discovery.prep import RawFrames, build_bad_axis_by_cohort, prep_frames
-from cde.themes_discovery.recompute import (
+from pde.themes_discovery import config as C
+from pde.themes_discovery.apply import apply_themes
+from pde.themes_discovery.compare import CompareResult, ThemeProposalRow, compare
+from pde.themes_discovery.config import DiscoveryThresholds
+from pde.themes_discovery.dashboard import build_discovery_dashboard_html
+from pde.themes_discovery.guardrails import evaluate
+from pde.themes_discovery.prep import RawFrames, build_bad_axis_by_cohort, prep_frames
+from pde.themes_discovery.recompute import (
     CandidateTheme, CorrPair, cluster_into_themes, compute_comovement,
 )
 

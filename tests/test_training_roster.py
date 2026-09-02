@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from cde.training.roster import load_class_roster
+from pde.training.roster import load_class_roster
 
 
 def _write_roster(path):

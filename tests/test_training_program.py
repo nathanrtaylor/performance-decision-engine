@@ -4,7 +4,7 @@ Uses synthetic fixtures so the logic is validated independent of real gate/CBT d
 """
 from __future__ import annotations
 
-from cde.training.program import (
+from pde.training.program import (
     Block, Component, Program, RemediationPolicy,
     build_skill_routing, program_coverage, evaluate_block_gates,
     expected_completion_day, behind_schedule_blocks, plan_remediation,

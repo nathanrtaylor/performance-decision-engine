@@ -1,7 +1,7 @@
-"""Composite/derived metric synthesis (src/cde/signals/derived_metrics.py)."""
+"""Composite/derived metric synthesis (src/pde/signals/derived_metrics.py)."""
 import pandas as pd
 
-from cde.signals.derived_metrics import (
+from pde.signals.derived_metrics import (
     derived_component_keys,
     derived_defs,
     synthesize_derived,
@@ -139,7 +139,7 @@ def _bs_config() -> dict:
 
 
 def test_build_signals_values_a_derived_source_row():
-    from cde.signals.build_signals import build_signals
+    from pde.signals.build_signals import build_signals
 
     df = pd.DataFrame([_row("enrolled", 20, 100), _row("sales opportunities", 40, 100)])
     derived = synthesize_derived(df, _cfg(SP100), metric_key_col="metric")

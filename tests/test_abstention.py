@@ -1,7 +1,7 @@
-"""Abstention floor + visible non-recommendations (src/cde/engine/abstain.py)."""
+"""Abstention floor + visible non-recommendations (src/pde/engine/abstain.py)."""
 import pandas as pd
 
-from cde.engine.abstain import (
+from pde.engine.abstain import (
     REASON_BELOW_FLOOR, REASON_NO_SIGNAL, apply_abstention,
 )
 

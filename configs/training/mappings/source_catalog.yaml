@@ -24,7 +24,7 @@ source_catalog:
           null_rate_max: 0.10
 
     training_assist_skills:
-      # Produced by cde.cli.build_training_assist_skills from the raw TrAIning Assist
+      # Produced by pde.cli.build_training_assist_skills from the raw TrAIning Assist
       # behavior extract (extraction/sql/training_assist.sql.j2). Skill-level pass-rates
       # (behaviorPresent), valued exactly like behavior_scores (value = calc, 0-1).
       description: "TrAIning Assist skill-development pass-rates (simulator practice)."

@@ -1,9 +1,9 @@
 {
   "compiled_at_utc": "2026-04-09T15:07:02+00:00",
-  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8",
+  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8",
   "items": [
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\agent_metrics.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\agent_metrics.sql",
       "context_keys": [
         "end_date",
         "extraction_ts_utc",
@@ -23,7 +23,7 @@
       "strip_trailing_semicolon": true
     },
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\agents.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\agents.sql",
       "context_keys": [
         "end_date",
         "extraction_ts_utc",
@@ -42,7 +42,7 @@
       "strip_trailing_semicolon": true
     },
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\behavior_scores.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\2026-03-03_weekly_wk8\\behavior_scores.sql",
       "context_keys": [
         "end_date",
         "epm_table",

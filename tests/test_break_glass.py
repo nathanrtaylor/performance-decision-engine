@@ -1,7 +1,7 @@
-"""Tier-1 break-glass override (src/cde/engine/break_glass.py)."""
+"""Tier-1 break-glass override (src/pde/engine/break_glass.py)."""
 import pandas as pd
 
-from cde.engine.break_glass import detect_break_glass, top_break_glass_per_agent
+from pde.engine.break_glass import detect_break_glass, top_break_glass_per_agent
 
 P1 = pd.Timestamp("2026-07-24")
 P2 = pd.Timestamp("2026-07-31")

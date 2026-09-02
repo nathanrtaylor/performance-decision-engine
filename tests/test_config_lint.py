@@ -1,4 +1,4 @@
-"""Config referential-integrity linter (src/cde/governance/config_lint.py).
+"""Config referential-integrity linter (src/pde/governance/config_lint.py).
 
 Guards the additive-safety contract: the shipped config must pass with zero
 errors, and each cross-reference break must surface as an error.
@@ -7,8 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from cde.governance.config_lint import lint_config
-from cde.governance.versioning import resolve_active_config
+from pde.governance.config_lint import lint_config
+from pde.governance.versioning import resolve_active_config
 
 CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 
@@ -229,7 +229,7 @@ def test_valid_display_produces_no_warning(cfg):
 def test_config_hash_stable_and_content_sensitive(cfg):
     import copy
 
-    from cde.governance.versioning import config_content_hash
+    from pde.governance.versioning import config_content_hash
 
     base = config_content_hash(cfg)
     # per-run snapshot stamp must not change the content hash

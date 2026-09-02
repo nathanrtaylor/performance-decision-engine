@@ -1,9 +1,9 @@
 {
   "compiled_at_utc": "2026-03-03T16:57:30+00:00",
-  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\TEST_smoke_001",
+  "compiled_dir": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\TEST_smoke_001",
   "items": [
     {
-      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\coaching-decision-engine\\extraction\\compiled_sql\\TEST_smoke_001\\agent_metrics.sql",
+      "compiled_sql_path": "C:\\Users\\nathan.taylor\\Jupyter Notebooks\\performance-decision-engine\\extraction\\compiled_sql\\TEST_smoke_001\\agent_metrics.sql",
       "context_keys": [
         "end_date",
         "extraction_ts_utc",

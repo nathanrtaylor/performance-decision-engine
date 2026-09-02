@@ -183,7 +183,7 @@
 
     <section id="what">
       <h2><span class="num">01</span> What it is</h2>
-      <p>The <strong>Training Decision Engine</strong> extends the Coaching Decision Engine's methodology — <em>weight data → find signals → summarize → recommend</em> — from live-call coaching to <strong>new-hire / expert training</strong>.</p>
+      <p>The <strong>Training Decision Engine</strong> extends the Performance Decision Engine's methodology — <em>weight data → find signals → summarize → recommend</em> — from live-call coaching to <strong>new-hire / expert training</strong>.</p>
       <p class="lede">Its goal is remediation routing: for each expert, surface which specific parts of their training to go back and retake — targeted at the skills where they're deficient. When nothing is materially deficient, no remediation is prescribed.</p>
       <p>The output is a governed, per-expert <strong>remediation plan</strong> (what to retake, why, with the progression gate) plus a training dashboard — engine-generated and evidence-backed, not hand-written.</p>
       <h3>The remediation model — three properties that drive the design</h3>
@@ -198,7 +198,7 @@
     <section id="arch">
       <h2><span class="num">02</span> Architecture — reusing the coaching engine</h2>
       <p>The core finding from exploration: <strong>~70–80% of the analytical engine is domain-generic</strong> (percentile scoring, temporal windowing, evidence gating, prioritization, three-tier selection), and most of the rest is <strong>pure YAML config</strong>. Coaching-specific behavior is concentrated in ingestion, a shallow org-enrichment block, narrative text, and dashboards.</p>
-      <p>So training is an <strong>additive, parallel domain</strong>: it reuses the shared <code>src/cde</code> core unchanged and runs from <strong>its own governed config set</strong> (<code>configs/training/</code>). <strong>The live-call coaching pipeline is untouched.</strong></p>
+      <p>So training is an <strong>additive, parallel domain</strong>: it reuses the shared <code>src/pde</code> core unchanged and runs from <strong>its own governed config set</strong> (<code>configs/training/</code>). <strong>The live-call coaching pipeline is untouched.</strong></p>
       <pre><code>Training data (tall-skinny)                Shared engine (UNCHANGED)
   TrAIning Assist skills ─┐
   CBT completion/scores  ─┼─→ build_signals → thresholds → temporal window →
@@ -252,7 +252,7 @@
       <h3>Extraction &amp; code</h3>
       <ul>
         <li><code>extraction/sql/training_assist.sql.j2</code> (sim behaviors; week-grained until day re-extract), <code>training_cbt.sql.j2</code> (day-grained), <code>extract_training_assist.yaml</code> (runs both into <code>data/raw/adhoc</code>).</li>
-        <li><code>src/cde/ingestion/training_assist_skills.py</code> + CLI <code>build_training_assist_skills</code> (behavior → skill rollup via <code>training_profiles.yaml</code>).</li>
+        <li><code>src/pde/ingestion/training_assist_skills.py</code> + CLI <code>build_training_assist_skills</code> (behavior → skill rollup via <code>training_profiles.yaml</code>).</li>
         <li><code>tools/gen_training_configs.py</code> (regenerates the mechanical configs from real data; multi-source), <code>tools/ascend_training_dashboard_example.py</code> (target dashboard shape + JSON contract).</li>
         <li><strong>Reused unchanged:</strong> <code>scoring/assemble.py</code>, <code>temporal/aggregate.py</code>, <code>signals/*</code>, <code>prioritization/*</code>, <code>engine/*</code>, <code>reporting/dashboard_kit.py</code>.</li>
       </ul>
@@ -260,16 +260,16 @@
       <ul>
         <li><code>configs/training/training_program.yaml</code> — the 16-block ASCEND Launchpad seed (§5).</li>
         <li><code>configs/training/remediation.yaml</code> — the steerable policy (how-far-back, areas, once-only, behind-schedule).</li>
-        <li><code>src/cde/training/program.py</code> — routing, coverage, block-gate evaluation, <code>expected_completion_day</code> derivation, behind-schedule check, and the <code>plan_remediation</code> mapper (scope policy + once-only + block-level fallback for partial structure).</li>
-        <li><code>src/cde/cli/check_training_program.py</code> — coverage checker; <code>tests/test_training_program.py</code> — 19 tests. Validated on the real Phase-1 deficient experts.</li>
+        <li><code>src/pde/training/program.py</code> — routing, coverage, block-gate evaluation, <code>expected_completion_day</code> derivation, behind-schedule check, and the <code>plan_remediation</code> mapper (scope policy + once-only + block-level fallback for partial structure).</li>
+        <li><code>src/pde/cli/check_training_program.py</code> — coverage checker; <code>tests/test_training_program.py</code> — 19 tests. Validated on the real Phase-1 deficient experts.</li>
       </ul>
       <h3>Built (Phase 4 — plans, dashboard, narratives)</h3>
       <ul>
-        <li><code>src/cde/reporting/training_dashboard.py</code> — <code>build_training_records</code> (per-expert records, schema v1.1) + a data-backed HTML dashboard: class-ID filter, filter-linked summary tiles incl. time-progress, current block as "Block N — short", on-track vs expected completion day, behavior/skill data rolled up under the learning blocks, and Learning / Training-support / Coaching action groups.</li>
-        <li><code>src/cde/explainability/training_templates.py</code> — the three action-group narratives; <code>src/cde/cli/run_training_pipeline.py</code> — engine → dashboard end to end; <code>tests/test_training_dashboard.py</code> (7 tests). Validated on the current extract.</li>
+        <li><code>src/pde/reporting/training_dashboard.py</code> — <code>build_training_records</code> (per-expert records, schema v1.1) + a data-backed HTML dashboard: class-ID filter, filter-linked summary tiles incl. time-progress, current block as "Block N — short", on-track vs expected completion day, behavior/skill data rolled up under the learning blocks, and Learning / Training-support / Coaching action groups.</li>
+        <li><code>src/pde/explainability/training_templates.py</code> — the three action-group narratives; <code>src/pde/cli/run_training_pipeline.py</code> — engine → dashboard end to end; <code>tests/test_training_dashboard.py</code> (7 tests). Validated on the current extract.</li>
       </ul>
       <h3>Phase 5 — done so far</h3>
-      <p>Real <b>class roster</b> wired (<code>src/cde/training/roster.py</code> ← <code>docs/training/training_class_roster.xlsx</code>) as the source of truth for who appears + class / trainer / start date; <b>TrAIning Assist is now day-grained</b> (<code>period = session day</code>, matching CBT).</p>
+      <p>Real <b>class roster</b> wired (<code>src/pde/training/roster.py</code> ← <code>docs/training/training_class_roster.xlsx</code>) as the source of truth for who appears + class / trainer / start date; <b>TrAIning Assist is now day-grained</b> (<code>period = session day</code>, matching CBT).</p>
       <h3>Not yet built (Phase 5)</h3>
       <p>A per-expert <b>progress feed</b> (block completions / test calls) so current block + pacing are exact rather than expected-position — arrives with filling <code>training_program.yaml</code> gates/components; <b>remediation-history</b> (once-only source); config-driven org-enrichment; fallback tuning. Also needs the DB re-extract run over the roster window so day-grain sim/CBT data lands (the on-disk extract predates the classes → experts currently show <code>not_started</code>).</p>
     </section>
@@ -361,16 +361,16 @@
 python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
 
 <span class="cmt"># 2. Roll TrAIning Assist behaviors up to skill pass-rates</span>
-python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+python -m pde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
 
 <span class="cmt"># 3. (Re)generate the mechanical training configs from the real data</span>
 python tools/gen_training_configs.py --raw-dir data/raw/adhoc/latest
 
 <span class="cmt"># 4. Validate config integrity</span>
-python -m cde.cli.check_config --configs-dir configs/training --raw-dir data/raw/adhoc/latest
+python -m pde.cli.check_config --configs-dir configs/training --raw-dir data/raw/adhoc/latest
 
 <span class="cmt"># 5. Run the training domain through the shared engine</span>
-python -m cde.cli.run_pipeline --configs-dir configs/training \
+python -m pde.cli.run_pipeline --configs-dir configs/training \
     --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/&lt;date&gt;</code></pre>
       <p>A dedicated <code>run_training_pipeline</code> entrypoint + training dashboard arrive in Phase 4.</p>
     </section>

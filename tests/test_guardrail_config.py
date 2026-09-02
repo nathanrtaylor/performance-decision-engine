@@ -6,8 +6,8 @@ A recognized override changes only that field; unknown keys are ignored.
 """
 import dataclasses
 
-from cde.benchmarks_recalc.config import RecalcThresholds
-from cde.themes_discovery.config import DiscoveryThresholds
+from pde.benchmarks_recalc.config import RecalcThresholds
+from pde.themes_discovery.config import DiscoveryThresholds
 
 
 def test_recalc_empty_config_reproduces_defaults():

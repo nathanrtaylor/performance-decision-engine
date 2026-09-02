@@ -1,7 +1,7 @@
-"""Recency dampening window math + no-op behavior (src/cde/prioritization/dampening.py)."""
+"""Recency dampening window math + no-op behavior (src/pde/prioritization/dampening.py)."""
 import pandas as pd
 
-from cde.prioritization.dampening import apply_recent_coaching_dampening
+from pde.prioritization.dampening import apply_recent_coaching_dampening
 
 CFG = {"dampening": {"mode": "multiply", "periods": 2, "multiplier": 0.5}}
 DECISION = pd.Timestamp("2026-06-19")

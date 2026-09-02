@@ -1,10 +1,10 @@
-"""Expert dashboard: recent-coaching-history block (src/cde/reporting/expert_dashboard.py)."""
+"""Expert dashboard: recent-coaching-history block (src/pde/reporting/expert_dashboard.py)."""
 import json
 import re
 
 import pandas as pd
 
-from cde.reporting.expert_dashboard import (
+from pde.reporting.expert_dashboard import (
     build_experts,
     coaching_history_map_from_df,
     render_html,

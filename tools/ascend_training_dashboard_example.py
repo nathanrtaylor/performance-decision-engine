@@ -6,7 +6,7 @@ sample new hires, scores, and re-training flags below are entirely fabricated to
 the concept and layout.
 
 It mirrors the look-and-feel of the production expert dashboard
-(``src/cde/reporting/expert_dashboard.py``): the same neutral palette, status colors, card
+(``src/pde/reporting/expert_dashboard.py``): the same neutral palette, status colors, card
 grid + single reusable modal, and light/dark toggle.
 
 The ASCEND framing shown here (CBTs / skill-based scenarios / test calls, learning blocks,
@@ -347,7 +347,7 @@ def build_export(hires: List[Dict[str, Any]], meta: Dict[str, Any]) -> Dict[str,
 
 
 # --------------------------------------------------------------------------- #
-# Self-contained HTML (palette + scaffold mirror src/cde/reporting/expert_dashboard.py)
+# Self-contained HTML (palette + scaffold mirror src/pde/reporting/expert_dashboard.py)
 # --------------------------------------------------------------------------- #
 HTML_TEMPLATE = r"""<!doctype html>
 <html lang="en">

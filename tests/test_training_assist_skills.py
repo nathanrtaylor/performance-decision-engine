@@ -1,7 +1,7 @@
 """behavior->skill mapping + per-profile relevance filtering + skill-grain aggregation."""
 import pandas as pd
 
-from cde.ingestion.training_assist_skills import (
+from pde.ingestion.training_assist_skills import (
     build_behavior_skill_map,
     build_profile_requirements,
     build_training_assist_skills,

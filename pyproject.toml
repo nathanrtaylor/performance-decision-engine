@@ -1,5 +1,5 @@
 [project]
-name = "coaching-decision-engine"
+name = "performance-decision-engine"
 version = "0.1.0"
 description = "Deterministic, explainable coaching decision engine (signals -> scoring -> priorities -> recommendations -> receipts)."
 readme = "README.md"
@@ -25,10 +25,10 @@ dev = [
 ]
 
 [project.scripts]
-cde-run-pipeline = "cde.cli.run_pipeline:main"
-cde-run-weekly = "cde.cli.run_weekly:main"
-cde-run-simulation = "cde.cli.run_simulation:main"
-cde-recalc-benchmarks = "cde.cli.recalc_benchmarks:main"
+pde-run-pipeline = "pde.cli.run_pipeline:main"
+pde-run-weekly = "pde.cli.run_weekly:main"
+pde-run-simulation = "pde.cli.run_simulation:main"
+pde-recalc-benchmarks = "pde.cli.recalc_benchmarks:main"
 
 [build-system]
 requires = ["setuptools>=69"]

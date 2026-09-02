@@ -1,4 +1,4 @@
-# Coaching Decision Engine
+# Performance Decision Engine
 
 Deterministic, explainable system for recommending the most appropriate
 coaching topic and conversation type for a given coaching session.
@@ -77,7 +77,7 @@ extraction/
   configs/
   scripts/
 
-src/cde/
+src/pde/
   signals/
   scoring/
   prioritization/
@@ -126,7 +126,7 @@ Only `priorities/` and `active.yaml` should change frequently.
 
 A metric has to be registered consistently across several config files before the pipeline will
 score it, recommend it, and explain it. The config-integrity linter (run automatically in the
-[preflight](#signal-gating--abstention), or on demand with `python -m cde.cli.check_config`) will
+[preflight](#signal-gating--abstention), or on demand with `python -m pde.cli.check_config`) will
 flag any missing cross-reference — but it reports them one broken edge at a time. This section is
 the **happy path**: do all of the steps below in one pass and the metric passes the linter and
 becomes coachable on the first run.
@@ -254,7 +254,7 @@ in the numerator column only):
 
 A group (agent × week × cohort) missing any component is **skipped**, never fabricated. Component-key
 matching is case-insensitive, but a wrong string yields **zero** rows *silently* — verify the exact
-source `metric` string exists in the extract. Implementation: `src/cde/signals/derived_metrics.py`.
+source `metric` string exists in the extract. Implementation: `src/pde/signals/derived_metrics.py`.
 
 ### Validate before the full run
 
@@ -262,7 +262,7 @@ Run the linter first — it checks every cross-reference above in one pass, so y
 seconds instead of after a ~10-minute pipeline run:
 
 ```
-python -m cde.cli.check_config --configs-dir configs
+python -m pde.cli.check_config --configs-dir configs
 ```
 
 A clean metric produces `config-lint PASS`. The pipeline also runs this automatically as a preflight;
@@ -282,7 +282,7 @@ there and that single edit feeds every consumer:
 - **Per-cohort values** — add the cohort's keys under `by_icp_client` in `benchmarks.yaml` /
   `core_metrics.yaml` where you want cohort-specific targets (they inherit `default` otherwise).
 
-`python -m cde.cli.check_config` fails if `COHORTS` drifts from the roster or if any `by_icp_client`
+`python -m pde.cli.check_config` fails if `COHORTS` drifts from the roster or if any `by_icp_client`
 key is not in the roster.
 
 ## Adding the metric to an existing theme
@@ -398,7 +398,7 @@ python .\extraction\scripts\compile_sql.py `
 After extraction completes:
 
 ```bash
-python -m cde.cli.run_pipeline `
+python -m pde.cli.run_pipeline `
   --out-dir outputs/runs/2026-03-03_TEST `
   --configs-dir configs
 ```
@@ -425,7 +425,7 @@ Optional: add `--write-point-in-time-scores` to also write `scores.csv` (per-per
 
 ## Scoring Model (how a topic is chosen)
 
-Scoring is a single, direction-aware, deterministic composition (in `src/cde/scoring/assemble.py`):
+Scoring is a single, direction-aware, deterministic composition (in `src/pde/scoring/assemble.py`):
 
 - **Deficit, not distance.** Each metric's `direction` (from `metric_catalog.yaml`) decides which way
   is "bad". Only underperformance vs benchmark scores; a strength scores ~0, so the engine never
@@ -452,7 +452,7 @@ If no `coaching_history.csv` is present, dampening is a no-op.
 
 # Coaching Themes & Break-Glass Selection
 
-Above single-metric selection sits a **three-tier** selection layer (`src/cde/engine/select.py`).
+Above single-metric selection sits a **three-tier** selection layer (`src/pde/engine/select.py`).
 It still emits **exactly one recommendation per agent**, but that recommendation can now be a
 *theme* (a pattern across several behaviors) or a *break-glass* single (a critical override), not
 only the single best behavior. The tier is recorded on each recommendation (`tier` column) and in
@@ -534,7 +534,7 @@ an **abstention floor** at the end.
 ## Production evidence gating
 
 `configs/thresholds/signal_thresholds.yaml` runs in `mode: production` — fail-closed gating on
-**evidence quality** (implemented in `src/cde/signals/thresholds.py`):
+**evidence quality** (implemented in `src/pde/signals/thresholds.py`):
 
 - `require_reference_point: true` — a signal must have a benchmark gap or a distribution z
   (`NO_REFERENCE_POINT`).
@@ -549,7 +549,7 @@ development` relaxes all gates and is for debugging only.)
 ## Abstention (explicit non-recommendation)
 
 Scoring is deficit-only, so a well-performing agent would otherwise still receive their least-bad
-topic. After selection, `src/cde/engine/abstain.py` withholds a recommendation when it isn't
+topic. After selection, `src/pde/engine/abstain.py` withholds a recommendation when it isn't
 warranted and **records why**, so a withheld rec is a visible, explained decision — never a silent
 gap. Every coachable agent ends in exactly one of *recommended* or *abstained*.
 
@@ -576,7 +576,7 @@ Abstentions are surfaced in **`abstentions.csv`**, as `tier: "abstained"` entrie
 
 # Discovering Themes
 
-`themes.yaml` is a curated artifact. The **theme discovery** module (`src/cde/themes_discovery/`)
+`themes.yaml` is a curated artifact. The **theme discovery** module (`src/pde/themes_discovery/`)
 looks for metrics that **move together** across the population and **proposes** candidate themes for
 an SME to review. It runs independently of the decision pipeline (it only *reads* the same config +
 extract) and is **propose-only**: it never edits `themes.yaml`.
@@ -584,7 +584,7 @@ extract) and is **propose-only**: it never edits `themes.yaml`.
 Trigger it by running:
 
 ```bash
-python -m cde.cli.discover_themes `
+python -m pde.cli.discover_themes `
   --configs-dir configs `
   --out-dir outputs/theme_discovery/2026-03-03_themes
 ```
@@ -600,7 +600,7 @@ Metrics are Pearson-correlated across agents within the cohort; pairs that clear
 cohort-coverage guardrails are clustered (connected components) into candidate themes. Guardrails:
 sample sufficiency (`min_sample`), correlation strength (`min_correlation`), cohort coverage
 (`min_cohort_coverage`), and theme-size sanity. Thresholds live in
-`src/cde/themes_discovery/config.py` (`DiscoveryThresholds`). Per-candidate verdict is `PROPOSE`,
+`src/pde/themes_discovery/config.py` (`DiscoveryThresholds`). Per-candidate verdict is `PROPOSE`,
 `HOLD` (weak/inconsistent), or `SKIPPED` (insufficient sample).
 
 ## Outputs (in `--out-dir`)
@@ -621,7 +621,7 @@ entry in `configs/governance/changelog.md` and defers every proposal for manual 
 # Recalculating Benchmarks
 
 `benchmarks.yaml` is a curated artifact. The **benchmark recalculation** module
-(`src/cde/benchmarks_recalc/`) re-derives candidate benchmark values from the latest extract and
+(`src/pde/benchmarks_recalc/`) re-derives candidate benchmark values from the latest extract and
 **proposes** changes only where the evidence clears guardrails. It runs independently of the decision
 pipeline (it only *reads* the same config + extract) and is **propose-only**: it never edits
 `benchmarks.yaml` without explicit authorization.
@@ -629,7 +629,7 @@ pipeline (it only *reads* the same config + extract) and is **propose-only**: it
 Trigger it by asking to "recalculate benchmarks", or run:
 
 ```bash
-python -m cde.cli.recalc_benchmarks `
+python -m pde.cli.recalc_benchmarks `
   --configs-dir configs `
   --out-dir outputs/benchmark_recalc/2026-03-03_recal
 ```
@@ -650,7 +650,7 @@ Anchors mirror the curated methodology: operational metrics = per-cohort median;
 behaviors = p25 of the windowed mean, capped at 0.95; degenerate cohort distributions keep their
 absolute default; sentiment is Verizon-only and splits by cohort only when cohorts differ materially.
 Guardrails: sample sufficiency, materiality, non-degeneracy, cohort-split validity, and observed-range
-sanity. Thresholds live in `src/cde/benchmarks_recalc/config.py` (`RecalcThresholds`).
+sanity. Thresholds live in `src/pde/benchmarks_recalc/config.py` (`RecalcThresholds`).
 
 Which recipe runs for a metric — and which dashboard section it lands in — is **declared** in
 `metric_catalog.yaml` as `recalc.recipe` (`operational | sell | serve | solve | absolute | quality |
@@ -670,7 +670,7 @@ at: <n> }`. There is no metric-name dispatch in code; `config_lint` validates th
 Applying is a separate, governed step. Only after review:
 
 ```bash
-python -m cde.cli.recalc_benchmarks `
+python -m pde.cli.recalc_benchmarks `
   --configs-dir configs `
   --out-dir outputs/benchmark_recalc/2026-03-03_recal `
   --apply --approver "Your Name"
@@ -727,8 +727,8 @@ Receipts are stored as JSONL for auditability and downstream ingestion.
 > **Automated preflight.** Most of the checks below now run in one command:
 >
 > ```bash
-> python -m cde.cli.check_config            # config integrity + raw-snapshot preflight
-> python -m cde.cli.check_config --strict   # also fail on warnings (CI)
+> python -m pde.cli.check_config            # config integrity + raw-snapshot preflight
+> python -m pde.cli.check_config --strict   # also fail on warnings (CI)
 > ```
 >
 > It validates config cross-references (metric_catalog ⇄ topic_map ⇄ benchmarks ⇄

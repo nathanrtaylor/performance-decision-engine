@@ -125,7 +125,7 @@ metric_catalog:
         # Cancellations often arrive in a week with no new sale (the sale was earlier), so the
         # same-week denominator is null and the weekly rate reads 0. Score the WINDOWED level as a
         # pooled rate (Σcancellations / Σsales over the window) instead of the mean of weekly rates,
-        # so cancels net against sales from other weeks. See src/cde/temporal/aggregate.py.
+        # so cancels net against sales from other weeks. See src/pde/temporal/aggregate.py.
         window_aggregation: pooled
       benchmark:
         type: config
@@ -222,7 +222,7 @@ metric_catalog:
       # DERIVED (composite): sp100 has no source row. It is built from two source counts,
       # "enrolled" and "Sale Opportunities", which each carry data in the NUMERATOR column only:
       #   sp100 = enrolled.numerator / "Sale Opportunities".numerator
-      # metric_key matching is case-insensitive. See src/cde/signals/derived_metrics.py.
+      # metric_key matching is case-insensitive. See src/pde/signals/derived_metrics.py.
       # source_metric_key is self-referential (the label stamped on synthesized rows) so
       # build_signals' (source, key) map resolves it.
       source: derived
@@ -956,7 +956,7 @@ metric_catalog:
 
   # display: optional per-metric block controlling how a value is SHOWN (scale, suffix, decimals)
   # in dashboards/receipts only — never changes the stored value. Resolved per-metric over the
-  # metric's category_defaults[category].display. See cde/utils/metric_format.py.
+  # metric's category_defaults[category].display. See pde/utils/metric_format.py.
   # recalc.recipe here is the DEFAULT recompute recipe for each category (benchmarks_recalc). A metric
   # overrides it with its own `recalc: { recipe: ... }`. Recipe -> dashboard section is config.RECIPE_SECTION.
   # Overrides in use: erp/expert_5star/cancel_rate -> absolute; *_sentiment -> sentiment;

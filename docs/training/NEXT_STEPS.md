@@ -8,7 +8,7 @@ Quick handoff to resume. Full design/status: `docs/training/training_decision_en
   watch-in-production skills, coach hand-off note — shown in place of the remediation plan.
 - **Copy / Email / PDF share toolbar** on each expert (upper-right of the modal). Copy & Email
   build a plain-text summary (`summaryText()`); PDF uses a scoped `@media print` view.
-- **ASCEND branding**: logo bundled at `src/cde/reporting/assets/ascend_logo.svg`, embedded as a
+- **ASCEND branding**: logo bundled at `src/pde/reporting/assets/ascend_logo.svg`, embedded as a
   base64 data URI (`_logo_data_uri()` + `__LOGO__` placeholder) so shared/emailed copies keep it.
   Shown upper-left inline with the title and the expert name; stays on the printed/PDF page. Tab
   title → "ASCEND Performance Decision Engine".
@@ -50,7 +50,7 @@ d552279  Phase 0: consolidate scaffolding
 **Working & validated end to end:** TrAIning Assist skills → shared engine → per-expert remediation plans + `training_dashboard.{html,json}` (1,442 experts). Dashboard has: class-ID filter, filter-linked summary tiles incl. time-progress, "Block N — short", on-track vs expected completion day, skills rolled up under blocks, Learning/Training-support/Coaching actions. Anonymized shareable copy: `docs/training/training_dashboard_shareable.html` (untracked).
 
 ## Next up — Phase 5 (in rough priority)
-1. **DONE — real roster wired.** `src/cde/training/roster.py` reads `docs/training/training_class_roster.xlsx` (sheet "Expert Roster"); `run_training_pipeline` uses it as the **source of truth** for who appears + class_id (Session #) / trainer / start date. Validated: 121 experts, 6 classes. Roster experts with no skill data yet show `not_started`.
+1. **DONE — real roster wired.** `src/pde/training/roster.py` reads `docs/training/training_class_roster.xlsx` (sheet "Expert Roster"); `run_training_pipeline` uses it as the **source of truth** for who appears + class_id (Session #) / trainer / start date. Validated: 121 experts, 6 classes. Roster experts with no skill data yet show `not_started`.
 2. **DONE — TrAIning Assist is day-grained.** `training_assist.sql.j2` now emits `period = session day` (matches `training_cbt`); extract config `expected_columns` updated; window set to 2026-08-22…09-04 to cover the roster classes. Needs the DB re-extract run to land matching day data.
 3. **Run the DB extract** (`extract_training_assist.yaml`, needs DB) so day-grain sim + CBT data lands for the roster window → skill/remediation content populates (currently 0/121 match because the on-disk extract predates the classes). Confirm CBT `userid`=employee id and `score` 0–100.
 4. **Fill `training_program.yaml` TODOs** — per-block `gate.test_call` + `components` + tools/troubleshooting `develops:`. Flips remediation from the deficient-skill fallback to **gate-driven**, and gives a per-expert **progress feed** (current block from block completions/test calls) so pacing/on-track become exact instead of expected-position.
@@ -66,16 +66,16 @@ d552279  Phase 0: consolidate scaffolding
 ## Resume commands
 ```bash
 # validate + run end to end (uses the current adhoc extract + synthetic roster)
-python -m cde.cli.check_config --configs-dir configs/training --raw-dir data/raw/adhoc/latest
-python -m cde.cli.check_training_program
-python -m cde.cli.run_training_pipeline --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/<date>
+python -m pde.cli.check_config --configs-dir configs/training --raw-dir data/raw/adhoc/latest
+python -m pde.cli.check_training_program
+python -m pde.cli.run_training_pipeline --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/<date>
 python -m pytest -q
 # regenerate mechanical configs after new training data lands
-python -m cde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+python -m pde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
 python tools/gen_training_configs.py --raw-dir data/raw/adhoc/latest
 ```
 
 ## Key files
 - Config set: `configs/training/` (`active.yaml`, `training_program.yaml`, `remediation.yaml`, `mappings/`, `thresholds/`, `priorities/`).
-- Engine: `src/cde/training/program.py`; dashboard: `src/cde/reporting/training_dashboard.py`; narratives: `src/cde/explainability/training_templates.py`; pipeline: `src/cde/cli/run_training_pipeline.py`; checker: `src/cde/cli/check_training_program.py`.
+- Engine: `src/pde/training/program.py`; dashboard: `src/pde/reporting/training_dashboard.py`; narratives: `src/pde/explainability/training_templates.py`; pipeline: `src/pde/cli/run_training_pipeline.py`; checker: `src/pde/cli/check_training_program.py`.
 - Source doc for the program: `docs/training/Ascend Learning Blocks Training Strategy.docx`.

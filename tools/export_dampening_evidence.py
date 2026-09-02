@@ -1,6 +1,6 @@
 """Export per-agent dampening evidence for a saved run (post-hoc).
 
-Thin CLI wrapper around cde.prioritization.dampening_evidence.build_dampening_evidence — the same
+Thin CLI wrapper around pde.prioritization.dampening_evidence.build_dampening_evidence — the same
 function the pipeline now calls to emit dampening_evidence.csv. Use this to (re)generate the
 evidence for an OLD run, or a run produced before the pipeline wired it in.
 
@@ -20,8 +20,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from cde.governance.versioning import resolve_active_config
-from cde.prioritization.dampening_evidence import build_dampening_evidence
+from pde.governance.versioning import resolve_active_config
+from pde.prioritization.dampening_evidence import build_dampening_evidence
 
 CONFIGS = Path(__file__).resolve().parents[1] / "configs"
 

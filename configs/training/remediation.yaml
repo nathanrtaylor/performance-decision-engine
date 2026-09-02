@@ -1,6 +1,6 @@
 # configs/training/remediation.yaml
 # Steerable remediation policy for the training domain (consumed by
-# src/cde/training/program.py). These knobs tune HOW FAR BACK and WHAT AREAS a
+# src/pde/training/program.py). These knobs tune HOW FAR BACK and WHAT AREAS a
 # remediation covers, without code changes. See docs/training/training_decision_engine.md.
 
 remediation:

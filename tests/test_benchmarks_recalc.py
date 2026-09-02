@@ -1,17 +1,17 @@
-"""Tests for the guardrail-gated benchmark recalculation module (src/cde/benchmarks_recalc)."""
+"""Tests for the guardrail-gated benchmark recalculation module (src/pde/benchmarks_recalc)."""
 from __future__ import annotations
 
 import pandas as pd
 import pytest
 
-from cde.benchmarks_recalc import config as C
-from cde.benchmarks_recalc.apply import apply_benchmarks
-from cde.benchmarks_recalc.compare import BenchmarkDiffRow, CompareResult, compare
-from cde.benchmarks_recalc.config import RecalcThresholds
-from cde.benchmarks_recalc.dashboard import build_recalc_dashboard_html
-from cde.benchmarks_recalc.guardrails import evaluate
-from cde.benchmarks_recalc.prep import RawFrames, prep_frames, windowed_mean_per_agent
-from cde.benchmarks_recalc.recompute import CohortStat, recompute_all
+from pde.benchmarks_recalc import config as C
+from pde.benchmarks_recalc.apply import apply_benchmarks
+from pde.benchmarks_recalc.compare import BenchmarkDiffRow, CompareResult, compare
+from pde.benchmarks_recalc.config import RecalcThresholds
+from pde.benchmarks_recalc.dashboard import build_recalc_dashboard_html
+from pde.benchmarks_recalc.guardrails import evaluate
+from pde.benchmarks_recalc.prep import RawFrames, prep_frames, windowed_mean_per_agent
+from pde.benchmarks_recalc.recompute import CohortStat, recompute_all
 
 WEEKS = [  # 8 distinct week-ending dates
     "2026-06-05", "2026-06-12", "2026-06-19", "2026-06-26",
@@ -280,10 +280,10 @@ def test_sentiment_vz_derived_from_roster():
 
 
 def test_window_weeks_single_source():
-    from cde.constants import WINDOW_WEEKS as CANON
-    from cde.benchmarks_recalc.config import WINDOW_WEEKS as RECALC_WW
-    from cde.themes_discovery.config import WINDOW_WEEKS as DISC_WW
-    from cde.temporal.aggregate import DEFAULT_TEMPORAL_CONFIG
+    from pde.constants import WINDOW_WEEKS as CANON
+    from pde.benchmarks_recalc.config import WINDOW_WEEKS as RECALC_WW
+    from pde.themes_discovery.config import WINDOW_WEEKS as DISC_WW
+    from pde.temporal.aggregate import DEFAULT_TEMPORAL_CONFIG
     assert RECALC_WW is CANON and DISC_WW is CANON
     assert DEFAULT_TEMPORAL_CONFIG["window_weeks"] == CANON
 

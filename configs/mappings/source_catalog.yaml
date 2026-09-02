@@ -125,7 +125,7 @@ source_catalog:
 
     derived:
       # Synthetic source: composite metrics built from OTHER metrics' numerator/denominator by
-      # src/cde/signals/derived_metrics.py (injected into normalized inputs before build_signals).
+      # src/pde/signals/derived_metrics.py (injected into normalized inputs before build_signals).
       # No extract table backs it; it is skipped when no derived metric is configured. Column
       # bindings mirror agent_metrics so build_signals values it identically (prefer calc).
       description: "Composite metrics synthesized from other metrics' numerator/denominator."

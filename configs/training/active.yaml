@@ -1,6 +1,6 @@
 # configs/training/active.yaml
 # Governed config set for the TRAINING-INSIGHTS domain. Selected with
-#   python -m cde.cli.run_pipeline --configs-dir configs/training ...
+#   python -m pde.cli.run_pipeline --configs-dir configs/training ...
 # (Phase 4 adds a dedicated run_training_pipeline entrypoint + training dashboard.)
 #
 # GRAIN = DAY. Training progresses day-by-day, so `period` is the training day and the

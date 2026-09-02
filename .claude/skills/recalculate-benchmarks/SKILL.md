@@ -10,7 +10,7 @@ description: >-
 
 # Recalculate benchmarks
 
-A side-car module (`src/cde/benchmarks_recalc/`) that reads the same extract + config as the pipeline
+A side-car module (`src/pde/benchmarks_recalc/`) that reads the same extract + config as the pipeline
 but does not touch it. It computes candidate benchmark anchors (operational = per-cohort median;
 quality/sentiment = p25 of the 8-week windowed-mean pass-rate, capped 0.95), then gates each against
 guardrails (sample sufficiency, materiality, non-degeneracy, cohort-split validity, observed-range
@@ -21,7 +21,7 @@ sanity). A change is **PROPOSED** only when every applicable guardrail passes an
 1. Run the recompute CLI (propose-only — this is the default and does NOT modify any config):
 
    ```
-   python -m cde.cli.recalc_benchmarks --configs-dir configs \
+   python -m pde.cli.recalc_benchmarks --configs-dir configs \
        --out-dir outputs/benchmark_recalc/<yyyy-mm-dd_HHMMSS>
    ```
 
@@ -37,7 +37,7 @@ sanity). A change is **PROPOSED** only when every applicable guardrail passes an
    step. Only if the user explicitly approves, re-run with:
 
    ```
-   python -m cde.cli.recalc_benchmarks --configs-dir configs \
+   python -m pde.cli.recalc_benchmarks --configs-dir configs \
        --out-dir outputs/benchmark_recalc/<id> --apply --approver "<name>"
    ```
 
@@ -49,4 +49,4 @@ sanity). A change is **PROPOSED** only when every applicable guardrail passes an
 
 - Sentiment behaviors are Verizon-only; the module splits mob-verizon vs pss-verizon only when they
   differ materially, matching the curated convention.
-- Guardrail thresholds live in `src/cde/benchmarks_recalc/config.py` (`RecalcThresholds`).
+- Guardrail thresholds live in `src/pde/benchmarks_recalc/config.py` (`RecalcThresholds`).

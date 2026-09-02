@@ -1,7 +1,7 @@
-"""Percentile-based, direction-aware scoring (src/cde/scoring/assemble.py)."""
+"""Percentile-based, direction-aware scoring (src/pde/scoring/assemble.py)."""
 import pandas as pd
 
-from cde.scoring.assemble import compute_windowed_scores
+from pde.scoring.assemble import compute_windowed_scores
 
 CFG = {"priority_model": {"w_level": 0.5, "w_trend": 0.2, "w_risk": 0.3, "w_confidence": 0.0}}
 

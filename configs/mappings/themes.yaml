@@ -20,11 +20,11 @@ themes:
   # single behavior. This is a HUMAN-CURATED, SME-owned artifact.
   #
   # A theme is ONLY added here by a human SME. The propose-only
-  # discovery tool (src/cde/themes_discovery, `python -m cde.cli.discover_themes`)
+  # discovery tool (src/pde/themes_discovery, `python -m pde.cli.discover_themes`)
   # can SUGGEST candidate themes from population co-movement, but never
   # writes to this file without explicit --apply authorization.
   #
-  # Selection semantics (see src/cde/engine/select.py):
+  # Selection semantics (see src/pde/engine/select.py):
   #   * A theme QUALIFIES for an agent when >= theme_selection.count_fraction
   #     of its members are "deficient" (evidence-gated + score_level above the
   #     loose theme_selection.score_level_floor). This is looser than the

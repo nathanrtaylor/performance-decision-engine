@@ -1,7 +1,7 @@
-"""Coaching-history normalization into the dampening grain (src/cde/ingestion/coaching_history.py)."""
+"""Coaching-history normalization into the dampening grain (src/pde/ingestion/coaching_history.py)."""
 import pandas as pd
 
-from cde.ingestion.coaching_history import build_coaching_history
+from pde.ingestion.coaching_history import build_coaching_history
 
 CFG = {
     "coaching_history_map": {

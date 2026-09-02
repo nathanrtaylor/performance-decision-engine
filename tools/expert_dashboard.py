@@ -1,6 +1,6 @@
 """CLI: generate the interactive expert-coaching dashboard from a saved run.
 
-The reusable rendering core lives in ``cde.reporting.expert_dashboard`` (also called
+The reusable rendering core lives in ``pde.reporting.expert_dashboard`` (also called
 by the pipeline). This wrapper loads a saved run from disk and can rebuild receipts
 from the run's CSVs with the current engine code — useful for previewing narrative
 changes against a historical run whose ``decision_receipts.jsonl`` predates them.
@@ -23,7 +23,7 @@ from typing import Any, Dict, List, Optional
 
 import pandas as pd
 
-from cde.reporting.expert_dashboard import (
+from pde.reporting.expert_dashboard import (
     agents_map_from_df,
     build_experts,
     coaching_history_map_from_df,
@@ -65,9 +65,9 @@ def _read_run_csv(run_dir: Path, name: str) -> Optional[pd.DataFrame]:
 
 def rebuild_receipts(run_dir: Path, configs_dir: Path) -> List[Dict[str, Any]]:
     """Regenerate receipts from the run's saved CSVs using the CURRENT engine code."""
-    from cde.governance.versioning import resolve_active_config
-    from cde.engine.select import select_recommendations
-    from cde.engine.receipts import build_receipts
+    from pde.governance.versioning import resolve_active_config
+    from pde.engine.select import select_recommendations
+    from pde.engine.receipts import build_receipts
 
     candidates = _read_run_csv(run_dir, "topic_candidates.csv")
     scores = _read_run_csv(run_dir, "scores_windowed.csv")

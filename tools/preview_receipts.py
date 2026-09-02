@@ -14,9 +14,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from cde.governance.versioning import resolve_active_config
-from cde.engine.select import select_recommendations
-from cde.engine.receipts import build_receipts
+from pde.governance.versioning import resolve_active_config
+from pde.engine.select import select_recommendations
+from pde.engine.receipts import build_receipts
 
 
 def _load(run_dir: Path):

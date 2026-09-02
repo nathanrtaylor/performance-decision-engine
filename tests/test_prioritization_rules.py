@@ -1,9 +1,9 @@
-"""Versioned weight resolution + governance enforcement (src/cde/prioritization)."""
+"""Versioned weight resolution + governance enforcement (src/pde/prioritization)."""
 import pandas as pd
 import pytest
 
-from cde.prioritization.weights import get_metric_weight
-from cde.prioritization.apply import build_topic_candidates
+from pde.prioritization.weights import get_metric_weight
+from pde.prioritization.apply import build_topic_candidates
 
 CFG = {
     "priority_model": {"w_level": 0.5, "w_trend": 0.2, "w_risk": 0.3, "w_confidence": 0.0},

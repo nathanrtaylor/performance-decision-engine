@@ -1,8 +1,8 @@
-"""Receipts for theme + break-glass tiers (src/cde/engine/receipts.py)."""
+"""Receipts for theme + break-glass tiers (src/pde/engine/receipts.py)."""
 import pandas as pd
 
-from cde.engine.receipts import build_receipts, receipts_to_jsonl
-from cde.engine.select import select_recommendations
+from pde.engine.receipts import build_receipts, receipts_to_jsonl
+from pde.engine.select import select_recommendations
 
 P2 = pd.Timestamp("2026-07-31")
 

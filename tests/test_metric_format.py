@@ -1,4 +1,4 @@
-"""Per-metric display formatting (src/cde/utils/metric_format.py).
+"""Per-metric display formatting (src/pde/utils/metric_format.py).
 
 Presentation only: verifies scale/suffix/decimals resolution (per-metric over category default)
 and value formatting, including the scale-preserving invariant that value/benchmark/gap share a
@@ -6,7 +6,7 @@ transform.
 """
 import math
 
-from cde.utils.metric_format import display_map, format_value, resolve_display
+from pde.utils.metric_format import display_map, format_value, resolve_display
 
 
 def _catalog():

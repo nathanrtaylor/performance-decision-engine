@@ -20,9 +20,9 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from cde.training.program import load_program, load_policy, build_skill_routing
-from cde.training.roster import load_class_roster
-from cde.reporting.training_dashboard import build_training_records, write_training_dashboard
+from pde.training.program import load_program, load_policy, build_skill_routing
+from pde.training.roster import load_class_roster
+from pde.reporting.training_dashboard import build_training_records, write_training_dashboard
 
 REPO = Path(__file__).resolve().parent.parent
 NOTICE = ("SIMULATED for review — real roster + expected dates; per-expert progress and skill "

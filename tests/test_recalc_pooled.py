@@ -6,7 +6,7 @@ scores: per-agent Sum(numerator)/Sum(denominator), keeping null-denominator nume
 import numpy as np
 import pandas as pd
 
-from cde.benchmarks_recalc.prep import windowed_mean_per_agent
+from pde.benchmarks_recalc.prep import windowed_mean_per_agent
 
 
 def _df():

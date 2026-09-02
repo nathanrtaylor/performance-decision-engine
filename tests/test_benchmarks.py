@@ -1,7 +1,7 @@
-"""Benchmark resolution incl. per-icp_client cohorts (src/cde/signals/benchmarks.py)."""
+"""Benchmark resolution incl. per-icp_client cohorts (src/pde/signals/benchmarks.py)."""
 import pytest
 
-from cde.signals.benchmarks import get_benchmark_value, benchmark_gap
+from pde.signals.benchmarks import get_benchmark_value, benchmark_gap
 
 CFG = {
     "benchmarks": {

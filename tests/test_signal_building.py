@@ -1,5 +1,5 @@
 """Deterministic value computation, incl. average/avg calc-name reconciliation."""
-from cde.signals.build_signals import _compute_value_row
+from pde.signals.build_signals import _compute_value_row
 
 
 def _compute(calc, num, den, handlers, default=None, prefer_value=False, raw=None):

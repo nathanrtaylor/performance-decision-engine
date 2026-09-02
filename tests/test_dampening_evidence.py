@@ -1,7 +1,7 @@
-"""Dampening evidence reconstruction (src/cde/prioritization/dampening_evidence.py)."""
+"""Dampening evidence reconstruction (src/pde/prioritization/dampening_evidence.py)."""
 import pandas as pd
 
-from cde.prioritization.dampening_evidence import build_dampening_evidence
+from pde.prioritization.dampening_evidence import build_dampening_evidence
 
 DP = pd.Timestamp("2026-08-28")
 

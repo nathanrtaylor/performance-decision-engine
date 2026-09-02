@@ -25,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from cde.training.program import load_program, build_skill_routing
+from pde.training.program import load_program, build_skill_routing
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "configs" / "training" / "mappings"

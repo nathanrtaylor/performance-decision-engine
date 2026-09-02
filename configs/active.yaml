@@ -38,7 +38,7 @@ icp_clients:
 # Composite cohorts: to activate a split declared in mappings/cohort_map.yaml, add BOTH the base
 # icp_client and each derived label here (label format icp_client::client). Extraction reduces
 # labels to their base for the source filter; the engine keys on the full label. Keep the
-# benchmarks_recalc COHORTS fallback (src/cde/benchmarks_recalc/config.py) in sync. Example:
+# benchmarks_recalc COHORTS fallback (src/pde/benchmarks_recalc/config.py) in sync. Example:
 #   - "small clients"          # residual (non-split) small-clients agents
 #   - "small clients::hp"      # client 'hp' split out (rule lives in cohort_map.yaml)
 
