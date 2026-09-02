@@ -149,17 +149,25 @@ def build_training_records(
                                 "category": m.get("category", ""),
                                 "value": None if v is None else round(v, 3), "below": bool(below)})
             has_below = any(s["below"] for s in bskills)
-            if has_below:
-                # a below-mark skill means the expert has attempted (reached) this block
+            # "reached" = the expert has actually gotten to this block. With a progress feed
+            # that's order <= current; without one we can't bound it, so any block with data
+            # counts. Remediation + the retraining status only apply to reached blocks (a
+            # deficiency in an unreached/locked block -- e.g. from a skill shared with a later
+            # block -- is not something to send them back to yet).
+            reached = (not has_progress) or (current_num is not None and b.order <= current_num)
+            if has_below and reached:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
             # Block status: ACTUAL-completion-driven when a progress feed exists; otherwise
-            # data-driven (retraining where a deficiency shows, else not_tracked). Never
-            # schedule-inferred -- pre-feed we do NOT claim blocks are passed.
+            # data-driven. Never schedule-inferred -- pre-feed we do NOT claim blocks are passed.
             if has_progress:
-                status = ("passed" if b.order < current_num
-                          else "in_progress" if b.order == current_num else "locked")
-                if b.order == current_num and has_below:
-                    status = "retraining"
+                if b.order > current_num:
+                    status = "locked"
+                elif has_below:
+                    status = "retraining"          # reached block with a below-mark skill
+                elif b.order == current_num:
+                    status = "in_progress"
+                else:
+                    status = "passed"
             else:
                 status = "retraining" if has_below else "not_tracked"
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
@@ -610,10 +618,12 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
 document.getElementById("title").textContent = META.program + " — Training Dashboard";
 document.getElementById("subline").textContent =
   `Pass mark ${Math.round(BENCH*100)}% · ${EXPERTS.length} experts · generated ${META.generated}`;
-if(META.roster_fields_synthetic){document.getElementById("synbadge").style.display="";
+if(META.notice){const sb=document.getElementById("synbadge"); sb.textContent="● "+(META.notice_badge||"SIMULATED"); sb.style.display="";
+  document.getElementById("foot").textContent = META.notice;}
+else if(META.roster_fields_synthetic){document.getElementById("synbadge").style.display="";
   document.getElementById("foot").textContent = "Some roster fields (class ID, training start date, current block) are synthetic placeholders for validation — swap in the real roster to make pacing/on-track live.";}
-else if(META.current_block_source && String(META.current_block_source).indexOf("schedule")>=0){
-  document.getElementById("foot").textContent = "Roster is the source of truth for who/class/trainer/start date. Current block = " + META.current_block_source + "; it becomes exact once a per-expert progress feed (block completions / test calls) is wired.";}
+else if(META.current_block_source && String(META.current_block_source).indexOf("not tracked")>=0){
+  document.getElementById("foot").textContent = "Roster is the source of truth for who/class/trainer/start date. Progress is " + META.current_block_source + " — it becomes exact once a per-expert progress feed (block completions / test calls) is wired.";}
 buildFilters(); render();
 (function(){const m=/^#e=(.+)$/.exec(location.hash); if(m && byId.has(m[1])) openModal(m[1]);})();
 </script>
