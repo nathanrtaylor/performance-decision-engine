@@ -123,6 +123,33 @@ def test_roster_expert_without_skill_data_is_not_started():
     assert by["a3"]["remediation"] is None
 
 
+def test_coaching_history_is_attached_and_roster_bounded():
+    # "Recent coaching history" block: reuse the coaching frame, but bounded to the roster.
+    ch = pd.DataFrame([
+        {"agent_id": "a1", "coaching_date": "2026-08-10", "coaching_type": "ADAPT",
+         "behavior_selected": "Show Compassion", "coaching_status": "Submitted"},
+        {"agent_id": "a1", "coaching_date": "2026-08-15", "coaching_type": "Growth Plan",
+         "behavior_selected": "Drive Results", "coaching_status": "Submitted"},
+        {"agent_id": "zzz", "coaching_date": "2026-08-01", "coaching_type": "ADAPT",   # NOT on the roster
+         "behavior_selected": "Off Roster", "coaching_status": "Submitted"},
+    ])
+    recs, meta = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                        _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
+                                        coaching_history=ch)
+    by = {r["id"]: r for r in recs}
+    assert meta["schema_version"] == "1.2"
+    # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
+    assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
+    assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
+                                   "dt": "2026-08-15", "st": "Submitted"}
+    assert by["a2"]["hist"] == []                 # roster expert with no coaching history
+    assert "zzz" not in by                         # off-roster agent never becomes a record
+    # default (no coaching_history) -> empty hist, no error
+    recs2, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                      _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
+    assert all(r["hist"] == [] for r in recs2)
+
+
 def test_locked_block_stays_blank_even_when_it_shares_a_skill():
     # Block 3 (locked, not yet reached) develops the same skill as block 1 (reached). The
     # expert has data for that skill, but it must NOT surface under the locked block.

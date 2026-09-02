@@ -111,8 +111,25 @@ def main(argv=None) -> int:
     roster = roster.copy()
     roster["current_block_order"] = roster["agent_id"].map(cbo_by_agent)   # NaN -> not_started
 
+    # SIMULATED prior coaching history for ~30% of experts, so the "Recent coaching history"
+    # block is demonstrable in the review (real runs read the extract's coaching_history.csv).
+    _CTYPES = ["ADAPT", "Growth Plan", "In The Game"]
+    _BEH = ["Show Compassion", "Drive Results", "One Call Resolution",
+            "Use Clear Transition Statements", "Ask for the Sale"]
+    ch_rows = []
+    for aid in roster["agent_id"]:
+        if rnd.random() >= 0.30:
+            continue
+        for i in range(rnd.choice([1, 2, 3, 4])):
+            day = pd.Timestamp("2026-08-20") - pd.Timedelta(days=rnd.randint(0, 150))
+            ch_rows.append({"agent_id": aid, "coaching_date": day.strftime("%Y-%m-%d"),
+                            "coaching_type": rnd.choice(_CTYPES), "behavior_selected": rnd.choice(_BEH),
+                            "coaching_status": rnd.choice(["Submitted", "Submitted", "Excused"])})
+    coaching_history = pd.DataFrame(ch_rows) if ch_rows else None
+
     records, meta = build_training_records(pd.DataFrame(sk_rows), roster, program, policy, skill_meta,
-                                           report_date=args.report_date, pass_mark=0.80)
+                                           report_date=args.report_date, pass_mark=0.80,
+                                           coaching_history=coaching_history)
     meta["notice"] = NOTICE
     meta["notice_badge"] = "SIMULATED — REVIEW"
 

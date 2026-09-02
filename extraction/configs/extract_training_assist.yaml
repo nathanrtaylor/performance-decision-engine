@@ -64,3 +64,32 @@ outputs:
       - calc
     params:
       cbt_table: "l1_asurion_flatfile_dbo_workday_learning_course_enrollment"
+
+  # Prior coaching history for the trainees (reuses the UNBOUNDED coaching_history template
+  # as-is). It returns every coached agent in the window; the training dashboard queries it
+  # for only the class-roster cohort. Landed here so a training extract run drops
+  # coaching_history.csv into data/raw/adhoc/latest alongside the training sources.
+  # (Duplicates the weekly coaching extract if both run -- accepted.) Uses source_schema +
+  # grain from globals; start_date/end_date are widened below (prior coaching precedes the
+  # class window). Edit the window as needed.
+  coaching_history:
+    sql_file: "extraction/sql/coaching_history.sql.j2"
+    output_file: "coaching_history.csv"
+    require_rows: false
+    expected_columns:
+      - agent_id
+      - coaching_date
+      - period
+      - coaching_status
+      - coaching_type
+      - coaching_topic
+      - behavior
+      - behavior_selected
+      - expert_acknowledged
+    params:
+      coaching_table: "l2_asurion_coachdb_coachdb_helixcoaching"
+      coaching_status_in:
+        - "Submitted"
+        - "Excused"
+      start_date: "2026-03-01"   # wider lookback than the class window (prior coaching)
+      end_date:   "2026-09-04"

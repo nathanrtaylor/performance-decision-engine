@@ -97,6 +97,9 @@ def main(argv=None) -> int:
                     help="Class roster xlsx — the source of truth for who/class/trainer/start date.")
     ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
+    ap.add_argument("--coaching-history", default=None,
+                    help="coaching_history.csv for the 'Recent coaching history' block. Default: "
+                         "<raw-dir>/coaching_history.csv, else data/raw/weekly/latest/coaching_history.csv.")
     args = ap.parse_args(argv)
 
     configs = Path(args.configs_dir)
@@ -123,8 +126,20 @@ def main(argv=None) -> int:
     # Timeline counts from each expert's start date to the report date (default: today).
     report_date = args.report_date or date.today().isoformat()
 
+    # Recent coaching history (optional): first existing of --coaching-history,
+    # <raw-dir>/coaching_history.csv (produced by the training extract), then the weekly latest.
+    ch_candidates = [args.coaching_history, raw / "coaching_history.csv",
+                     Path("data/raw/weekly/latest/coaching_history.csv")]
+    coaching_history = None
+    for cand in ch_candidates:
+        if cand and Path(cand).exists():
+            coaching_history = pd.read_csv(cand)
+            log.info("coaching history: %d rows from %s", len(coaching_history), cand)
+            break
+
     records, meta = build_training_records(skills_df, agents_df, program, policy, skill_meta,
-                                           report_date=report_date, pass_mark=args.pass_mark)
+                                           report_date=report_date, pass_mark=args.pass_mark,
+                                           coaching_history=coaching_history)
     path = write_training_dashboard(out, records, meta)
     n_rem = sum(1 for r in records if r["remediation"])
     print(f"training dashboard: {len(records)} experts, {n_rem} with remediation -> {path}")

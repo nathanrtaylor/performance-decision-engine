@@ -26,12 +26,13 @@ from typing import Any, Dict, List, Optional, Tuple
 import pandas as pd
 
 from pde.explainability.training_templates import build_action_groups, remediation_reason
+from pde.reporting.expert_dashboard import coaching_history_map_from_df
 from pde.training.program import Program, RemediationPolicy, plan_remediation
 from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.1"
+SCHEMA_VERSION = "1.2"   # 1.2: per-expert `hist` (recent coaching history)
 
 
 def _title(s: str) -> str:
@@ -67,6 +68,7 @@ def build_training_records(
     skill_meta: Dict[str, Dict[str, str]],   # skill_id -> {label, category}
     report_date: str,
     pass_mark: float = 0.80,
+    coaching_history: Optional[pd.DataFrame] = None,   # raw coaching_history frame (unbounded); queried for the cohort
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     sdf = skills_df.copy()
     sdf["agent_id"] = sdf["agent_id"].astype(str)
@@ -91,6 +93,15 @@ def build_training_records(
     # (status "not_started").
     per_agent = {str(k): v for k, v in sdf.groupby("agent_id")} if not sdf.empty else {}
     any_progress = ("current_block_order" in acols) and bool(adf["current_block_order"].notna().any())
+
+    # Recent coaching history, bounded to the training cohort: the coaching_history frame is
+    # unbounded (every coached agent in the window), so query it for only the experts on this
+    # class roster, then reuse the coaching dashboard's reshaper (agent_id -> [{ty,tp,dt,st}]).
+    roster_ids = {str(x) for x in adf.index}
+    ch = coaching_history
+    if ch is not None and not ch.empty and "agent_id" in ch.columns:
+        ch = ch[ch["agent_id"].astype(str).isin(roster_ids)]
+    chmap = coaching_history_map_from_df(ch)
 
     records: List[Dict[str, Any]] = []
 
@@ -246,6 +257,7 @@ def build_training_records(
             "days_since_start": dss, "status": status, "current_block": cur_block,
             "expected_block_num": expected_num, "on_track": on_track, "pace": pace, "avg_skill": avg_skill,
             "blocks": blocks, "remediation": remediation, "handoff": handoff,
+            "hist": chmap.get(aid, []),
         })
 
     records.sort(key=lambda r: (r["class_id"], r["name"]))
@@ -418,6 +430,8 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .cmtable td{border-top:1px solid var(--grid);padding:5px 12px;vertical-align:top}
 .cmtable td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
 .cmtable td.cat{color:var(--muted)}
+.cmtable th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:0 12px 6px 0;border-bottom:1px solid var(--grid)}
+.cmtable td.m{font-weight:650;color:var(--text-1)}
 .retrain{display:flex;flex-direction:column;padding:12px 14px;border-radius:10px;
   border:1px solid color-mix(in srgb,var(--serious) 40%,var(--border));
   background:color-mix(in srgb,var(--serious) 8%,var(--surface-2));font-size:13px}
@@ -608,6 +622,23 @@ function skillRows(b){
   return b.skills.map(s=>`<tr><td>${esc(s.label)}</td><td class="cat">${esc(s.category)}</td>`+
     `<td class="num">${pct(s.value)} ${s.below?chip("critical","below"):chip("good","pass")}</td></tr>`).join("");
 }
+/* Recent coaching history — same block as the coaching expert dashboard (newest first). */
+function coachingHistoryTable(rows){
+  const body = rows.map(h=>`<tr>`+
+    `<td><span class="tag">${esc(h.ty||"—")}</span></td>`+
+    `<td class="m">${esc(h.tp||"—")}</td>`+
+    `<td>${esc(h.dt||"—")}</td>`+
+    `<td><span class="tag">${esc(h.st||"—")}</span></td>`+
+  `</tr>`).join("");
+  return `<table class="cmtable"><thead><tr>`+
+    `<th>Type</th><th>Topic</th><th>Date</th><th>Status</th>`+
+    `</tr></thead><tbody>${body}</tbody></table>`;
+}
+/* Hidden entirely when the expert has no recorded coaching history. */
+function histSection(e){
+  if(!(e.hist && e.hist.length)) return "";
+  return `<div class="sec"><div class="h">Recent coaching history</div>${coachingHistoryTable(e.hist)}</div>`;
+}
 function blocksView(e){
   return e.blocks.map(b=>{
     const m = BLK_META[b.status]||{cls:"muted",label:b.status};
@@ -698,6 +729,7 @@ function openModal(id){
         <div><div class="k">Skill readiness</div><div class="topic">${pct(e.avg_skill)}</div></div>
       </div>
       <div class="sec"><div class="h">${primary}</div>${primaryView}</div>
+      ${histSection(e)}
       <div class="sec"><div class="h">Learning blocks &amp; skills</div>${blocksView(e)}</div>
     </div>`;
   const ov = document.getElementById("overlay"); ov.classList.add("open");
