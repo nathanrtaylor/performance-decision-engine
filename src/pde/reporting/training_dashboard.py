@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.2"   # 1.2: per-expert `hist` (recent coaching history)
+SCHEMA_VERSION = "1.3"   # 1.3: per-block `sims` + per-expert `sims_unmapped` / `cbts`
+                         # 1.2: per-expert `hist` (recent coaching history)
 
 
 def _title(s: str) -> str:
@@ -69,6 +70,8 @@ def build_training_records(
     report_date: str,
     pass_mark: float = 0.80,
     coaching_history: Optional[pd.DataFrame] = None,   # raw coaching_history frame (unbounded); queried for the cohort
+    sims_taken: Optional[pd.DataFrame] = None,         # per-(agent,sim): challenge_id,label,sim_id,block_num,sessions,pass_rate,last_period
+    cbts_taken: Optional[pd.DataFrame] = None,         # per-(agent,course): courseid,coursename,sessions,pass_rate,last_period
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     sdf = skills_df.copy()
     sdf["agent_id"] = sdf["agent_id"].astype(str)
@@ -103,14 +106,56 @@ def build_training_records(
         ch = ch[ch["agent_id"].astype(str).isin(roster_ids)]
     chmap = coaching_history_map_from_df(ch)
 
+    # Per-expert "sims practiced" and "CBTs completed" (from the raw extract). Each is grouped
+    # agent_id -> [item dicts]; sims carry an optional block_num used to nest them under a block.
+    def _opt(v):
+        return None if (v is None or (isinstance(v, float) and pd.isna(v))) else v
+
+    def _sim_item(r) -> Dict[str, Any]:
+        bn = _opt(getattr(r, "block_num", None))
+        pr = _num(getattr(r, "pass_rate", None))
+        cid = str(getattr(r, "challenge_id", "") or "")
+        sid = _opt(getattr(r, "sim_id", None))
+        return {"challenge_id": cid, "label": str(getattr(r, "label", "") or cid),
+                "sim_id": None if sid is None else str(sid),
+                "block_num": None if bn is None else int(bn),
+                "sessions": int(_num(getattr(r, "sessions", 0)) or 0),
+                "pass_rate": None if pr is None else round(pr, 3),
+                "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
+
+    def _cbt_item(r) -> Dict[str, Any]:
+        pr = _num(getattr(r, "pass_rate", None))
+        cid = str(getattr(r, "courseid", "") or "")
+        bn = _opt(getattr(r, "block_num", None))
+        return {"courseid": cid, "coursename": str(getattr(r, "coursename", "") or cid),
+                "block_num": None if bn is None else int(bn),
+                "sessions": int(_num(getattr(r, "sessions", 0)) or 0),
+                "pass_rate": None if pr is None else round(pr, 3),
+                "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
+
+    def _grouped(df: Optional[pd.DataFrame], builder) -> Dict[str, List[Dict[str, Any]]]:
+        out: Dict[str, List[Dict[str, Any]]] = {}
+        if df is None or df.empty or "agent_id" not in df.columns:
+            return out
+        d = df.copy()
+        d["agent_id"] = d["agent_id"].astype(str)
+        for aid, grp in d.groupby("agent_id"):
+            items = [builder(r) for r in grp.itertuples()]
+            items.sort(key=lambda x: (-(x["sessions"] or 0), x["label"] if "label" in x else x.get("coursename", "")))
+            out[str(aid)] = items
+        return out
+
+    sims_by_agent = _grouped(sims_taken, _sim_item)
+    cbts_by_agent = _grouped(cbts_taken, _cbt_item)
+
     records: List[Dict[str, Any]] = []
 
     for aid in [str(x) for x in adf.index]:
         g = per_agent.get(aid)
         vals = ({str(r.metric): (_num(r.value), _num(r.benchmark)) for r in g.itertuples()}
                 if g is not None else {})
-        deficient = [m for m, (v, bm) in vals.items()
-                     if v is not None and bm is not None and v < bm]
+        agent_sims = sims_by_agent.get(aid, [])
+        agent_cbts = cbts_by_agent.get(aid, [])
 
         class_id = str(aget(aid, "class_id", "unassigned") or "unassigned")
         trainer = str(aget(aid, "trainer", "") or "")
@@ -140,6 +185,13 @@ def build_training_records(
         has_progress = cbo is not None
         current_num: Optional[int] = int(cbo) if has_progress else None
 
+        # Skill ceiling: cap which blocks may surface a skill, so a "future" skill doesn't show on
+        # a block the expert hasn't reached. With a progress feed -> the fed current block; without
+        # one -> the furthest block they have crosswalked sim/CBT activity in (evidence of reaching);
+        # None -> no evidence, so unbounded (skills surface under their curriculum block as before).
+        act_blocks = [x["block_num"] for x in (agent_sims + agent_cbts) if x["block_num"] is not None]
+        skill_ceiling: Optional[int] = current_num if has_progress else (max(act_blocks) if act_blocks else None)
+
         # pace = ACTUAL current block vs EXPECTED block (only when actual progress is known)
         if current_num is not None and expected_num is not None:
             on_track: Optional[bool] = current_num >= expected_num
@@ -149,16 +201,18 @@ def build_training_records(
             on_track, pace = None, None
 
         block_defic: Dict[int, List[str]] = {}
+        surfaced: set = set()
         blocks: List[Dict[str, Any]] = []
         for b in program.blocks:
-            # "reached" = the expert has actually gotten to this block. With a progress feed
-            # that's order <= current; without one we can't bound it, so any block with data
-            # counts. A locked/not-yet-reached block stays BLANK -- we never roll a skill up
-            # under it just because that skill is shared with an earlier block the expert did
-            # reach. Remediation + the retraining status likewise apply only to reached blocks.
+            # "reached" drives block STATUS (feed-driven, or "not_tracked" without a feed).
+            # SKILLS use `skill_reached` (the ceiling) instead: a skill is only surfaced under a
+            # block at/under the ceiling, so a skill whose curriculum home is still ahead of the
+            # expert is ignored until they reach that block. A block with no surfaced skills stays
+            # BLANK -- we never roll a skill up under a block the expert hasn't reached.
             reached = (not has_progress) or (current_num is not None and b.order <= current_num)
+            skill_reached = (skill_ceiling is None) or (b.order <= skill_ceiling)
             bskills = []
-            if reached:
+            if skill_reached:
                 for sid in b.develops_all:
                     if sid not in vals:
                         continue
@@ -168,8 +222,9 @@ def build_training_records(
                     bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
                                     "category": m.get("category", ""),
                                     "value": None if v is None else round(v, 3), "below": bool(below)})
+                    surfaced.add(sid)
             has_below = any(s["below"] for s in bskills)
-            if has_below and reached:
+            if has_below:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
             # Block status: ACTUAL-completion-driven when a progress feed exists; otherwise
             # data-driven. Never schedule-inferred -- pre-feed we do NOT claim blocks are passed.
@@ -185,10 +240,16 @@ def build_training_records(
             else:
                 status = "retraining" if has_below else "not_tracked"
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
-                           "short": short_desc(b.label), "status": status, "skills": bskills})
+                           "short": short_desc(b.label), "status": status, "skills": bskills,
+                           "sims": [s for s in agent_sims if s["block_num"] == b.order],
+                           "cbts": [c for c in agent_cbts if c["block_num"] == b.order]})
 
-        vv = [v for (v, _bm) in vals.values() if v is not None]
+        # Readiness + remediation consider only skills that surfaced under a reached block;
+        # future-block skills (above the ceiling) are ignored until the expert reaches them.
+        vv = [vals[sid][0] for sid in surfaced if vals[sid][0] is not None]
         avg_skill = round(sum(vv) / len(vv), 3) if vv else None
+        deficient = [sid for sid in surfaced
+                     if vals[sid][0] is not None and vals[sid][1] is not None and vals[sid][0] < vals[sid][1]]
 
         # Remediation targets blocks the expert has reached (a below-mark skill means they
         # attempted it). block_defic holds those; drive triggering from it. (Once real gate
@@ -252,12 +313,16 @@ def build_training_records(
                 "note": "Ready for coach hand-off. Monitor the first live calls, especially the watch-list skills.",
             }
 
+        block_orders = {b.order for b in program.blocks}
+        sims_unmapped = [s for s in agent_sims if s["block_num"] not in block_orders]
+
         records.append({
             "id": aid, "name": name, "class_id": class_id, "trainer": trainer, "icp": icp,
             "days_since_start": dss, "status": status, "current_block": cur_block,
             "expected_block_num": expected_num, "on_track": on_track, "pace": pace, "avg_skill": avg_skill,
             "blocks": blocks, "remediation": remediation, "handoff": handoff,
             "hist": chmap.get(aid, []),
+            "sims_unmapped": sims_unmapped,
         })
 
     records.sort(key=lambda r: (r["class_id"], r["name"]))
@@ -426,6 +491,9 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .lblk .bhead{display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--surface-1)}
 .lblk .bnum{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;min-width:52px}
 .lblk .bname{font-weight:600;flex:1}
+.lblk .subh{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;padding:8px 12px 0}
+.cmtable td.sid{font-variant-numeric:tabular-nums;color:var(--text-2);white-space:nowrap}
+.cmtable td .meta{color:var(--muted);font-weight:400;margin-left:6px}
 .cmtable{width:100%;border-collapse:collapse;font-size:12.5px}
 .cmtable td{border-top:1px solid var(--grid);padding:5px 12px;vertical-align:top}
 .cmtable td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
@@ -639,16 +707,46 @@ function histSection(e){
   if(!(e.hist && e.hist.length)) return "";
   return `<div class="sec"><div class="h">Recent coaching history</div>${coachingHistoryTable(e.hist)}</div>`;
 }
+/* one row per sim practiced: label, ASC-SIM id (or —), pass-rate + sessions/last */
+function simRow(s){
+  const sid = s.sim_id ? esc(s.sim_id) : "—";
+  const meta = `${s.sessions||0} sess${s.last?" · "+esc(s.last):""}`;
+  return `<tr><td>${esc(s.label)}</td><td class="sid">${sid}</td>`+
+    `<td class="num">${pct(s.pass_rate)}<span class="meta">${meta}</span></td></tr>`;
+}
+function simsTable(items){
+  return `<table class="cmtable"><tbody>${items.map(simRow).join("")}</tbody></table>`;
+}
 function blocksView(e){
   return e.blocks.map(b=>{
     const m = BLK_META[b.status]||{cls:"muted",label:b.status};
     const head = `<div class="bhead"><span class="bnum">Block ${b.num}</span>`+
       `<span class="bname">${esc(b.short)}</span>${chip(m.cls,m.label)}</div>`;
-    // Locked / not-yet-reached blocks stay blank -- no skill content underneath.
-    const blank = (b.status==="locked" || b.status==="not_tracked") && !(b.skills && b.skills.length);
-    const body = blank ? "" : `<table class="cmtable"><tbody>${skillRows(b)}</tbody></table>`;
+    const hasSkills = b.skills && b.skills.length;
+    const hasSims = b.sims && b.sims.length;
+    const hasCbts = b.cbts && b.cbts.length;
+    // Locked / not-yet-reached blocks stay blank -- no skill/sim/cbt content underneath.
+    const blank = (b.status==="locked" || b.status==="not_tracked") && !hasSkills && !hasSims && !hasCbts;
+    let body = "";
+    if(!blank){
+      body += `<table class="cmtable"><tbody>${skillRows(b)}</tbody></table>`;
+      if(hasSims) body += `<div class="subh">Sims practiced</div>${simsTable(b.sims)}`;
+      if(hasCbts) body += `<div class="subh">CBTs completed</div>${cbtTable(b.cbts)}`;
+    }
     return `<div class="lblk${blank?" locked":""}">${head}${body}</div>`;
   }).join("");
+}
+/* one row per CBT completed under a block: coursename, pass-rate + sessions/last */
+function cbtTable(items){
+  return `<table class="cmtable"><tbody>${items.map(c=>
+    `<tr><td>${esc(c.coursename)}</td><td class="num">${pct(c.pass_rate)}`+
+    `<span class="meta">${c.sessions||0} sess${c.last?" · "+esc(c.last):""}</span></td></tr>`).join("")}</tbody></table>`;
+}
+/* Sims the expert practiced that don't yet resolve to a block (no sim_id crosswalk). */
+function simsUnmappedSection(e){
+  if(!(e.sims_unmapped && e.sims_unmapped.length)) return "";
+  return `<div class="sec"><div class="h">Other sims practiced (not yet mapped to a block)</div>`+
+    `${simsTable(e.sims_unmapped)}</div>`;
 }
 function actCol(cls,g){
   if(!g) return "";
@@ -695,7 +793,12 @@ function summaryText(e){
   L.push(""); L.push("LEARNING BLOCKS");
   e.blocks.forEach(b=>{const st=(BLK_META[b.status]||{}).label||b.status;
     const below=(b.skills||[]).filter(s=>s.below).map(s=>s.label);
-    L.push("- Block "+b.num+" "+b.short+" — "+st+(below.length?"  (below: "+below.join(", ")+")":""));});
+    L.push("- Block "+b.num+" "+b.short+" — "+st+(below.length?"  (below: "+below.join(", ")+")":""));
+    (b.sims||[]).forEach(s=>L.push("    sim: "+s.label+(s.sim_id?" ["+s.sim_id+"]":"")+" — "+pct(s.pass_rate)+", "+(s.sessions||0)+" sess"));
+    (b.cbts||[]).forEach(c=>L.push("    cbt: "+c.coursename+" — "+pct(c.pass_rate)+", "+(c.sessions||0)+" sess"));});
+  const other=e.sims_unmapped||[];
+  if(other.length){L.push(""); L.push("OTHER SIMS PRACTICED (unmapped)");
+    other.forEach(s=>L.push("- "+s.label+" — "+pct(s.pass_rate)+", "+(s.sessions||0)+" sess"));}
   L.push(""); L.push("From the training dashboard"+(META.notice?" — SIMULATED review data":"")+".");
   return L.join("\n");
 }
@@ -731,6 +834,7 @@ function openModal(id){
       <div class="sec"><div class="h">${primary}</div>${primaryView}</div>
       ${histSection(e)}
       <div class="sec"><div class="h">Learning blocks &amp; skills</div>${blocksView(e)}</div>
+      ${simsUnmappedSection(e)}
     </div>`;
   const ov = document.getElementById("overlay"); ov.classList.add("open");
   document.getElementById("closeBtn").onclick = closeModal;

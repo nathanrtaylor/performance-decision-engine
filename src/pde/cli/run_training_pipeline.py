@@ -13,6 +13,7 @@ Outputs (in --out-dir): the usual pipeline artifacts plus training_dashboard.{ht
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -85,6 +86,84 @@ def _build_skills_df(out_dir: Path) -> pd.DataFrame:
     return sw.rename(columns={"benchmark_8w": "benchmark"})[["agent_id", "metric", "value", "benchmark"]]
 
 
+def _agg_taken(df: pd.DataFrame, key_cols: list) -> pd.DataFrame:
+    """Roll day-grain rows up to per-(agent, key) practice aggregates:
+    sessions = distinct practice days, pass_rate = mean(calc), last_period = max(period)."""
+    df = df.copy()
+    df["calc"] = pd.to_numeric(df.get("calc"), errors="coerce")
+    g = df.groupby(["agent_id"] + key_cols, dropna=False)
+    out = g.agg(sessions=("period", "nunique"),
+                pass_rate=("calc", "mean"),
+                last_period=("period", "max")).reset_index()
+    out["pass_rate"] = out["pass_rate"].round(3)
+    return out
+
+
+def _build_sims_taken(raw_dir: Path, program, profiles_path: Path) -> pd.DataFrame:
+    """Per-(agent, sim) TrAIning Assist practice summary, enriched with the profile crosswalk.
+
+    Columns: agent_id, challenge_id, label, sim_id, block_num, sessions, pass_rate, last_period.
+    `sim_id`/`block_num` are populated only where the challenge_id resolves through
+    training_profiles.yaml (sim_id) and a training_program.yaml component (ref -> block); else null.
+    """
+    cols = ["agent_id", "challenge_id", "label", "sim_id", "block_num", "sessions", "pass_rate", "last_period"]
+    path = raw_dir / "training_assist.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=cols)
+    df = pd.read_csv(path, dtype={"agent_id": str, "scorecard_name": str, "period": str})
+    agg = _agg_taken(df.rename(columns={"scorecard_name": "challenge_id"}), ["challenge_id"])
+
+    prof = (load_yaml(profiles_path) or {}).get("profiles") or {}
+    cid_sim = {str(c): (p or {}).get("sim_id") for c, p in prof.items()}
+    cid_label = {str(c): ((p or {}).get("reporting_label") or (p or {}).get("source_profile_name") or str(c))
+                 for c, p in prof.items()}
+    ref_block = {c.ref: b.order for b in program.blocks for c in b.components if c.ref}
+
+    agg["sim_id"] = agg["challenge_id"].map(cid_sim)
+    agg["label"] = agg["challenge_id"].map(lambda c: cid_label.get(c, c))
+    agg["block_num"] = agg["sim_id"].map(ref_block)
+    return agg[cols]
+
+
+def _norm_course(s) -> str:
+    """Normalize a course/CBT-link name for joining (the xlsx CBT-link names end ' - Workday')."""
+    s = re.sub(r"\s*-\s*workday\s*$", "", str(s).strip().lower())
+    return re.sub(r"[^0-9a-z]+", " ", s).strip()
+
+
+def _cbt_block_map(sims_xlsx: Path) -> dict:
+    """normalized coursename -> learning-block order, from the xlsx 'WDL CBT Link' + 'Learning Block'.
+    This is the only content source tying CBTs to blocks; empty {} if the workbook is absent."""
+    if not sims_xlsx.exists():
+        return {}
+    try:
+        df = pd.read_excel(sims_xlsx, sheet_name="Sims 100")
+    except Exception:  # noqa: BLE001 -- a missing/renamed sheet just means no CBT->block map
+        return {}
+    out: dict = {}
+    for _, r in df.iterrows():
+        link, blk = r.get("WDL CBT Link"), r.get("Learning Block")
+        if pd.isna(link) or pd.isna(blk):
+            continue
+        out.setdefault(_norm_course(link), int(blk))
+    return out
+
+
+def _build_cbts_taken(raw_dir: Path, block_map: dict) -> pd.DataFrame:
+    """Per-(agent, course) CBT completion summary, with block_num joined from the xlsx CBT-link map.
+
+    Columns: agent_id, courseid, coursename, block_num, sessions, pass_rate, last_period.
+    `block_num` is null for courses not present in the xlsx 'WDL CBT Link' column (most of them)."""
+    cols = ["agent_id", "courseid", "coursename", "block_num", "sessions", "pass_rate", "last_period"]
+    path = raw_dir / "training_cbt.csv"
+    if not path.exists():
+        return pd.DataFrame(columns=cols)
+    df = pd.read_csv(path, dtype={"agent_id": str, "courseid": str, "coursename": str, "period": str})
+    agg = _agg_taken(df, ["courseid", "coursename"])
+    agg["block_num"] = agg["coursename"].map(lambda c: block_map.get(_norm_course(c)))
+    return agg[cols]
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Run the training decision pipeline + dashboard.")
     ap.add_argument("--configs-dir", default="configs/training")
@@ -98,6 +177,9 @@ def main(argv=None) -> int:
                          "Lives under data/training/ (gitignored: PII, updated per run).")
     ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
+    ap.add_argument("--sims-xlsx", default="docs/training/Ascend Simulations.xlsx",
+                    help="Ascend Simulations workbook; its 'WDL CBT Link' + Learning Block columns map "
+                         "CBTs to learning blocks (nested under blocks in the dashboard).")
     ap.add_argument("--coaching-history", default=None,
                     help="coaching_history.csv for the 'Recent coaching history' block. Default: "
                          "<raw-dir>/coaching_history.csv, else data/raw/weekly/latest/coaching_history.csv.")
@@ -138,9 +220,15 @@ def main(argv=None) -> int:
             log.info("coaching history: %d rows from %s", len(coaching_history), cand)
             break
 
+    # Sims practiced + CBTs completed (per expert), from the raw extract in --raw-dir.
+    # CBTs are mapped to blocks via the xlsx 'WDL CBT Link' column (the only course->block source).
+    sims_taken = _build_sims_taken(raw, program, profiles_path)
+    cbts_taken = _build_cbts_taken(raw, _cbt_block_map(Path(args.sims_xlsx)))
+
     records, meta = build_training_records(skills_df, agents_df, program, policy, skill_meta,
                                            report_date=report_date, pass_mark=args.pass_mark,
-                                           coaching_history=coaching_history)
+                                           coaching_history=coaching_history,
+                                           sims_taken=sims_taken, cbts_taken=cbts_taken)
     path = write_training_dashboard(out, records, meta)
     n_rem = sum(1 for r in records if r["remediation"])
     print(f"training dashboard: {len(records)} experts, {n_rem} with remediation -> {path}")

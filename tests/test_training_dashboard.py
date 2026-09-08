@@ -137,7 +137,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.2"
+    assert meta["schema_version"] == "1.3"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -148,6 +148,67 @@ def test_coaching_history_is_attached_and_roster_bounded():
     recs2, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
                                       _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
     assert all(r["hist"] == [] for r in recs2)
+
+
+def test_sims_taken_nest_under_block_and_cbts_attach():
+    # A sim with a block_num nests under that block; one without lands in sims_unmapped;
+    # CBTs attach to the record. Default (no frames) -> empty lists, backward compatible.
+    sims = pd.DataFrame([
+        {"agent_id": "a1", "challenge_id": "judy_terry", "label": "Expert Workspace",
+         "sim_id": "ASC-SIM-6J5TR3", "block_num": 2, "sessions": 3, "pass_rate": 0.62,
+         "last_period": "2026-01-05"},
+        {"agent_id": "a1", "challenge_id": "becky_bergen", "label": "Becky Bergen",
+         "sim_id": None, "block_num": None, "sessions": 5, "pass_rate": 0.80,
+         "last_period": "2026-01-04"},
+    ])
+    cbts = pd.DataFrame([
+        # a CBT mapped to block 2 nests under it; an unmapped one (block_num None) is dropped.
+        {"agent_id": "a1", "courseid": "cbt_x", "coursename": "Device Basics CBT",
+         "block_num": 2, "sessions": 1, "pass_rate": 0.0, "last_period": "2026-01-03"},
+        {"agent_id": "a1", "courseid": "cbt_y", "coursename": "Unmapped Course",
+         "block_num": None, "sessions": 1, "pass_rate": 1.0, "last_period": "2026-01-02"},
+    ])
+    recs, meta = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                        _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
+                                        sims_taken=sims, cbts_taken=cbts)
+    a1 = {r["id"]: r for r in recs}["a1"]
+    assert meta["schema_version"] == "1.3"
+    b2 = {b["num"]: b for b in a1["blocks"]}[2]
+    assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
+    assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
+    # CBTs nest under their block; there is no record-level cbts catch-all (unmapped are dropped).
+    assert [c["coursename"] for c in b2["cbts"]] == ["Device Basics CBT"]
+    assert "cbts" not in a1
+    all_block_cbts = [c["coursename"] for b in a1["blocks"] for c in b["cbts"]]
+    assert "Unmapped Course" not in all_block_cbts
+    # backward compatible: no frames -> empty lists, no error
+    recs2, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                      _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
+    assert all(r["sims_unmapped"] == [] for r in recs2)
+    assert all(all(b["sims"] == [] and b["cbts"] == [] for b in r["blocks"]) for r in recs2)
+
+
+def test_future_block_skill_hidden_by_activity_ceiling():
+    # No progress feed. The expert's only scored skill ("close") is developed by block 3, but their
+    # crosswalked activity only reaches block 1 -> the skill is ignored (not surfaced, not counted)
+    # until they reach block 3. With no crosswalked activity, there is no ceiling and it surfaces.
+    prog = _program()  # b1 develops greet, b2 solve, b3 close
+    skills = pd.DataFrame([{"agent_id": "c1", "metric": "close", "value": 0.90, "benchmark": 0.80}])
+    agents = pd.DataFrame([{"agent_id": "c1", "agent_name": "Cy", "class_id": "C1", "trainer": "T",
+                            "icp_client": "training", "training_start_date": "2026-01-01"}])  # no feed
+    sims = pd.DataFrame([{"agent_id": "c1", "challenge_id": "x", "label": "X", "sim_id": None,
+                          "block_num": 1, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}])
+    recs, _ = build_training_records(skills, agents, prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims)
+    blk = {b["num"]: b for b in recs[0]["blocks"]}
+    assert blk[3]["skills"] == []          # 'close' (block 3) hidden: activity ceiling is block 1
+    assert recs[0]["avg_skill"] is None    # its only skill is a future-block skill -> ignored
+    # control: no crosswalked activity -> unbounded -> skill surfaces under its curriculum block
+    recs2, _ = build_training_records(skills, agents, prog, RemediationPolicy(), _SKILL_META,
+                                      report_date="2026-01-06", pass_mark=0.80)
+    blk2 = {b["num"]: b for b in recs2[0]["blocks"]}
+    assert [s["skill"] for s in blk2[3]["skills"]] == ["close"]
+    assert recs2[0]["avg_skill"] == 0.9
 
 
 def test_locked_block_stays_blank_even_when_it_shares_a_skill():
