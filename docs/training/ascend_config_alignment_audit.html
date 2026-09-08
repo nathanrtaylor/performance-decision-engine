@@ -1,0 +1,504 @@
+<title>ASCEND Config Alignment Audit</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  --ground:#f6f8f9; --surface:#ffffff; --surface-2:#eef2f4; --line:#d9e0e4;
+  --ink:#1a222b; --muted:#5b6672; --faint:#8a949e;
+  --accent:#17707a; --accent-soft:#e0eef0; --accent-ink:#0d545c;
+  --ok:#2f7d57; --ok-soft:#e2f0e9;
+  --gap:#a85d2b; --gap-soft:#f5e7db;
+  --crit:#b23b3b; --crit-soft:#f6e2e2;
+  --shadow:0 1px 2px rgba(20,30,40,.04),0 4px 16px rgba(20,30,40,.05);
+  --radius:14px;
+  --maxw:1000px; --prose:800px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#11161b; --surface:#1a222a; --surface-2:#222c35; --line:#2c3742;
+    --ink:#e6ecf0; --muted:#9aa6b1; --faint:#6c7883;
+    --accent:#4fb6c0; --accent-soft:#183238; --accent-ink:#8fd6dd;
+    --ok:#5cbd8b; --ok-soft:#16281f;
+    --gap:#d8965f; --gap-soft:#2c2115;
+    --crit:#e07a7a; --crit-soft:#2e1a1a;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 18px rgba(0,0,0,.35);
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#11161b; --surface:#1a222a; --surface-2:#222c35; --line:#2c3742;
+  --ink:#e6ecf0; --muted:#9aa6b1; --faint:#6c7883;
+  --accent:#4fb6c0; --accent-soft:#183238; --accent-ink:#8fd6dd;
+  --ok:#5cbd8b; --ok-soft:#16281f;
+  --gap:#d8965f; --gap-soft:#2c2115;
+  --crit:#e07a7a; --crit-soft:#2e1a1a;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 4px 18px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--ground); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:16px; line-height:1.62; letter-spacing:-.003em;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px}
+.mono{font-family:"IBM Plex Mono","SF Mono",ui-monospace,Menlo,monospace}
+code,.id{
+  font-family:"IBM Plex Mono","SF Mono",ui-monospace,Menlo,monospace;
+  font-size:.86em; background:var(--surface-2); color:var(--accent-ink);
+  padding:.08em .38em; border-radius:5px; border:1px solid var(--line);
+  white-space:nowrap;
+}
+h1,h2,h3{text-wrap:balance; line-height:1.18; letter-spacing:-.02em; font-weight:700}
+p{max-width:var(--prose)}
+a{color:var(--accent-ink)}
+
+/* ---------- header ---------- */
+header{
+  border-bottom:1px solid var(--line);
+  background:
+    radial-gradient(120% 140% at 88% -20%, var(--accent-soft) 0%, transparent 60%),
+    var(--surface);
+}
+.eyebrow{
+  font-family:"IBM Plex Mono",monospace; font-size:12px; font-weight:500;
+  letter-spacing:.16em; text-transform:uppercase; color:var(--accent-ink);
+}
+header h1{font-size:clamp(30px,5vw,46px); margin:.34em 0 .28em}
+.lede{font-size:clamp(17px,2.3vw,20px); color:var(--muted); margin:0; max-width:66ch}
+.metabar{
+  display:flex; flex-wrap:wrap; gap:10px 26px; margin-top:22px;
+  font-size:13.5px; color:var(--muted);
+}
+.metabar b{color:var(--ink); font-weight:600}
+.metabar .mono{font-size:12.5px}
+
+/* ---------- section scaffolding ---------- */
+section{padding:52px 0; border-bottom:1px solid var(--line)}
+section:last-of-type{border-bottom:0}
+.shead{display:flex; align-items:baseline; gap:14px; margin:0 0 22px}
+.snum{
+  font-family:"IBM Plex Mono",monospace; font-size:13px; font-weight:600;
+  color:var(--accent); border:1px solid var(--accent); border-radius:6px;
+  padding:2px 8px; flex:none; line-height:1.4;
+}
+.shead h2{font-size:clamp(21px,3vw,27px); margin:0}
+.sub{color:var(--muted); margin-top:-8px}
+
+/* ---------- id-space diagram ---------- */
+.diagram{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); padding:26px; margin:6px 0 22px; overflow-x:auto;
+}
+.diagram svg{display:block; width:100%; height:auto; min-width:560px}
+.dg-box{fill:var(--surface-2); stroke:var(--line)}
+.dg-title{fill:var(--ink); font:600 15px "IBM Plex Sans",sans-serif}
+.dg-sub{fill:var(--muted); font:400 11.5px "IBM Plex Mono",monospace}
+.dg-lab{font:500 11px "IBM Plex Mono",monospace}
+.wire-ok{stroke:var(--ok); stroke-width:2.5}
+.wire-dash{stroke:var(--gap); stroke-width:2; stroke-dasharray:6 5}
+.wire-dead{stroke:var(--faint); stroke-width:2; stroke-dasharray:2 6}
+.legend{display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:4px; font-size:13px; color:var(--muted)}
+.legend span{display:inline-flex; align-items:center; gap:8px}
+.swatch{width:22px; height:0; border-top-width:3px; border-top-style:solid; display:inline-block}
+
+/* ---------- generic table ---------- */
+.tablecard{border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; box-shadow:var(--shadow); background:var(--surface)}
+.scroll{overflow-x:auto}
+table{border-collapse:collapse; width:100%; font-size:14.5px}
+th,td{text-align:left; padding:12px 16px; border-bottom:1px solid var(--line); vertical-align:top}
+thead th{
+  background:var(--surface-2); font-size:12px; letter-spacing:.05em; text-transform:uppercase;
+  color:var(--muted); font-weight:600; position:sticky; top:0;
+}
+tbody tr:last-child td{border-bottom:0}
+td.mono,th.mono{font-family:"IBM Plex Mono",monospace; font-size:13px}
+.tnum{font-variant-numeric:tabular-nums}
+
+/* ---------- stat row ---------- */
+.stats{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:26px}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:16px 18px; box-shadow:var(--shadow)}
+.stat .n{font-family:"IBM Plex Mono",monospace; font-size:30px; font-weight:600; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.stat .k{font-size:12.5px; color:var(--muted); margin-top:2px}
+.split{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+.panel{border:1px solid var(--line); border-radius:12px; padding:18px 20px; background:var(--surface); box-shadow:var(--shadow)}
+.panel h3{font-size:15px; margin:0 0 10px; display:flex; align-items:center; gap:9px}
+.panel.ok{border-top:3px solid var(--ok)}
+.panel.gap{border-top:3px solid var(--gap)}
+.panel ul{margin:0; padding-left:2px; list-style:none}
+.panel li{padding:7px 0; border-bottom:1px dashed var(--line); font-size:14px; display:flex; gap:10px; align-items:baseline}
+.panel li:last-child{border-bottom:0}
+.tick{flex:none; font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:12px}
+.ok .tick{color:var(--ok)} .gap .tick{color:var(--gap)}
+
+/* ---------- chips ---------- */
+.chip{
+  display:inline-flex; align-items:center; gap:5px; font-family:"IBM Plex Mono",monospace;
+  font-size:11.5px; font-weight:500; letter-spacing:.04em; padding:2px 8px; border-radius:20px;
+  border:1px solid transparent; white-space:nowrap;
+}
+.chip.ok{background:var(--ok-soft); color:var(--ok); border-color:var(--ok)}
+.chip.gap{background:var(--gap-soft); color:var(--gap); border-color:var(--gap)}
+.chip.crit{background:var(--crit-soft); color:var(--crit); border-color:var(--crit)}
+.chip.accent{background:var(--accent-soft); color:var(--accent-ink); border-color:var(--accent)}
+
+/* ---------- work items ---------- */
+.wi{
+  background:var(--surface); border:1px solid var(--line); border-left:4px solid var(--accent);
+  border-radius:var(--radius); box-shadow:var(--shadow); padding:22px 24px; margin-bottom:18px;
+}
+.wi.p1{border-left-color:var(--crit)}
+.wi.p2{border-left-color:var(--gap)}
+.wi.p3{border-left-color:var(--accent)}
+.wi-top{display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin-bottom:6px}
+.wi-tag{font-family:"IBM Plex Mono",monospace; font-weight:600; font-size:13px; color:var(--ink)}
+.wi h3{font-size:18px; margin:2px 0 12px; width:100%}
+.wi-grid{display:grid; grid-template-columns:118px 1fr; gap:2px 18px}
+.wi-grid dt{
+  font-family:"IBM Plex Mono",monospace; font-size:11.5px; letter-spacing:.03em;
+  text-transform:uppercase; color:var(--faint); padding:7px 0 7px; border-top:1px solid var(--line);
+}
+.wi-grid dd{margin:0; padding:7px 0; font-size:14.5px; border-top:1px solid var(--line)}
+.wi-grid dt:first-of-type,.wi-grid dd:first-of-type{border-top:0}
+
+/* ---------- workflow phases ---------- */
+.phases{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+.phase{background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px 20px; box-shadow:var(--shadow)}
+.phase .ph{font-family:"IBM Plex Mono",monospace; font-size:12px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent-ink); margin-bottom:8px}
+.phase h3{font-size:16px; margin:0 0 10px}
+.phase ol{margin:0; padding-left:20px; font-size:14px}
+.phase li{margin:6px 0}
+
+/* ---------- checklist ---------- */
+.check{list-style:none; padding:0; margin:0; max-width:var(--prose)}
+.check li{display:flex; gap:12px; align-items:flex-start; padding:11px 0; border-bottom:1px solid var(--line); font-size:15px}
+.check li:last-child{border-bottom:0}
+.box{flex:none; width:18px; height:18px; border:1.5px solid var(--accent); border-radius:5px; margin-top:2px}
+
+/* ---------- appendix ---------- */
+details{background:var(--surface); border:1px solid var(--line); border-radius:12px; margin-bottom:12px; box-shadow:var(--shadow); overflow:hidden}
+summary{cursor:pointer; padding:15px 20px; font-weight:600; font-size:15px; display:flex; align-items:center; gap:10px}
+summary::-webkit-details-marker{display:none}
+summary .arw{color:var(--accent); font-family:"IBM Plex Mono",monospace; transition:transform .15s}
+details[open] summary .arw{transform:rotate(90deg)}
+summary .count{margin-left:auto; font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--muted); font-weight:500}
+.det-body{padding:4px 20px 18px}
+.persona-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:6px 14px}
+.pblock{padding:10px 0; border-top:1px dashed var(--line)}
+.pblock .bh{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--accent-ink); font-weight:600; margin-bottom:5px}
+.pills{display:flex; flex-wrap:wrap; gap:5px}
+.pill{font-family:"IBM Plex Mono",monospace; font-size:12px; background:var(--surface-2); border:1px solid var(--line); border-radius:6px; padding:2px 7px; color:var(--ink)}
+.taglist{display:flex; flex-wrap:wrap; gap:7px; margin-top:4px}
+
+footer{padding:34px 0 60px; color:var(--faint); font-size:13px}
+footer .wrap{display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center}
+
+@media (max-width:760px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .split,.phases{grid-template-columns:1fr}
+  .wi-grid{grid-template-columns:1fr}
+  .wi-grid dt{border-top:1px solid var(--line); padding-bottom:0}
+  .wi-grid dd{border-top:0; padding-top:2px}
+}
+@media print{
+  body{font-size:11pt} header,section{padding:14pt 0} .diagram,.wi,.stat,.panel,.phase,details{box-shadow:none}
+  details{break-inside:avoid} details[open] .det-body{display:block}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+:focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
+</style>
+
+<header>
+  <div class="wrap" style="padding-top:44px;padding-bottom:40px">
+    <div class="eyebrow">Config Alignment · Work Plan</div>
+    <h1>ASCEND Config Alignment Audit</h1>
+    <p class="lede">A working agenda for reconciling the training <b>program structure</b> with the <b>skills &amp; scoring</b> catalog — so every simulator and CBT an expert practices resolves to a learning block and a scorable skill.</p>
+    <div class="metabar">
+      <span><b>Files in scope</b> &nbsp;<span class="mono">training_program.yaml</span> ↔ <span class="mono">training_profiles.yaml</span></span>
+      <span><b>Snapshot</b> 2026-09-08</span>
+      <span><b>Owners</b> Training Content + Analytics</span>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- 1 -->
+  <section>
+    <div class="shead"><span class="snum">01</span><h2>Purpose &amp; participants</h2></div>
+    <p>Today the training dashboard silently drops activity it can't attribute. A tester can run the Block&nbsp;3 simulators all week and see a blank block, because the config that describes the <em>program</em> and the config that describes <em>scoring</em> don't reference each other consistently. This audit closes that gap with the people who own the source content.</p>
+    <div class="split" style="margin-top:20px">
+      <div class="panel">
+        <h3><span class="chip accent">Content team</span></h3>
+        <p style="margin:0;font-size:14px;color:var(--muted)">Owns the simulator IDs &amp; personas, which skills each block is meant to teach, and the gate test-calls. The audit needs their answers to link sims to blocks and blocks to skills.</p>
+      </div>
+      <div class="panel">
+        <h3><span class="chip accent">Analytics</span></h3>
+        <p style="margin:0;font-size:14px;color:var(--muted)">Owns the skill catalog, the behavior→skill mapping, and the pipeline. Applies the decisions to the YAML, regenerates configs, and verifies the numbers moved.</p>
+      </div>
+    </div>
+    <p style="margin-top:20px"><b>The single goal:</b> every simulator/CBT an expert practices → resolves to a block → rolls up into scorable skills → shows on the dashboard.</p>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <div class="shead"><span class="snum">02</span><h2>How the two files connect</h2></div>
+    <p><span class="mono">training_program.yaml</span> owns <b>structure</b> — the 16 learning blocks, their order, gates, and the <code>components</code> (which sims/CBTs belong to each block). <span class="mono">training_profiles.yaml</span> owns <b>skills &amp; scoring</b> — the skill catalog and the 124 simulator <code>profiles</code> that say which skills each sim evaluates. <strong>No code reads both files together</strong>; they meet only through a shared <em>skill-id</em> namespace.</p>
+
+    <div class="diagram" role="img" aria-label="Diagram: program.yaml and profiles.yaml connect only through the skill-id namespace; the persona/challenge_id link is ingestion-only and the ASC-SIM ref link is unused.">
+      <svg viewBox="0 0 720 300">
+        <!-- boxes -->
+        <rect class="dg-box" x="24" y="60" width="210" height="180" rx="12"/>
+        <text class="dg-title" x="129" y="90" text-anchor="middle">training_program.yaml</text>
+        <text class="dg-sub" x="129" y="112" text-anchor="middle">structure · blocks · gates</text>
+        <text class="dg-sub" x="129" y="150" text-anchor="middle">block.develops[ ]</text>
+        <text class="dg-sub" x="129" y="178" text-anchor="middle">component.persona</text>
+        <text class="dg-sub" x="129" y="206" text-anchor="middle">component.ref / gate</text>
+
+        <rect class="dg-box" x="486" y="60" width="210" height="180" rx="12"/>
+        <text class="dg-title" x="591" y="90" text-anchor="middle">training_profiles.yaml</text>
+        <text class="dg-sub" x="591" y="112" text-anchor="middle">skills · scoring</text>
+        <text class="dg-sub" x="591" y="150" text-anchor="middle">skills.&lt;skill-id&gt;</text>
+        <text class="dg-sub" x="591" y="178" text-anchor="middle">profiles.&lt;challenge_id&gt;</text>
+        <text class="dg-sub" x="591" y="206" text-anchor="middle">— (no ASC-SIM ids) —</text>
+
+        <!-- wires -->
+        <line class="wire-ok"   x1="234" y1="150" x2="486" y2="150"/>
+        <text class="dg-lab" x="360" y="142" text-anchor="middle" style="fill:var(--ok)">skill-id ✓ wired</text>
+        <line class="wire-dash" x1="234" y1="178" x2="486" y2="178"/>
+        <text class="dg-lab" x="360" y="171" text-anchor="middle" style="fill:var(--gap)">persona ↔ challenge_id · ingestion-only</text>
+        <line class="wire-dead" x1="234" y1="206" x2="486" y2="206"/>
+        <text class="dg-lab" x="360" y="199" text-anchor="middle" style="fill:var(--faint)">ASC-SIM ref · unused</text>
+        <text class="dg-lab" x="360" y="223" text-anchor="middle" style="fill:var(--faint)">✕ 0 overlap</text>
+      </svg>
+    </div>
+    <div class="legend">
+      <span><i class="swatch" style="border-top-color:var(--ok)"></i> Wired at runtime — the join that works</span>
+      <span><i class="swatch" style="border-top-color:var(--gap);border-top-style:dashed"></i> Used in ingestion, then discarded</span>
+      <span><i class="swatch" style="border-top-color:var(--faint);border-top-style:dotted"></i> Present but unused</span>
+    </div>
+
+    <h3 style="font-size:17px;margin:28px 0 12px">Three id-spaces — only one is connected</h3>
+    <div class="tablecard scroll">
+      <table>
+        <thead><tr><th>ID-space</th><th>Example</th><th>Lives in</th><th>Runtime?</th></tr></thead>
+        <tbody>
+          <tr><td><b>skill-id</b></td><td class="mono">show_empathy</td><td>profiles <code>skills:</code> + program <code>develops:</code></td><td><span class="chip ok">the join</span></td></tr>
+          <tr><td><b>challenge_id / persona</b></td><td class="mono">judy_terry</td><td>profiles <code>profiles:</code> + program <code>component.persona</code></td><td><span class="chip gap">ingestion-only</span></td></tr>
+          <tr><td><b>ASC-SIM ref</b></td><td class="mono">ASC-SIM-6J5TR3</td><td>program <code>component.ref</code> / <code>gate.test_call</code></td><td><span class="chip crit">unused</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top:16px;font-size:14.5px;color:var(--muted)">The only cross-file check today is <span class="mono">check_training_program.py</span> — it verifies every skill in a block's <code>develops:</code> exists in the catalog, and nothing more. It does <em>not</em> validate <code>persona</code>/<code>ref</code> against <code>challenge_id</code>; that gap is acknowledged, not accidental.</p>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <div class="shead"><span class="snum">03</span><h2>Current-state snapshot</h2></div>
+    <p class="sub">The scope of what we're aligning, as computed from the two files on 2026-09-08.</p>
+    <div class="stats">
+      <div class="stat"><div class="n">16</div><div class="k">learning blocks</div></div>
+      <div class="stat"><div class="n">26</div><div class="k">skills in catalog</div></div>
+      <div class="stat"><div class="n">124</div><div class="k">simulator profiles</div></div>
+      <div class="stat"><div class="n">100</div><div class="k">ASC-SIM refs</div></div>
+    </div>
+    <div class="split">
+      <div class="panel ok">
+        <h3><span class="chip ok">Aligned</span> what already works</h3>
+        <ul>
+          <li><span class="tick">22/22</span><span>Every skill-id used in a block's <code>develops:</code> exists in the catalog — <b>0 dangling</b>. The skill-id bridge is clean end-to-end.</span></li>
+          <li><span class="tick">3</span><span>persona ↔ challenge_id matches — <span class="mono">judy_terry</span>, <span class="mono">douglas_beatty</span>, <span class="mono">isaac_barrows</span> (Block 3, added this session; was 0 before).</span></li>
+          <li><span class="tick">22/26</span><span>catalog skills are developed by at least one block.</span></li>
+        </ul>
+      </div>
+      <div class="panel gap">
+        <h3><span class="chip gap">Gaps</span> what the audit must close</h3>
+        <ul>
+          <li><span class="tick">0/100</span><span>ASC-SIM refs overlap with any <code>challenge_id</code> — the core crosswalk gap.</span></li>
+          <li><span class="tick">90</span><span>component personas (across 13 blocks) are not profiles.</span></li>
+          <li><span class="tick">121/124</span><span>profiles are orphaned — referenced by no block component.</span></li>
+          <li><span class="tick">5</span><span>blocks have components but empty <code>develops:</code> (03, 04, 05, 07, 16).</span></li>
+          <li><span class="tick">6 · 0</span><span>gates are still <span class="mono">TODO</span>; 0 gates match a profile.</span></li>
+          <li><span class="tick">4 · 1</span><span>unmapped catalog skills, and 1 malformed ref.</span></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <div class="shead"><span class="snum">04</span><h2>Alignment work items</h2></div>
+    <p class="sub">Walk these in order during the audit. Each names the decision to make, who owns it, and how we'll know it's done.</p>
+
+    <div class="wi p1">
+      <div class="wi-top"><span class="wi-tag">WI-1</span><span class="chip crit">Highest leverage</span><span class="chip accent">Content + Analytics</span></div>
+      <h3>Persona ↔ live challenge_id crosswalk</h3>
+      <dl class="wi-grid">
+        <dt>Issue</dt><dd>The program's sim IDs (<code>ASC-SIM-…</code>) and personas don't match the live simulator <code>challenge_id</code> seen in the data (<span class="mono">scorecard_name</span>). Overlap is 0/100, so 90 personas can't map to a scorable profile.</dd>
+        <dt>Decide</dt><dd>For each sim in scope, the live <code>challenge_id</code> that corresponds to its ASC-SIM ref + persona.</dd>
+        <dt>Source</dt><dd>Content team holds the SIM design registry; Analytics supplies the live challenge_ids from the extract.</dd>
+        <dt>Done-when</dt><dd>A committed crosswalk table covers the personas in scope; ref↔challenge_id overlap &gt; 0 and rising.</dd>
+      </dl>
+    </div>
+
+    <div class="wi p1">
+      <div class="wi-top"><span class="wi-tag">WI-2</span><span class="chip crit">Blocks Block-3 fix</span><span class="chip accent">Content team</span></div>
+      <h3>Block <code>develops:</code> completeness</h3>
+      <dl class="wi-grid">
+        <dt>Issue</dt><dd>5 blocks have components but an empty <code>develops: []</code>, so they can never show skill progress — this is exactly why Block 3 renders blank even after its personas matched.</dd>
+        <dt>Decide</dt><dd>Which skills each of the 16 blocks actually teaches — starting with the 5 empties (03, 04, 05, 07, 16).</dd>
+        <dt>Source</dt><dd>Content team (curriculum intent).</dd>
+        <dt>Done-when</dt><dd><span class="mono">check_training_program.py</span> reports no <code>develops_unknown</code> errors and no unexpectedly-empty blocks; Block 3 renders skills for a known tester.</dd>
+      </dl>
+    </div>
+
+    <div class="wi p2">
+      <div class="wi-top"><span class="wi-tag">WI-3</span><span class="chip gap">Scoring coverage</span><span class="chip accent">Analytics + Content</span></div>
+      <h3>Behavior → skill mapping gaps</h3>
+      <dl class="wi-grid">
+        <dt>Issue</dt><dd>Live sims emit behaviors with no skill in the catalog (<span class="mono">scope</span>, <span class="mono">provide assurance</span>, <span class="mono">ask effective questions</span>, <span class="mono">keep customer informed</span>, <span class="mono">manage call efficiently</span>), so those rows are dropped in the rollup. 4 catalog skills are also unmapped.</dd>
+        <dt>Decide</dt><dd>For each unmapped behavior: add a new skill or alias to an existing one; resolve the 4 unmapped catalog skills.</dd>
+        <dt>Source</dt><dd>Analytics (catalog) with content-team confirmation of intent.</dd>
+        <dt>Done-when</dt><dd>Every behavior a scoped sim emits maps to a skill; the rollup drops ~0 rows for those sims.</dd>
+      </dl>
+    </div>
+
+    <div class="wi p2">
+      <div class="wi-top"><span class="wi-tag">WI-4</span><span class="chip gap">Gates</span><span class="chip accent">Content team</span></div>
+      <h3>Gate test-calls</h3>
+      <dl class="wi-grid">
+        <dt>Issue</dt><dd>6 blocks have <code>gate.test_call: TODO</code>, and no gate maps to a scorable profile — gate scoring isn't wired to data.</dd>
+        <dt>Decide</dt><dd>The gate test-call per block, and whether gates score now or stay curriculum-only for this pass.</dd>
+        <dt>Source</dt><dd>Content team.</dd>
+        <dt>Done-when</dt><dd>No <code>TODO</code> gates remain (or each is explicitly deferred with an owner).</dd>
+      </dl>
+    </div>
+
+    <div class="wi p3">
+      <div class="wi-top"><span class="wi-tag">WI-5</span><span class="chip accent">Data hygiene</span><span class="chip accent">Analytics</span></div>
+      <h3>Data hygiene</h3>
+      <dl class="wi-grid">
+        <dt>Issue</dt><dd>Block 8 has a malformed ref <code>ASC-ASC-SIM-3JEJ0P</code> (double <span class="mono">ASC-</span> prefix, persona <span class="mono">reanna_jaskolski</span>).</dd>
+        <dt>Decide</dt><dd>Correct the ref; spot-check SIM ID formatting across all components.</dd>
+        <dt>Source</dt><dd>Analytics.</dd>
+        <dt>Done-when</dt><dd>All refs match the <code>ASC-SIM-XXXXXX</code> pattern.</dd>
+      </dl>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <div class="shead"><span class="snum">05</span><h2>Audit workflow</h2></div>
+    <div class="phases">
+      <div class="phase">
+        <div class="ph">Before</div>
+        <h3>Prepare</h3>
+        <ol>
+          <li>Circulate this doc + the appendix worksheets.</li>
+          <li>Content team pre-fills any persona→challenge_id mappings they already know.</li>
+          <li>Analytics exports the live challenge_ids + unmapped behaviors from the latest extract.</li>
+        </ol>
+      </div>
+      <div class="phase">
+        <div class="ph">During</div>
+        <h3>Decide &amp; log</h3>
+        <ol>
+          <li>Walk WI-1 → WI-5 in order.</li>
+          <li>Log every decision (persona→challenge_id, block→skills) in a shared sheet as you go.</li>
+          <li>Any unknown becomes an action with an owner and a due date — don't block the room.</li>
+        </ol>
+      </div>
+      <div class="phase">
+        <div class="ph">After</div>
+        <h3>Apply &amp; confirm</h3>
+        <ol>
+          <li>Analytics applies decisions to the YAMLs and regenerates configs.</li>
+          <li>Re-run verification (section 06).</li>
+          <li>Send the refreshed snapshot back so the team sees the numbers move.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <div class="shead"><span class="snum">06</span><h2>Verification &amp; sign-off</h2></div>
+    <p class="sub">The loop that proves an alignment decision actually took effect.</p>
+    <ul class="check">
+      <li><span class="box"></span><span>Regenerate mappings — <span class="mono">python tools/gen_training_configs.py</span></span></li>
+      <li><span class="box"></span><span>Structure check passes — <span class="mono">python -m pde.cli.check_training_program</span> reports no new <code>develops_unknown</code> errors</span></li>
+      <li><span class="box"></span><span>Rebuild skills + run pipeline — <span class="mono">build_training_assist_skills</span> → <span class="mono">run_training_pipeline</span></span></li>
+      <li><span class="box"></span><span>Confirm attribution — a known tester's audited sim activity now attaches to the intended block in <span class="mono">training_dashboard.json</span></span></li>
+      <li><span class="box"></span><span><b>Sign-off:</b> agreed snapshot targets met — ref↔challenge_id overlap, empty-develops count, and unmapped-behavior count all at target</span></li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <div class="shead"><span class="snum">07</span><h2>Appendix — worksheets</h2></div>
+    <p class="sub">The raw computed lists to fill in offline. Expand each to work through it.</p>
+
+    <details open>
+      <summary><span class="arw">▸</span> Component personas that aren't profiles <span class="count">90 · 13 blocks</span></summary>
+      <div class="det-body">
+        <div class="pblock"><div class="bh">block_04 · Client Tools</div><div class="pills"><span class="pill">zaria_streich</span><span class="pill">james_emard</span><span class="pill">elisha_bins</span><span class="pill">crystal_bernier</span><span class="pill">vivien_thompson</span><span class="pill">brigitte_kunze</span></div></div>
+        <div class="pblock"><div class="bh">block_05 · Sales Foundation</div><div class="pills"><span class="pill">darla_dimple</span><span class="pill">alexa_berge</span><span class="pill">bruce_gulgowski</span><span class="pill">korey_gutmann</span><span class="pill">mike_mann</span></div></div>
+        <div class="pblock"><div class="bh">block_06 · Greeting / Verify / Assess</div><div class="pills"><span class="pill">libbie_lubowitz</span><span class="pill">camryn_kihn</span><span class="pill">bennett_mante</span><span class="pill">stan_green</span><span class="pill">rebecca_brekke</span></div></div>
+        <div class="pblock"><div class="bh">block_07 · Troubleshooting Basics</div><div class="pills"><span class="pill">amanda_waller</span><span class="pill">rhett_stokes</span><span class="pill">alvis_ernser</span><span class="pill">heather_kunze</span><span class="pill">hyman_greenholt</span><span class="pill">sally_pollich</span><span class="pill">albin_boehm</span></div></div>
+        <div class="pblock"><div class="bh">block_08 · Device Basics</div><div class="pills"><span class="pill">quinten_balistreri</span><span class="pill">cara_sawayn</span><span class="pill">jenna_parisian</span><span class="pill">reanna_jaskolski</span><span class="pill">jaqueline_kassulke</span><span class="pill">helmer_ebert</span><span class="pill">della_morissette</span><span class="pill">sean_west</span></div></div>
+        <div class="pblock"><div class="bh">block_09 · Hardware vs Software</div><div class="pills"><span class="pill">nadine_stark</span><span class="pill">ansley_rutherford</span><span class="pill">nannie_considine</span><span class="pill">donny_schiller</span><span class="pill">rodrick_feest</span><span class="pill">dashawn_olson</span><span class="pill">elyssa_beer</span><span class="pill">jakayla_stroman</span></div></div>
+        <div class="pblock"><div class="bh">block_10 · Networking</div><div class="pills"><span class="pill">lana_lang</span><span class="pill">rolando_wolf</span><span class="pill">khalid_parker</span><span class="pill">marquis_windler</span><span class="pill">willow_wintheiser</span><span class="pill">chanel_muller</span><span class="pill">felix_lebsack</span><span class="pill">monroe_smitham</span><span class="pill">harvey_quitzon</span></div></div>
+        <div class="pblock"><div class="bh">block_11 · Activations &amp; Onboarding</div><div class="pills"><span class="pill">devon_schaden</span><span class="pill">myles_will</span><span class="pill">lee_renner</span><span class="pill">alisha_lindgren</span><span class="pill">victor_hayes_west</span><span class="pill">dwight_wolf</span><span class="pill">carleton_nader</span><span class="pill">matilde_stanton</span><span class="pill">paris_weimann</span><span class="pill">emmy_carroll</span><span class="pill">virginie_mertz</span><span class="pill">lafayette_rath</span><span class="pill">desiree_thiel</span><span class="pill">conor_bailey</span><span class="pill">leda_grady</span></div></div>
+        <div class="pblock"><div class="bh">block_12 · Carrier Account</div><div class="pills"><span class="pill">arthur_curry</span><span class="pill">golda_roberts</span><span class="pill">kareem_bode</span><span class="pill">reina_haley</span><span class="pill">lia_shanahan</span><span class="pill">hattie_bahringer</span><span class="pill">robb_hermiston</span><span class="pill">hans_streich</span></div></div>
+        <div class="pblock"><div class="bh">block_13 · Insurance &amp; Warranty</div><div class="pills"><span class="pill">aisha_campbell</span><span class="pill">hellen_klein</span><span class="pill">enoch_stoltenberg</span><span class="pill">marisa_casper</span></div></div>
+        <div class="pblock"><div class="bh">block_14 · Sales in Action</div><div class="pills"><span class="pill">jubilation_lee</span><span class="pill">rebeka_bahringer</span><span class="pill">doug_feil</span><span class="pill">brandt_terry</span><span class="pill">neil_morar</span><span class="pill">reba_veum</span><span class="pill">jeramie_stark</span></div></div>
+        <div class="pblock"><div class="bh">block_15 · Confirm, Recap, Close</div><div class="pills"><span class="pill">thomas_oliver</span><span class="pill">aron_kling</span><span class="pill">daisy_hansen</span><span class="pill">timmothy_o_hara</span></div></div>
+        <div class="pblock"><div class="bh">block_16 · Training Closing</div><div class="pills"><span class="pill">kara_danvers</span><span class="pill">leonard_doyle</span><span class="pill">lavina_wuckert</span><span class="pill">ginger_zemlak</span></div></div>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="arw">▸</span> Blocks with components but empty <code>develops:</code> <span class="count">5</span></summary>
+      <div class="det-body">
+        <div class="taglist">
+          <span class="pill">block_03 · Tools for the Call Flow — Asurion Tools</span>
+          <span class="pill">block_04 · Tools for the Call Flow — Client Tools</span>
+          <span class="pill">block_05 · Sales Foundation</span>
+          <span class="pill">block_07 · Troubleshooting Basics</span>
+          <span class="pill">block_16 · Expert Readiness — Training Closing</span>
+        </div>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="arw">▸</span> Unmapped behaviors &amp; skills to resolve <span class="count">5 + 4</span></summary>
+      <div class="det-body">
+        <p style="font-size:13.5px;color:var(--muted);margin:6px 0 4px">Live behaviors with no skill (WI-3):</p>
+        <div class="taglist"><span class="pill">scope</span><span class="pill">provide assurance</span><span class="pill">ask effective questions</span><span class="pill">keep customer informed</span><span class="pill">manage call efficiently</span></div>
+        <p style="font-size:13.5px;color:var(--muted);margin:16px 0 4px">Catalog skills flagged <code>unmapped</code>:</p>
+        <div class="taglist"><span class="pill">ask_to_enroll</span><span class="pill">recorded_disclosures_statement</span><span class="pill">resolve</span><span class="pill">understand_customer_issue</span></div>
+      </div>
+    </details>
+
+    <details>
+      <summary><span class="arw">▸</span> Gate test-calls <span class="count">10 set · 6 TODO</span></summary>
+      <div class="det-body">
+        <p style="font-size:13.5px;color:var(--muted);margin:6px 0 4px">Still <code>TODO</code> (WI-4):</p>
+        <div class="taglist"><span class="pill">block_01</span><span class="pill">block_02</span><span class="pill">block_03</span><span class="pill">block_05</span><span class="pill">block_06</span><span class="pill">block_07</span></div>
+        <p style="font-size:13.5px;color:var(--muted);margin:16px 0 4px">Have an ASC-SIM id — but none maps to a profile:</p>
+        <div class="taglist"><span class="pill">block_04</span><span class="pill">block_08</span><span class="pill">block_09</span><span class="pill">block_10</span><span class="pill">block_11</span><span class="pill">block_12</span><span class="pill">block_13</span><span class="pill">block_14</span><span class="pill">block_15</span><span class="pill">block_16</span></div>
+      </div>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap">
+    <span class="mono" style="color:var(--accent-ink)">ASCEND · config alignment</span>
+    <span>Snapshot 2026-09-08 · computed from training_program.yaml + training_profiles.yaml</span>
+    <span>Working document — decisions logged live during the audit.</span>
+  </div>
+</footer>

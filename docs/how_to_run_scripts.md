@@ -16,6 +16,27 @@ python -m pde.cli.run_pipeline --raw-dir data/raw/weekly/latest --out-dir output
 # When changing gating thresholds or the abstention floor (active.yaml: abstention.min_priority_score),
 # re-run and compare eligible_signals / scores_windowed / recommendation + abstention counts before committing.
 
+## TRAINING flow (TrAIning Assist + CBT) — run these THREE steps in order
+# The training extract is isolated from the weekly snapshot: it writes to data/raw/adhoc/latest
+# (see extraction/configs/extract_training_assist.yaml). Edit start_date/end_date there to cover
+# the class start dates in the roster before running.
+
+# 1. run the training extract (TrAIning Assist + CBT + coaching_history -> data/raw/adhoc/latest)
+python extraction/scripts/run_extract.py --config extraction/configs/extract_training_assist.yaml
+
+# 2. REQUIRED rollup: turn raw training_assist.csv into training_assist_skills.csv (tall-skinny, per-skill).
+#    DON'T SKIP THIS. The pipeline preflight needs training_assist_skills.csv; without it you get:
+#      ERROR snapshot: required table 'training_assist_skills' missing at ...\training_assist_skills.csv
+#      config-lint FAIL / Preflight failed.
+#    (training_cbt.csv is already day-grain tall-skinny -- no rollup needed for CBT.)
+python -m pde.cli.build_training_assist_skills --raw-dir data/raw/adhoc/latest
+
+# 3. run the training pipeline + dashboard. Reads the class roster fresh each run from
+#    data/training/training_class_roster.xlsx (gitignored PII; drop the latest export there first).
+#    The roster is the dashboard's source of truth for WHO appears -- agents not in it are dropped.
+python -m pde.cli.run_training_pipeline --raw-dir data/raw/adhoc/latest --out-dir outputs/training_runs/2026-03-03_TEST
+# output: outputs/training_runs/<run>/training_dashboard.html
+
 ## recalculate benchmarks from the latest extract (propose-only; writes a dashboard + proposed change-set)
 # does NOT modify configs/mappings/benchmarks.yaml
 python -m pde.cli.recalc_benchmarks --configs-dir configs --out-dir outputs/benchmark_recalc/2026-03-03_recal
