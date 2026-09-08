@@ -56,6 +56,9 @@ program:
     develops:
     - set_expectations
     - transition_statement
+    - scope
+    - keep_customer_informed
+    - manage_call_efficiency
     components:
     - kind: skill_sim
       ref: ASC-SIM-QHNT5G
@@ -187,7 +190,8 @@ program:
     gate:
       test_call: TODO
       pass_mark: 0.9
-    develops: []
+    develops:
+    - recorded_disclosures_statement
     components:
     - kind: skill_sim
       ref: ASC-SIM-C7FDKK
@@ -288,7 +292,8 @@ program:
     gate:
       test_call: TODO
       pass_mark: 0.9
-    develops: []
+    develops:
+    - understand_customer_issue
     components:
     - kind: skill_sim
       ref: ASC-SIM-EQS84V
@@ -350,6 +355,7 @@ program:
       pass_mark: 0.9
     develops:
     - test_resolution
+    - resolve
     components:
     - kind: skill_sim
       ref: ASC-SIM-4BC7SG
@@ -783,6 +789,7 @@ program:
     - ask_to_send_link
     - transition_statement
     - conversational_language
+    - ask_to_enroll
     components:
     - kind: skill_sim
       ref: ASC-SIM-C7G2PV

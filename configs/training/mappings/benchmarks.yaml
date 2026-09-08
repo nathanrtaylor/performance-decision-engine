@@ -6,13 +6,23 @@ benchmarks:
     default: 0.8
   ty_reinforcement:
     default: 0.8
+  keep_customer_informed:
+    default: 0.8
+  manage_call_efficiency:
+    default: 0.8
+  scope:
+    default: 0.8
   set_expectations:
     default: 0.8
   verification:
     default: 0.8
   ask_for_sale:
     default: 0.8
+  ask_to_enroll:
+    default: 0.8
   ask_to_send_link:
+    default: 0.8
+  recorded_disclosures_statement:
     default: 0.8
   reassure:
     default: 0.8
@@ -24,7 +34,11 @@ benchmarks:
     default: 0.8
   advanced_discovery:
     default: 0.8
+  understand_customer_issue:
+    default: 0.8
   resolve_concerns:
+    default: 0.8
+  resolve:
     default: 0.8
   test_resolution:
     default: 0.8
@@ -48,11 +62,17 @@ benchmarks:
     default: 0.8
   cbt_00ab17ebab4f10011f07836eeb180001:
     default: 0.8
+  cbt_169d470b3aa7100111d953ca603e0000:
+    default: 0.8
   cbt_169d470b3aa71001f86dbf39ed310001:
     default: 0.8
   cbt_19ae69a016741001672b3bd446090000:
     default: 0.8
   cbt_200088594125100108ea94dee11a0001:
+    default: 0.8
+  cbt_200088594125100109baea69be6a0000:
+    default: 0.8
+  cbt_20008859412510015385db06d9d50000:
     default: 0.8
   cbt_200088594125100167c7c11cebab0000:
     default: 0.8
@@ -78,6 +98,10 @@ benchmarks:
     default: 0.8
   cbt_43360ed599dd10016b35bb4737960001:
     default: 0.8
+  cbt_47b1821e864c1001b0be99118b7f0000:
+    default: 0.8
+  cbt_47b1821e864c1002085bd96c316d0000:
+    default: 0.8
   cbt_47b1821e864c100208720c6915330000:
     default: 0.8
   cbt_4e98b60030441001648f73476c8e0001:
@@ -100,9 +124,13 @@ benchmarks:
     default: 0.8
   cbt_537b8cabbbe610016b6c37f23b1e0000:
     default: 0.8
+  cbt_537b8cabbbe610016b6ca47d06aa0000:
+    default: 0.8
   cbt_537b8cabbbe610016b8a2da9b1f90000:
     default: 0.8
   cbt_537b8cabbbe610016b8adbbe18d20000:
+    default: 0.8
+  cbt_537b8cabbbe610016b8dea7aea050000:
     default: 0.8
   cbt_5d31e209b0881000cb609a5c551d0000:
     default: 0.8
@@ -112,13 +140,23 @@ benchmarks:
     default: 0.8
   cbt_638adfafc54610016afc7881a90c0000:
     default: 0.8
+  cbt_638adfafc54610016b10cec655e90000:
+    default: 0.8
   cbt_64844428d3b010011070b7794e310000:
     default: 0.8
   cbt_64844428d3b01001fef475b3ae7a0000:
     default: 0.8
   cbt_64844428d3b01002075a39e13e5c0001:
     default: 0.8
+  cbt_67333e4626bb100111865fbb4f930000:
+    default: 0.8
+  cbt_73acee92da1810016b1e68f0ea910000:
+    default: 0.8
   cbt_73acee92da1810016b3790f349a60000:
+    default: 0.8
+  cbt_73acee92da1810016b3e58ac8c3d0001:
+    default: 0.8
+  cbt_73acee92da1810016b546b00b4d30000:
     default: 0.8
   cbt_73acee92da1810016b54c35bfff90000:
     default: 0.8
@@ -127,6 +165,8 @@ benchmarks:
   cbt_73acee92da1810016b572b98cb410000:
     default: 0.8
   cbt_7a7363c1262110011acc78b4f44e0001:
+    default: 0.8
+  cbt_7ee5c5a9d9f11000bf4ad539c90d0000:
     default: 0.8
   cbt_7ee5c5a9d9f1100110641ef30e820001:
     default: 0.8
@@ -142,9 +182,23 @@ benchmarks:
     default: 0.8
   cbt_8bb0364337411001618e808100e10000:
     default: 0.8
+  cbt_8c0f1edcb20d10020383a6bd86340001:
+    default: 0.8
+  cbt_9c235383e9021001a4d0621a5ed80000:
+    default: 0.8
   cbt_a244142a52fb1001075496fde80e0000:
     default: 0.8
+  cbt_a244142a52fb1001b5226252963c0000:
+    default: 0.8
+  cbt_a244142a52fb1001b553e0c62ae40000:
+    default: 0.8
   cbt_a27a4e7db9471001b8269b1060a50000:
+    default: 0.8
+  cbt_a28ca0e45a8d10020836ea06d8da0000:
+    default: 0.8
+  cbt_a9105476d2251001ba42dda48b370000:
+    default: 0.8
+  cbt_b671811edf9b1000cf7d81e90ff70001:
     default: 0.8
   cbt_b6adc89666d51001f4fc1d20370f0000:
     default: 0.8
@@ -154,7 +208,11 @@ benchmarks:
     default: 0.8
   cbt_c2985ae6935d100160576de7e37f0001:
     default: 0.8
+  cbt_c3fe7d8f59e210016d95b3bbb1460001:
+    default: 0.8
   cbt_c720360a9e7d1000c958624d51550000:
+    default: 0.8
+  cbt_c720360a9e7d1001b53eb1fe3e4a0001:
     default: 0.8
   cbt_cf7f5af1d98d1000cb1937721f3c0000:
     default: 0.8
@@ -164,7 +222,13 @@ benchmarks:
     default: 0.8
   cbt_cf7f5af1d98d1000ce24a3c00ef80000:
     default: 0.8
+  cbt_cf7f5af1d98d1001a6f3e13b49f40000:
+    default: 0.8
   cbt_d0869a1863b9100205ea22fd0fb40001:
+    default: 0.8
+  cbt_d615441aab481000ca754e18c0b20001:
+    default: 0.8
+  cbt_e3242ff6ce6010016b2ab26289830000:
     default: 0.8
   cbt_ea7cdb415d751001f743aaab19480000:
     default: 0.8

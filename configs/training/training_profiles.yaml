@@ -97,6 +97,7 @@ skills:
     source_eval_name: Warm Greeting
     behavior_names:
     - greeting
+    - warm greeting
     mapping_status: mapped
   show_empathy:
     label: Show Empathy
@@ -104,6 +105,7 @@ skills:
     source_eval_name: Show Empathy
     behavior_names:
     - show compassion
+    - show empathy
     mapping_status: mapped_alias
   reassure:
     label: Reassure the Customer
@@ -111,6 +113,7 @@ skills:
     source_eval_name: Reassure
     behavior_names:
     - reassurance
+    - provide assurance
     mapping_status: mapped_alias
 
   # —— Call Control (call_control) ——
@@ -128,14 +131,36 @@ skills:
     behavior_names:
     - set expectations
     mapping_status: mapped
+  scope:
+    label: Scope of Support
+    category: call_control
+    source_eval_name: Scope
+    behavior_names:
+    - scope
+    mapping_status: mapped
+  keep_customer_informed:
+    label: Keep Customer Informed
+    category: call_control
+    source_eval_name: Keep Customer Informed
+    behavior_names:
+    - keep customer informed
+    mapping_status: mapped
+  manage_call_efficiency:
+    label: Manage Call Efficiently
+    category: call_control
+    source_eval_name: Manage Call Efficiently
+    behavior_names:
+    - manage call efficiently
+    mapping_status: mapped
 
   # —— Technical Discovery (discovery) ——
   understand_customer_issue:
     label: Understand Customer Issue
     category: discovery
     source_eval_name: Understand Customer Issue
-    behavior_names: []
-    mapping_status: unmapped
+    behavior_names:
+    - ask effective questions
+    mapping_status: mapped_alias
   account_assessment:
     label: Account Assessment
     category: discovery
@@ -156,8 +181,9 @@ skills:
     label: Resolve
     category: resolution
     source_eval_name: Resolve
-    behavior_names: []
-    mapping_status: unmapped
+    behavior_names:
+    - resolve the customer's issue
+    mapping_status: mapped_alias
   test_resolution:
     label: Confirm / Test Resolution
     category: resolution
@@ -242,8 +268,9 @@ skills:
     label: Ask to Enroll
     category: closing
     source_eval_name: Ask to Enroll
-    behavior_names: []
-    mapping_status: unmapped
+    behavior_names:
+    - ask to enroll
+    mapping_status: mapped
   ask_to_send_link:
     label: Ask to Send Enrollment Link
     category: closing
@@ -251,6 +278,13 @@ skills:
     behavior_names:
     - ask to send enrollment link
     mapping_status: mapped_alias
+  celebrate_enrollment:
+    label: Celebrate Enrollment
+    category: closing
+    source_eval_name: Celebrate Enrollment
+    behavior_names:
+    - celebrate enrollment
+    mapping_status: mapped
 
   # —— Objection Handling (objection_handling) ——
   resolve_concerns:
@@ -266,8 +300,9 @@ skills:
     label: Recorded Disclosures Statement
     category: compliance
     source_eval_name: Recorded Disclosures Statement
-    behavior_names: []
-    mapping_status: unmapped
+    behavior_names:
+    - disclosures statement
+    mapping_status: mapped_alias
 
   # —— Call Close (call_close) ——
   ty_reinforcement:
@@ -4900,13 +4935,10 @@ profiles:
   # Persona -> Block 3 topic (from training_program.yaml block_03): judy_terry = Expert Workspace,
   # douglas_beatty = Expert Assist, isaac_barrows = Tool Efficiency.
   #
-  # MAPPING GAP (read before trusting the scores): of the behaviors these sims currently evaluate
-  # in the raw extract, ONLY "show compassion" (-> show_empathy) is in the `skills:` catalog above.
-  # The others observed -- scope, provide assurance, ask effective questions, keep customer
-  # informed, manage call efficiently -- have NO behavior_names entry, so build_training_assist_skills
-  # drops them at the behavior->skill step regardless of the requirements listed here. Registering
-  # these profiles lets the show_empathy rows flow through; add the missing behaviors to `skills:`
-  # to score the rest. `requirements` below therefore lists only the mapped skill (show_empathy).
+  # MAPPING (WI-3, done 2026-09-08): every behavior these sims evaluate is now in the `skills:`
+  # catalog — show compassion->show_empathy, provide assurance->reassure, ask effective questions->
+  # understand_customer_issue, plus new skills scope / keep_customer_informed / manage_call_efficiency.
+  # `requirements` below list each persona's full observed, skill-mapped behavior set.
   judy_terry:
     challenge_id: judy_terry
     sim_id: ASC-SIM-6J5TR3
@@ -4927,11 +4959,12 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
-        scope, show compassion, provide assurance, ask effective questions. Only "show compassion"
-        is skill-mapped today; the rest are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   douglas_beatty:
     challenge_id: douglas_beatty
     sim_id: ASC-SIM-876TLE
@@ -4952,11 +4985,12 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
-        ask effective questions, provide assurance, show compassion, scope. Only "show compassion"
-        is skill-mapped today; the rest are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   isaac_barrows:
     challenge_id: isaac_barrows
     sim_id: ASC-SIM-45TM95
@@ -4977,12 +5011,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - manage_call_efficiency
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
-        show compassion, keep customer informed, provide assurance, manage call efficiently,
-        ask effective questions, scope. Only "show compassion" is skill-mapped today; the rest
-        are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
 
   # ======== ASCEND Launchpad · Block 4 — Tools for the Call Flow / Client Tools (6) ========
   # Added 2026-09-08. Block 4 ("Client Tools") simulator personas now appearing in the live
@@ -4994,11 +5030,10 @@ profiles:
   # vivien_thompson = InfoManager, brigitte_kunze = Client Tool Integration (block gate, End-to-End
   # test call — kind: test_call in the program, but a scored persona in the live extract like the rest).
   #
-  # MAPPING GAP (same as Block 3): these sims evaluate show compassion, provide assurance, keep
-  # customer informed, scope, ask effective questions, and resolve the customer's issue. Of these
-  # ONLY "show compassion" (-> show_empathy) is in the `skills:` catalog; the other five have no
-  # behavior_names entry, so build_training_assist_skills drops them at the behavior->skill step.
-  # `requirements` below therefore lists only show_empathy (close via WI-3 in the alignment audit).
+  # MAPPING (WI-3, done 2026-09-08): all behaviors these sims evaluate are now skill-mapped in
+  # `skills:` (show compassion->show_empathy, provide assurance->reassure, ask effective questions->
+  # understand_customer_issue, scope, keep_customer_informed, resolve the customer's issue->resolve).
+  # `requirements` below list each persona's full observed behavior set.
   zaria_streich:
     challenge_id: zaria_streich
     sim_id: ASC-SIM-5Q34K5
@@ -5019,12 +5054,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
-        show compassion, provide assurance, keep customer informed, scope, ask effective questions,
-        resolve the customer's issue. Only "show compassion" is skill-mapped today; the rest are
-        unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   james_emard:
     challenge_id: james_emard
     sim_id: ASC-SIM-BJ75P9
@@ -5045,12 +5082,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
-        ask effective questions, provide assurance, resolve the customer's issue, keep customer
-        informed, show compassion, scope. Only "show compassion" is skill-mapped today; the rest
-        are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   elisha_bins:
     challenge_id: elisha_bins
     sim_id: ASC-SIM-4NDG87
@@ -5071,12 +5110,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
-        ask effective questions, resolve the customer's issue, scope, keep customer informed,
-        show compassion, provide assurance. Only "show compassion" is skill-mapped today; the rest
-        are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   crystal_bernier:
     challenge_id: crystal_bernier
     sim_id: ASC-SIM-7569J5
@@ -5097,12 +5138,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
-        resolve the customer's issue, provide assurance, ask effective questions, scope,
-        show compassion, keep customer informed. Only "show compassion" is skill-mapped today; the
-        rest are unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   vivien_thompson:
     challenge_id: vivien_thompson
     sim_id: ASC-SIM-AFEEEV
@@ -5123,12 +5166,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
-        scope, provide assurance, ask effective questions, keep customer informed, show compassion,
-        resolve the customer's issue. Only "show compassion" is skill-mapped today; the rest are
-        unmapped pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona; requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
   brigitte_kunze:
     challenge_id: brigitte_kunze
     sim_id: ASC-SIM-W9BG4E
@@ -5149,13 +5194,14 @@ profiles:
     requirements:
       always:
       - show_empathy
+      - reassure
+      - understand_customer_issue
+      - scope
+      - keep_customer_informed
+      - resolve
     source_match: manual_add
     notes:
-      eval_notes: ASCEND Launchpad Block 4 (Client Tools) block-gate End-to-End test call
-        (kind test_call in training_program.yaml block_04). Observed raw behaviors — resolve the
-        customer's issue, provide assurance, show compassion, ask effective questions, scope, keep
-        customer informed. Only "show compassion" is skill-mapped today; the rest are unmapped
-        pending skills-catalog additions.
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) block-gate End-to-End test call (kind test_call in training_program.yaml block_04); requirements now list all observed behaviors, skill-mapped via WI-3 (previously show_empathy-only).
 
   # ======== ASCEND Launchpad · Block 13 — Insurance & Warranty Claims (1 of 4 live) ========
   # Added 2026-09-08. Only aisha_campbell (Coverage Discovery) has landed in the live TrAIning
