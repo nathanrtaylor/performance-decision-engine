@@ -26,7 +26,7 @@ run:
 globals:
   source_schema: "hive.care"
   start_date: "2026-08-22"
-  end_date:   "2026-09-04"
+  end_date:   "2026-09-11"
   grain: "week"
   use_pay_calendar: false
 
