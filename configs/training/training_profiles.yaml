@@ -308,8 +308,8 @@ skills:
 # sim_id == component.ref -- making the profile<->program link explicit in data.
 # check_training_program.py enforces that pairing. No code reads sim_id at runtime yet (data-only;
 # a stable anchor for tooling/validation). Absent until that sim exists in the workbook / goes
-# live in TA under this persona -- today only the 3 block_03 personas below qualify; the rest
-# fill in as ASCEND sims launch.
+# live in TA under this persona -- today the block_03 and block_04 personas below qualify (9 total);
+# the rest fill in as ASCEND sims launch.
 # ---------------------------------------------------------------------------
 profiles:
 
@@ -4983,6 +4983,1984 @@ profiles:
         show compassion, keep customer informed, provide assurance, manage call efficiently,
         ask effective questions, scope. Only "show compassion" is skill-mapped today; the rest
         are unmapped pending skills-catalog additions.
+
+  # ======== ASCEND Launchpad · Block 4 — Tools for the Call Flow / Client Tools (6) ========
+  # Added 2026-09-08. Block 4 ("Client Tools") simulator personas now appearing in the live
+  # TrAIning Assist extract (data/raw/adhoc/latest/training_assist.csv, 6 behaviors each), taken
+  # by testers — the same crosswalk closure as the Block 3 personas above. Each sim_id/persona pair
+  # matches a training_program.yaml block_04 component (validated by check_training_program.py).
+  # Persona -> Block 4 topic (from training_program.yaml block_04): zaria_streich = ACSS Basics,
+  # james_emard = ACSS Basics, elisha_bins = ACSS Activation Support, crystal_bernier = TRG Basics,
+  # vivien_thompson = InfoManager, brigitte_kunze = Client Tool Integration (block gate, End-to-End
+  # test call — kind: test_call in the program, but a scored persona in the live extract like the rest).
+  #
+  # MAPPING GAP (same as Block 3): these sims evaluate show compassion, provide assurance, keep
+  # customer informed, scope, ask effective questions, and resolve the customer's issue. Of these
+  # ONLY "show compassion" (-> show_empathy) is in the `skills:` catalog; the other five have no
+  # behavior_names entry, so build_training_assist_skills drops them at the behavior->skill step.
+  # `requirements` below therefore lists only show_empathy (close via WI-3 in the alignment audit).
+  zaria_streich:
+    challenge_id: zaria_streich
+    sim_id: ASC-SIM-5Q34K5
+    source_profile_name: Zaria Streich
+    reporting_label: ACSS Basics
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: ACSS Basics
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
+        show compassion, provide assurance, keep customer informed, scope, ask effective questions,
+        resolve the customer's issue. Only "show compassion" is skill-mapped today; the rest are
+        unmapped pending skills-catalog additions.
+  james_emard:
+    challenge_id: james_emard
+    sim_id: ASC-SIM-BJ75P9
+    source_profile_name: James Emard
+    reporting_label: ACSS Basics
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: ACSS Basics
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
+        ask effective questions, provide assurance, resolve the customer's issue, keep customer
+        informed, show compassion, scope. Only "show compassion" is skill-mapped today; the rest
+        are unmapped pending skills-catalog additions.
+  elisha_bins:
+    challenge_id: elisha_bins
+    sim_id: ASC-SIM-4NDG87
+    source_profile_name: Elisha Bins
+    reporting_label: ACSS Activation Support
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: ACSS Activation Support
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
+        ask effective questions, resolve the customer's issue, scope, keep customer informed,
+        show compassion, provide assurance. Only "show compassion" is skill-mapped today; the rest
+        are unmapped pending skills-catalog additions.
+  crystal_bernier:
+    challenge_id: crystal_bernier
+    sim_id: ASC-SIM-7569J5
+    source_profile_name: Crystal Bernier
+    reporting_label: TRG Basics
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: TRG Basics
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
+        resolve the customer's issue, provide assurance, ask effective questions, scope,
+        show compassion, keep customer informed. Only "show compassion" is skill-mapped today; the
+        rest are unmapped pending skills-catalog additions.
+  vivien_thompson:
+    challenge_id: vivien_thompson
+    sim_id: ASC-SIM-AFEEEV
+    source_profile_name: Vivien Thompson
+    reporting_label: InfoManager
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: InfoManager
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) sim persona. Observed raw behaviors —
+        scope, provide assurance, ask effective questions, keep customer informed, show compassion,
+        resolve the customer's issue. Only "show compassion" is skill-mapped today; the rest are
+        unmapped pending skills-catalog additions.
+  brigitte_kunze:
+    challenge_id: brigitte_kunze
+    sim_id: ASC-SIM-W9BG4E
+    source_profile_name: Brigitte Kunze
+    reporting_label: Client Tool Integration
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: Client Tool Integration
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 4 (Client Tools) block-gate End-to-End test call
+        (kind test_call in training_program.yaml block_04). Observed raw behaviors — resolve the
+        customer's issue, provide assurance, show compassion, ask effective questions, scope, keep
+        customer informed. Only "show compassion" is skill-mapped today; the rest are unmapped
+        pending skills-catalog additions.
+
+  # ======== ASCEND Launchpad · Block 13 — Insurance & Warranty Claims (1 of 4 live) ========
+  # Added 2026-09-08. Only aisha_campbell (Coverage Discovery) has landed in the live TrAIning
+  # Assist extract so far; the other block_13 personas (hellen_klein, enoch_stoltenberg,
+  # marisa_casper) are not in the extract yet and remain unregistered pending their arrival.
+  # NOTE: unlike the Block 3/4 tool sims (show_empathy-only), this persona runs a FULL sales-flow
+  # scorecard — all 15 observed behaviors map to catalog skills, so requirements below is complete.
+  aisha_campbell:
+    challenge_id: aisha_campbell
+    sim_id: ASC-SIM-8RW979
+    source_profile_name: Aisha Campbell
+    reporting_label: Coverage Discovery
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: Coverage Discovery
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - warm_greeting
+      - show_empathy
+      - reassure
+      - set_expectations
+      - test_resolution
+      - transition_statement
+      - discovery_question
+      - engagement_question
+      - core_benefit_1
+      - core_benefit_2
+      - core_benefit_3
+      - price_statement
+      - ask_for_sale
+      - survey
+      - goodbye_with_rapport
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 13 (Insurance & Warranty Claims) sim persona; topic
+        Coverage Discovery. Full sales-flow scorecard — all 15 observed behaviors map to catalog
+        skills (unlike the Block 3/4 tool sims). Observed — greeting, show compassion, reassurance,
+        set expectations, confirm resolution, transition statement, discovery questions, engagement
+        questions, core benefit rrr/future/non-partner, price, ask for sale, survey, goodbye w/
+        rapport.
+
+  # ======== ASCEND Launchpad · block_05 — Sales Foundation - Product Knowledge, Compliance & Integrity (5 pre-registered, not yet live) ========
+  darla_dimple:
+    challenge_id: darla_dimple
+    sim_id: ASC-SIM-C7FDKK
+    source_profile_name: "Darla Dimple"
+    reporting_label: "Home Plans vs. Insurance"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Home Plans vs. Insurance"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic Home Plans vs. Insurance; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: Explain the difference between Verizon Home Device Protect as a home plan and Verizon Mobile Protect as mobile device insurance using compliant, customer-friendly language. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  alexa_berge:
+    challenge_id: alexa_berge
+    sim_id: ASC-SIM-S7YD8X
+    source_profile_name: "Alexa Berge"
+    reporting_label: "VHDP Product Details"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "VHDP Product Details"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: Provide basic VHDP plan benefits. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  bruce_gulgowski:
+    challenge_id: bruce_gulgowski
+    sim_id: ASC-SIM-J63FQX
+    source_profile_name: "Bruce Gulgowski"
+    reporting_label: "VHDP Product Details"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "VHDP Product Details"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Training Assist; objective Sales. Intent: Use your tools to answer detailed VHDP questions about eligible home technology, service fees, and claim limits. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  korey_gutmann:
+    challenge_id: korey_gutmann
+    sim_id: ASC-SIM-YZDT5H
+    source_profile_name: "Korey Gutmann"
+    reporting_label: "VHDP Product Details"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "VHDP Product Details"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: State a clear, accurate description of why a customer with eligible home technology might benefit from VHDP. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  mike_mann:
+    challenge_id: mike_mann
+    sim_id: ASC-SIM-EPW3U2
+    source_profile_name: "Mike Mann"
+    reporting_label: "Sales Compliance"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Sales Compliance"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic Sales Compliance; mode Training Assist Only; system Training Assist; objective Sales. Intent: Identify a non-compliant or unsupported VHDP statement and replace it with compliant language. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_06 — Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance (5 pre-registered, not yet live) ========
+  libbie_lubowitz:
+    challenge_id: libbie_lubowitz
+    sim_id: ASC-SIM-WSUSGZ
+    source_profile_name: "Libbie Lubowitz"
+    reporting_label: "Greeting"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Greeting"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Greeting; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Introduce yourself as a Tech Coach and ask how you can help. Ask for the customer’s full name and phone number using natural call-opening language. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  camryn_kihn:
+    challenge_id: camryn_kihn
+    sim_id: ASC-SIM-5RA5XW
+    source_profile_name: "Camryn Kihn"
+    reporting_label: "Verification"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Verification"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Combo; system Training Assist and Assima; objective Compliance. Intent: Complete happy-path verification for an account OWNER using the correct process. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  bennett_mante:
+    challenge_id: bennett_mante
+    sim_id: ASC-SIM-45TWJ7
+    source_profile_name: "Bennett Mante"
+    reporting_label: "Verification"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Verification"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Combo; system Training Assist and Assima; objective Compliance. Intent: Complete happy-path verification for an account MANAGER using the correct process. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  stan_green:
+    challenge_id: stan_green
+    sim_id: ASC-SIM-VHTX8B
+    source_profile_name: "Stan Green"
+    reporting_label: "Verification"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Verification"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Training Assist Only; system Training Assist; objective Compliance. Intent: Handle a customer who is unable to complete adaptive authentication without disclosing protected information. Decline to discuss account details when the caller does not meet verification requirements. Set expectations with an unauthorized user who needs the account owner to assist. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  rebecca_brekke:
+    challenge_id: rebecca_brekke
+    sim_id: ASC-SIM-WNFJPJ
+    source_profile_name: "Rebecca Brekke"
+    reporting_label: "Account Assessment"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Account Assessment"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Account Assessment; mode Combo; system Training Assist; objective Sales. Intent: Provide the Account Assessment after Verification. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_07 — Call Flow Stage 2: Troubleshooting Basics (7 pre-registered, not yet live) ========
+  amanda_waller:
+    challenge_id: amanda_waller
+    sim_id: ASC-SIM-EQS84V
+    source_profile_name: "Amanda Waller"
+    reporting_label: "Asking Questions"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Asking Questions"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Asking Questions; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask open and closed-ended probing questions to gather device, symptom, timing, and impact. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  rhett_stokes:
+    challenge_id: rhett_stokes
+    sim_id: ASC-SIM-QUV2JC
+    source_profile_name: "Rhett Stokes"
+    reporting_label: "Troubleshooting Methodology"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Troubleshooting Methodology"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Troubleshooting Methodology; mode Tool Only; system Assima; objective Technical Resolution. Intent: Use a Guided Flow to move from symptom identification to the resolution. [We'll have to build out the resolution as part of one of the ends of the Guided Flows' steps]. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  alvis_ernser:
+    challenge_id: alvis_ernser
+    sim_id: ASC-SIM-ULR9HF
+    source_profile_name: "Alvis Ernser"
+    reporting_label: "Troubleshooting Methodology"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Troubleshooting Methodology"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Troubleshooting Methodology; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Continue troubleshooting when the first set of tools/steps does not resolve the issue. [Maybe the learner sees a video where an Expert took the correct steps in the Guided Flow, but never opened up ACSS/TRG, and then the learner needs to pick up the scenario and continue troubleshooting in a new tool, for example] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  heather_kunze:
+    challenge_id: heather_kunze
+    sim_id: ASC-SIM-6NMBD3
+    source_profile_name: "Heather Kunze"
+    reporting_label: "Active Listening"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Active Listening"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Active Listening; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Use active listening to uncover a missed detail in the customer’s description. [This can be re-written, but needs to target some version of active listening skills]. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  hyman_greenholt:
+    challenge_id: hyman_greenholt
+    sim_id: ASC-SIM-4GH382
+    source_profile_name: "Hyman Greenholt"
+    reporting_label: "Transfer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Transfer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Transfer; mode Training Assist Only; system Training Assist; objective Decision Making. Intent: Explain a transfer with clear reasoning and provide expectations to the customer for what they should expect. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  sally_pollich:
+    challenge_id: sally_pollich
+    sim_id: ASC-SIM-TLR7CK
+    source_profile_name: "Sally Pollich"
+    reporting_label: "Troubleshooting Integration"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Troubleshooting Integration"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Troubleshooting Integration; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Troubleshoot while handling a customer who keeps responding with their frustrations. [Maybe they feel like they got the \"runaround\" for various reasons, but you're able to solve it]. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  albin_boehm:
+    challenge_id: albin_boehm
+    sim_id: ASC-SIM-NKJRNE
+    source_profile_name: "Albin Boehm"
+    reporting_label: "Troubleshooting Integration"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Troubleshooting Integration"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Troubleshooting Integration; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Complete a full simulation from Greeting through the end of Troubleshooting. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_08 — Call Flow Stage 2: Solve & Test - Device Basics (8 pre-registered, not yet live) ========
+  quinten_balistreri:
+    challenge_id: quinten_balistreri
+    sim_id: ASC-SIM-4BC7SG
+    source_profile_name: "Quinten Balistreri"
+    reporting_label: "Device Identification and Ecosystem Discovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Device Identification and Ecosystem Discovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Device Identification and Ecosystem Discovery; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask probing questions when a customer states, “I have an Android and need help finding Bluetooth,” to identify the manufacturer, model, software version, and customer goal before giving steps. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  cara_sawayn:
+    challenge_id: cara_sawayn
+    sim_id: ASC-SIM-K8M92Q
+    source_profile_name: "Cara Sawayn"
+    reporting_label: "Device Identification and Ecosystem Discovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Device Identification and Ecosystem Discovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Device Identification and Ecosystem Discovery; mode Training Assist Only; system Training Assist; objective Decision Making. Intent: Clarify whether the customer’s issue involves their iPhone, Apple Watch, Verizon account, or Apple ID when they confuse account passwords during setup. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  jenna_parisian:
+    challenge_id: jenna_parisian
+    sim_id: ASC-SIM-EO8P5Q
+    source_profile_name: "Jenna Parisian"
+    reporting_label: "Device Identification and Ecosystem Discovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Device Identification and Ecosystem Discovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Device Identification and Ecosystem Discovery; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Guide a customer who does not know their device manufacturer, model, or software version to locate the device-identifying information needed before support begins. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  reanna_jaskolski:
+    challenge_id: reanna_jaskolski
+    sim_id: ASC-SIM-3JEJ0P
+    source_profile_name: "Reanna Jaskolski"
+    reporting_label: "Guided Device Settings Navigation and Path Recovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Guided Device Settings Navigation and Path Recovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Guided Device Settings Navigation and Path Recovery; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Use Ozmo to locate the correct iPhone path for allowing notifications for a specific app and guide the customer through each step. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  jaqueline_kassulke:
+    challenge_id: jaqueline_kassulke
+    sim_id: ASC-SIM-MW4OXP
+    source_profile_name: "Jaqueline Kassulke"
+    reporting_label: "Guided Device Settings Navigation and Path Recovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Guided Device Settings Navigation and Path Recovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Guided Device Settings Navigation and Path Recovery; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Use Ozmo to locate the correct Samsung path for microphone permissions for an app and confirm each screen before continuing. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  helmer_ebert:
+    challenge_id: helmer_ebert
+    sim_id: ASC-SIM-S9MCI0
+    source_profile_name: "Helmer Ebert"
+    reporting_label: "Guided Device Settings Navigation and Path Recovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Guided Device Settings Navigation and Path Recovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Guided Device Settings Navigation and Path Recovery; mode Tool Only; system Assima; objective Technical Resolution. Intent: Use Expert Assist to validate device-specific guidance before providing a settings path to the customer for enabling permissions in for the camera roll in a 3rd party app [Facebook]. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  della_morissette:
+    challenge_id: della_morissette
+    sim_id: ASC-SIM-O3B0YC
+    source_profile_name: "Della Morissette"
+    reporting_label: "Connected Accessory and End-to-End Device Concerns"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Connected Accessory and End-to-End Device Concerns"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Connected Accessory and End-to-End Device Concerns; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Use Ozmo and Expert Assist to select a starting path for a connected accessory issue and explain what the customer must complete on their device. Adapt guidance when the customer’s smartwatch pairing screen does not match the initial instructions. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  sean_west:
+    challenge_id: sean_west
+    sim_id: ASC-SIM-T99AL6
+    source_profile_name: "Sean West"
+    reporting_label: "Device Concerns Capstone"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Device Concerns Capstone"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Device Basics sim — topic Device Concerns Capstone; mode End-to-End Call; system Training Assist and Assima; objective Decision Making. Intent: Complete an end-to-end device support call for an Android customer whose menu path changes by manufacturer or software version, adapting through approved resources. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_09 — Call Flow Stage 2: Solve & Test - Hardware vs Software (8 pre-registered, not yet live) ========
+  nadine_stark:
+    challenge_id: nadine_stark
+    sim_id: ASC-SIM-BCXJ4S
+    source_profile_name: "Nadine Stark"
+    reporting_label: "Carrier App"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Carrier App"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Carrier App; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: The customer would like to manage their family. Provide helpful information around managing their family and guide a customer through installing the Verizon Family app. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  ansley_rutherford:
+    challenge_id: ansley_rutherford
+    sim_id: ASC-SIM-MCNK7K
+    source_profile_name: "Ansley Rutherford"
+    reporting_label: "Non-Client App"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Non-Client App"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Non-Client App; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through checking app permissions for a camera, microphone, or location issue. [Maybe the customer wants to post a photo to FaceBook but they have their settings set to not allow access to their camera/photo roll, and we need to help educate on what those permissions are needed for, allowing the customer to decide to give the persmissions in settings and then we confirm they were able to post their photo] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  nannie_considine:
+    challenge_id: nannie_considine
+    sim_id: ASC-SIM-YZVVJC
+    source_profile_name: "Nannie Considine"
+    reporting_label: "Email"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Email"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Email; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask discovery questions to determine whether an email issue is app, password, server, or device related. Continue troubleshooting the email concern, including ensuring the customer knows their email password, and then removing the email account from the device and re-adding it. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  donny_schiller:
+    challenge_id: donny_schiller
+    sim_id: ASC-SIM-VX9T29
+    source_profile_name: "Donny Schiller"
+    reporting_label: "Software Update"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Software Update"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Software Update; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through advice for software updates and help them check for the software update and initiative it. Set expectations when a software update may take time and require battery or Wi-Fi readiness. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  rodrick_feest:
+    challenge_id: rodrick_feest
+    sim_id: ASC-SIM-WHJ2GL
+    source_profile_name: "Rodrick Feest"
+    reporting_label: "Slow Device"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Slow Device"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Slow Device; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Ask discovery questions to isolate slow device performance from slow network performance. Once it is determined that the device is running slow, advise the customer on how to free up storage on the device and check for software updates. Set accurate expectations about the speed of their 7 year old device, and help them understand that our tips are helpful maintenance, but the biggest change in speed will be seen with purchasing a new device. Help them understand their options using ACSS. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  dashawn_olson:
+    challenge_id: dashawn_olson
+    sim_id: ASC-SIM-ZBD6Z2
+    source_profile_name: "Dashawn Olson"
+    reporting_label: "Hardware Discovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Hardware Discovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Hardware Discovery; mode End-to-End Call; system Training Assist and Assima; objective Technical Resolution. Intent: The customer states that their camera stopped working after they took it into a steam room/gym. Ask probing questions to identify symptom, device history, physical damage, accessories, and attempted steps. [Once confirmed the issue is a hardware issue, the next step is to move towards fixes, like SUR/CLNR. This sim can pause at this diagnosis, as SUR/CLNR is taught in the next block] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  elyssa_beer:
+    challenge_id: elyssa_beer
+    sim_id: ASC-SIM-AUVVTU
+    source_profile_name: "Elyssa Beer"
+    reporting_label: "Screen and Display"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Screen and Display"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Screen and Display; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through troubleshooting a frozen screen, including hard resetting an iPhone 17 (not FDR) a device using the buttons. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  jakayla_stroman:
+    challenge_id: jakayla_stroman
+    sim_id: ASC-SIM-RK88J6
+    source_profile_name: "Jakayla Stroman"
+    reporting_label: "Battery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Battery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Hardware vs Software sim — topic Battery; mode End-to-End Call; system Training Assist; objective Technical Resolution. Intent: Ask discovery questions to isolate battery drain from charging, settings, app, or device condition. Provide battery education and where to view Battery Health of the device. Help the customer make changes to lengthen their battery life. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_10 — Call Flow Stage 2: Solve & Test - Networking (9 pre-registered, not yet live) ========
+  lana_lang:
+    challenge_id: lana_lang
+    sim_id: ASC-SIM-EC65YS
+    source_profile_name: "Lana Lang"
+    reporting_label: "Network Discovery"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Network Discovery"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Network Discovery; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask probing questions to determine whether the issue affects data, calls, messaging, hotspot, or all service. Identify whether the network concern is intermittent, location-specific, or device-specific. Confirm recent changes such as new device, travel, settings changes, or plan changes before troubleshooting. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  rolando_wolf:
+    challenge_id: rolando_wolf
+    sim_id: ASC-SIM-4AC7DR
+    source_profile_name: "Rolando Wolf"
+    reporting_label: "Guided Flow"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Guided Flow"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Guided Flow; mode Tool Only; system Assima; objective Technical Resolution. Intent: Follow the Guided Flow for unable to make or receive calls > Samsung > Everyone > Neither > Still having issues > Open and follow the flow in TRG. [this would need to capture both ExWo and ACSS] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  khalid_parker:
+    challenge_id: khalid_parker
+    sim_id: ASC-SIM-7BY2F6
+    source_profile_name: "Khalid Parker"
+    reporting_label: "Guided Flow"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Guided Flow"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Guided Flow; mode Tool Only; system Assima; objective Technical Resolution. Intent: Follow the Guided Flow for unable to send or receive text messages. [Follow the C&N Guided Flow, mark yes for receiving calls, which leads to the question about not making/receiving text messages] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  marquis_windler:
+    challenge_id: marquis_windler
+    sim_id: ASC-SIM-A2K32A
+    source_profile_name: "Marquis Windler"
+    reporting_label: "TRG Path"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "TRG Path"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic TRG Path; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Check account status before continuing network troubleshooting. Follow the TRG path to walk a customer through the steps for No Network or emergency-calls-only or SOS scenario. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  willow_wintheiser:
+    challenge_id: willow_wintheiser
+    sim_id: ASC-SIM-JPU8VW
+    source_profile_name: "Willow Wintheiser"
+    reporting_label: "Data Issue and Confirm the Resolution"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Data Issue and Confirm the Resolution"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Data Issue and Confirm the Resolution; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Guide a customer through a basic network settings reset and then confirm the resolution by validating mobile data works. [Ensure Wi-Fi is off and a browser page loads, not just an app appearing to have worked by showing old cached data] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  chanel_muller:
+    challenge_id: chanel_muller
+    sim_id: ASC-SIM-D7NDSF
+    source_profile_name: "Chanel Muller"
+    reporting_label: "Calls Issue"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Calls Issue"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Calls Issue; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Guide a customer through troubleshooting inability to make outgoing calls. Confirm the resolution by testing it before closing the call. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  felix_lebsack:
+    challenge_id: felix_lebsack
+    sim_id: ASC-SIM-K2E2H2
+    source_profile_name: "Felix Lebsack"
+    reporting_label: "Messaging Issue"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Messaging Issue"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Messaging Issue; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through troubleshooting SMS messages that are not sending. Confirm and test the resolution. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  monroe_smitham:
+    challenge_id: monroe_smitham
+    sim_id: ASC-SIM-W97TUC
+    source_profile_name: "Monroe Smitham"
+    reporting_label: "Hotspot"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Hotspot"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Hotspot; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Troubleshoot a hotspot not working. Ask discovery questions to determine whether hotspot failure is plan, device, or connection related. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  harvey_quitzon:
+    challenge_id: harvey_quitzon
+    sim_id: ASC-SIM-FS93L7
+    source_profile_name: "Harvey Quitzon"
+    reporting_label: "Network End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Network End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Networking sim — topic Network End-to-End; mode End-to-End Call; system Training Assist and Assima; objective Technical Resolution. Intent: Complete an end-to-end slow data call using discovery, Guided Flow, troubleshooting, and resolution. [Maybe the solve occurs after opening TRG and taking the 2nd step, for example] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_11 — Call Flow Stage 2: Solve & Test - Activations & Device Onboarding (15 pre-registered, not yet live) ========
+  devon_schaden:
+    challenge_id: devon_schaden
+    sim_id: ASC-SIM-833EKP
+    source_profile_name: "Devon Schaden"
+    reporting_label: "Phone Activation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Phone Activation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Phone Activation; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Walk a customer through a happy-path iPhone activation and confirm service. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  myles_will:
+    challenge_id: myles_will
+    sim_id: ASC-SIM-BBMCDM
+    source_profile_name: "Myles Will"
+    reporting_label: "Phone Activation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Phone Activation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Phone Activation; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Walk a customer through a happy-path Android activation and confirm service. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  lee_renner:
+    challenge_id: lee_renner
+    sim_id: ASC-SIM-E5L5QM
+    source_profile_name: "Lee Renner"
+    reporting_label: "Replacement Activation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Replacement Activation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Replacement Activation; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Support a replacement Samsung activation that includes SIM handling and Smart Switch positioning. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  alisha_lindgren:
+    challenge_id: alisha_lindgren
+    sim_id: ASC-SIM-5HKTQZ
+    source_profile_name: "Alisha Lindgren"
+    reporting_label: "eSIM"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "eSIM"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic eSIM; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through an eSIM activation when the primary activation path stalls. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  victor_hayes_west:
+    challenge_id: victor_hayes_west
+    sim_id: ASC-SIM-PPVR46
+    source_profile_name: "Victor Hayes-West"
+    reporting_label: "QR Code Failure"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "QR Code Failure"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic QR Code Failure; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Explain a QR-code failure to the customer and keep them engaged while resolving the QR-code activation failure through manual activation. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  dwight_wolf:
+    challenge_id: dwight_wolf
+    sim_id: ASC-SIM-6C9JRW
+    source_profile_name: "Dwight Wolf"
+    reporting_label: "SOS/No Service"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "SOS/No Service"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic SOS/No Service; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Use the activation path to troubleshoot SOS or No Service after a device replacement. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  carleton_nader:
+    challenge_id: carleton_nader
+    sim_id: ASC-SIM-5U64LU
+    source_profile_name: "Carleton Nader"
+    reporting_label: "Activation Error"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Activation Error"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Activation Error; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Use ACSS, TRG, or the Activation Guided Flow to troubleshoot a failed Android activation. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  matilde_stanton:
+    challenge_id: matilde_stanton
+    sim_id: ASC-SIM-LTJEUF
+    source_profile_name: "Matilde Stanton"
+    reporting_label: "Watch Activation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Watch Activation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Watch Activation; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Walk a customer through a happy-path Apple Watch activation. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  paris_weimann:
+    challenge_id: paris_weimann
+    sim_id: ASC-SIM-FPYBBM
+    source_profile_name: "Paris Weimann"
+    reporting_label: "Activation Validation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Activation Validation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Activation Validation; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Validate activation success by confirming calls, texts, and data before closing. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  emmy_carroll:
+    challenge_id: emmy_carroll
+    sim_id: ASC-SIM-468H84
+    source_profile_name: "Emmy Carroll"
+    reporting_label: "Activation End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Activation End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Activation End-to-End; mode End-to-End Call; system Training Assist and Assima; objective Technical Resolution. Intent: Complete an end-to-end phone activation call from greeting through verification, activation, validation, documentation, and close. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  virginie_mertz:
+    challenge_id: virginie_mertz
+    sim_id: ASC-SIM-V6YRWE
+    source_profile_name: "Virginie Mertz"
+    reporting_label: "Content Transfer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Content Transfer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Content Transfer; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide an iPhone customer through a happy-path content transfer. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  lafayette_rath:
+    challenge_id: lafayette_rath
+    sim_id: ASC-SIM-72MUYL
+    source_profile_name: "Lafayette Rath"
+    reporting_label: "Content Transfer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Content Transfer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Content Transfer; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a Samsung customer through a happy-path Smart Switch content transfer. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  desiree_thiel:
+    challenge_id: desiree_thiel
+    sim_id: ASC-SIM-ST8SYR
+    source_profile_name: "Desiree Thiel"
+    reporting_label: "Content Transfer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Content Transfer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Content Transfer; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide an Android customer through a Google backup. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  conor_bailey:
+    challenge_id: conor_bailey
+    sim_id: ASC-SIM-K7VDDS
+    source_profile_name: "Conor Bailey"
+    reporting_label: "Content Transfer Barrier"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Content Transfer Barrier"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Content Transfer Barrier; mode Training Assist Only; system Training Assist; objective Decision Making. Intent: When the customer’s old device is unavailable for content transfer, ask appropriate questions to determine what content may be able to still come over from the cloud on to the device. Explain what content may not transfer automatically and set expectations. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  leda_grady:
+    challenge_id: leda_grady
+    sim_id: ASC-SIM-GC4FJJ
+    source_profile_name: "Leda Grady"
+    reporting_label: "Activation + Onboarding"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Activation + Onboarding"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Activations & Device Onboarding sim — topic Activation + Onboarding; mode End-to-End Call; system Training Assist and Assima; objective Technical Resolution. Intent: Complete an end-to-end replacement phone call that includes activation, content transfer positioning, and customer close. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_12 — Call Flow Stage 2: Solve & Test - Carrier Account (8 pre-registered, not yet live) ========
+  arthur_curry:
+    challenge_id: arthur_curry
+    sim_id: ASC-SIM-6LUM59
+    source_profile_name: "Arthur Curry"
+    reporting_label: "Account"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Account"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Account; mode Training Assist Only; system Training Assist; objective Decision Making. Intent: Line Status Call Driver: Identify whether the customer’s concern is billing, payment, feature, plan, access, or line status related and navigate to the right tab in ACSS. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  golda_roberts:
+    challenge_id: golda_roberts
+    sim_id: ASC-SIM-V84T4V
+    source_profile_name: "Golda Roberts"
+    reporting_label: "myVerizon"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "myVerizon"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic myVerizon; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through locating self-service options in My Verizon and then help them reset access to the MyVerizon app. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  kareem_bode:
+    challenge_id: kareem_bode
+    sim_id: ASC-SIM-THR8YY
+    source_profile_name: "Kareem Bode"
+    reporting_label: "PIN and Password"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "PIN and Password"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic PIN and Password; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through locating the correct path for PIN or temporary password support. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  reina_haley:
+    challenge_id: reina_haley
+    sim_id: ASC-SIM-QJSRJT
+    source_profile_name: "Reina Haley"
+    reporting_label: "Plan and Features"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Plan and Features"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Plan and Features; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Help a customer adjust their Caller ID preferences using self service steps. [TA + EA] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  lia_shanahan:
+    challenge_id: lia_shanahan
+    sim_id: ASC-SIM-Z5HQM4
+    source_profile_name: "Lia Shanahan"
+    reporting_label: "Line Status"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Line Status"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Line Status; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Guide a customer through suspending a line using the appropriate self-service path. Confirm the line has been suspended. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  hattie_bahringer:
+    challenge_id: hattie_bahringer
+    sim_id: ASC-SIM-TWC3YB
+    source_profile_name: "Hattie Bahringer"
+    reporting_label: "Account Maintenance"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Account Maintenance"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Account Maintenance; mode Combo; system Training Assist and Assima; objective Decision Making. Intent: Provide guidance to a customer asking about international calling. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  robb_hermiston:
+    challenge_id: robb_hermiston
+    sim_id: ASC-SIM-CGESVF
+    source_profile_name: "Robb Hermiston"
+    reporting_label: "Carrier Account End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Carrier Account End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Carrier Account End-to-End; mode End-to-End Call; system Training Assist and Assima; objective Technical Resolution. Intent: Complete an end-to-end locked-out-of-My-Verizon call from verification through self-service guidance. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  hans_streich:
+    challenge_id: hans_streich
+    sim_id: ASC-SIM-8XTS9S
+    source_profile_name: "Hans Streich"
+    reporting_label: "Carrier Account End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Carrier Account End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Carrier Account sim — topic Carrier Account End-to-End; mode End-to-End Call; system Training Assist and Assima; objective Customer Experience. Intent: Complete an end-to-end bill question call that includes account review and explanation in a customer-friendly way. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_13 — Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims (3 pre-registered, not yet live) ========
+  hellen_klein:
+    challenge_id: hellen_klein
+    sim_id: ASC-SIM-8XVFJV
+    source_profile_name: "Hellen Klein"
+    reporting_label: "Coverage Verification"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Coverage Verification"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims sim — topic Coverage Verification; mode Tool Only; system Assima; objective Technical Resolution. Intent: Use the appropriate tool to review the customer's device coverage and identify available warranty or insurance-related support options. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  enoch_stoltenberg:
+    challenge_id: enoch_stoltenberg
+    sim_id: ASC-SIM-DSXTZ7
+    source_profile_name: "Enoch Stoltenberg"
+    reporting_label: "Claims Education"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Claims Education"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims sim — topic Claims Education; mode Combo; system Training Assist and Assima; objective Decision Making. Intent: Identify when device damage makes the concern ineligible for a warranty replacement and explain that an insurance claim, such as SUR or AE, may include a deductible or related fee before transferring the customer to the Claims department. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  marisa_casper:
+    challenge_id: marisa_casper
+    sim_id: ASC-SIM-85DHYM
+    source_profile_name: "Marisa Casper"
+    reporting_label: "Warranty End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Warranty End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims sim — topic Warranty End-to-End; mode End-to-End Call; system Training Assist and Assima; objective Decision Making. Intent: Complete an end-to-end warranty call that includes troubleshooting, inspection for physical or liquid damage, checking SUR eligibility, gconfirmation of CLNR eligibility, and processing of the warranty replacement. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_14 — Call Flow Stage 4: Sales in Action (7 pre-registered, not yet live) ========
+  jubilation_lee:
+    challenge_id: jubilation_lee
+    sim_id: ASC-SIM-C7G2PV
+    source_profile_name: "Jubilation Lee"
+    reporting_label: "Offer Transition"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Offer Transition"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Offer Transition; mode Tool Only; system Training Assist; objective Sales. Intent: Transition from confirmed resolution to the Smart Offer Transition Statement. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  rebeka_bahringer:
+    challenge_id: rebeka_bahringer
+    sim_id: ASC-SIM-874LWL
+    source_profile_name: "Rebeka Bahringer"
+    reporting_label: "Smart Offer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Smart Offer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Smart Offer; mode Training Assist Only; system Training Assist; objective Sales. Intent: Provide the Core Benefits as written. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  doug_feil:
+    challenge_id: doug_feil
+    sim_id: ASC-SIM-874LWK
+    source_profile_name: "Doug Feil"
+    reporting_label: "Smart Offer"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Smart Offer"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Smart Offer; mode Training Assist Only; system Training Assist; objective Sales. Intent: Provide the Core Benefits as written while incorporating conversational language Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  brandt_terry:
+    challenge_id: brandt_terry
+    sim_id: ASC-SIM-HTZ9K7
+    source_profile_name: "Brandt Terry"
+    reporting_label: "Objection Handling"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Objection Handling"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Objection Handling; mode Training Assist Only; system Training Assist; objective Sales. Intent: Respond to a customer’s first objection with empathy and one approved value statement. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  neil_morar:
+    challenge_id: neil_morar
+    sim_id: ASC-SIM-CP7X5X
+    source_profile_name: "Neil Morar"
+    reporting_label: "Objection Handling"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Objection Handling"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Objection Handling; mode Training Assist Only; system Training Assist; objective Sales. Intent: Accept a clear customer decline and return to a service-focused close. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  reba_veum:
+    challenge_id: reba_veum
+    sim_id: ASC-SIM-FWKAAT
+    source_profile_name: "Reba Veum"
+    reporting_label: "Enrollment"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Enrollment"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Enrollment; mode Combo; system Training Assist; objective Sales. Intent: Complete the approved enrollment path only after consent is provided. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  jeramie_stark:
+    challenge_id: jeramie_stark
+    sim_id: ASC-SIM-HY7UDN
+    source_profile_name: "Jeramie Stark"
+    reporting_label: "Sales End-to-End"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Sales End-to-End"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 4: Sales in Action sim — topic Sales End-to-End; mode End-to-End Call; system Training Assist; objective Sales. Intent: Complete an end-to-end resolved service call that includes account assessment, appropriate offer decision, customer response, and close. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_15 — Call Flow Stage 5: Confirm, Recap, Close (4 pre-registered, not yet live) ========
+  thomas_oliver:
+    challenge_id: thomas_oliver
+    sim_id: ASC-SIM-5XX6T2
+    source_profile_name: "Thomas Oliver"
+    reporting_label: "Resolution Confirmation"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Resolution Confirmation"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 5: Confirm, Recap, Close sim — topic Resolution Confirmation; mode Combo; system Training Assist and Assima; objective Technical Resolution. Intent: Confirm the Resolution: The customer needed help sending emails. You've just helped the customer reset their email account on their iPhone. You had to help them reset the password, and remove the account and re-add the account. What will you do to ensure the customer's concern is fully resolved? [Answer for the Expert to do in the simulation -- guide the customer through sending an email. (Reasoning: Yes, the customer can likely send an email now that you've reset the password and signed back in, but the call reason was for sending an email, so we need to ensure we actually test that capability out before assuming the customer can send their intended email.)] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  aron_kling:
+    challenge_id: aron_kling
+    sim_id: ASC-SIM-PNJW5X
+    source_profile_name: "Aron Kling"
+    reporting_label: "Three-Part Close"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Three-Part Close"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 5: Confirm, Recap, Close sim — topic Three-Part Close; mode End-to-End Call; system Training Assist and Assima; objective Customer Experience. Intent: Deliver a three-part close that includes a recap of solving the customer's network concern, new enrollment in the plan, next steps, and customer satisfaction check before closing the call. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  daisy_hansen:
+    challenge_id: daisy_hansen
+    sim_id: ASC-SIM-Z3W9WG
+    source_profile_name: "Daisy Hansen"
+    reporting_label: "Partial Resolution"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Partial Resolution"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 5: Confirm, Recap, Close sim — topic Partial Resolution; mode Combo; system Training Assist and Assima; objective Customer Experience. Intent: Close a partially resolved call by clearly explaining what was completed and what happens next. [For example, maybe the customer wanted to setup Verizon Family restrictions for the evening hours, but testing the restrictions out will have to wait for the evening hours to begin, we want to provide guidance for the customer of how to check, and what to do if they see unexpected outcomes] Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  timmothy_o_hara:
+    challenge_id: timmothy_o_hara
+    sim_id: ASC-SIM-TNH7UB
+    source_profile_name: "Timmothy O'Hara"
+    reporting_label: "Escalation Closeout"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Escalation Closeout"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Call Flow Stage 5: Confirm, Recap, Close sim — topic Escalation Closeout; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Close an escalation scenario with ownership language and clear expectations. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  # ======== ASCEND Launchpad · block_16 — Expert Readiness - Training Closing (4 pre-registered, not yet live) ========
+  kara_danvers:
+    challenge_id: kara_danvers
+    sim_id: ASC-SIM-5UARA8
+    source_profile_name: "Kara Danvers"
+    reporting_label: "Mixed Queue"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Mixed Queue"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Expert Readiness - Training Closing sim — topic Mixed Queue; mode End-to-End Call; system Training Assist; objective Technical Resolution. Intent: Handle and resolve a customer with activation and content transfer needs. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  leonard_doyle:
+    challenge_id: leonard_doyle
+    sim_id: ASC-SIM-7JC6N5
+    source_profile_name: "Leonard Doyle"
+    reporting_label: "Mixed Queue"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Mixed Queue"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Expert Readiness - Training Closing sim — topic Mixed Queue; mode End-to-End Call; system Training Assist; objective Technical Resolution. Intent: Handle a customer with app slowness that turns into a broader device performance concern. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  lavina_wuckert:
+    challenge_id: lavina_wuckert
+    sim_id: ASC-SIM-392BTM
+    source_profile_name: "Lavina Wuckert"
+    reporting_label: "Readiness Gate"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Readiness Gate"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Expert Readiness - Training Closing sim — topic Readiness Gate; mode End-to-End Call; system Training Assist; objective Technical Resolution. Intent: Complete an end-to-end no-network call following all steps in the Guided Flow, TRG, and resolving the call after getting to the last step in TRG, along with testing the resolution, and using the Smart Offer to make the sale. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+  ginger_zemlak:
+    challenge_id: ginger_zemlak
+    sim_id: ASC-SIM-42MD8C
+    source_profile_name: "Ginger Zemlak"
+    reporting_label: "Readiness Gate"
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: "Readiness Gate"
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements: {}
+    source_match: program_map
+    notes:
+      eval_notes: "ASCEND Launchpad Expert Readiness - Training Closing sim — topic Readiness Gate; mode End-to-End Call; system Training Assist; objective Decision Making. Intent: Complete an end-to-end mixed customer call for an activation on an insurance based replacement dvice that demonstrates customer experience, resolution, compliance, and operational judgment. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
 
 # ---------------------------------------------------------------------------
 # Reconciliation — name aliases, unmatched profiles across the two source

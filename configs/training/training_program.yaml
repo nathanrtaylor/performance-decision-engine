@@ -25,7 +25,7 @@ program:
     simulations: 189
     ilt: 1
   pace:
-    hours_per_day: 2.3
+    hours_per_day: 7.0
   defaults:
     gate_pass_mark: 0.9
   blocks:
@@ -44,7 +44,7 @@ program:
     order: 2
     label: Expert Foundations - The Tech Coach Role & Call Flow
     estimated_hours: 2.0
-    expected_completion_day: 3
+    expected_completion_day: 1
     total_simulations: 13
     assessment_methods:
     - knowledge_check
@@ -89,7 +89,7 @@ program:
     order: 3
     label: Tools for the Call Flow - Asurion Tools
     estimated_hours: 3.0
-    expected_completion_day: 5
+    expected_completion_day: 2
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -124,7 +124,7 @@ program:
     order: 4
     label: Tools for the Call Flow - Client Tools
     estimated_hours: 2.67
-    expected_completion_day: 6
+    expected_completion_day: 2
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -177,7 +177,7 @@ program:
     order: 5
     label: Sales Foundation - Product Knowledge, Compliance & Integrity
     estimated_hours: 2.08
-    expected_completion_day: 7
+    expected_completion_day: 3
     total_simulations: 6
     assessment_methods:
     - knowledge_check
@@ -223,7 +223,7 @@ program:
     order: 6
     label: 'Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance'
     estimated_hours: 2.25
-    expected_completion_day: 8
+    expected_completion_day: 3
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -277,7 +277,7 @@ program:
     order: 7
     label: 'Call Flow Stage 2: Troubleshooting Basics'
     estimated_hours: 3.17
-    expected_completion_day: 9
+    expected_completion_day: 4
     total_simulations: 13
     assessment_methods:
     - knowledge_check
@@ -336,7 +336,7 @@ program:
     order: 8
     label: 'Call Flow Stage 2: Solve & Test - Device Basics'
     estimated_hours: 3.08
-    expected_completion_day: 10
+    expected_completion_day: 5
     total_simulations: 20
     assessment_methods:
     - knowledge_check
@@ -370,7 +370,7 @@ program:
       mode: Training Assist Only
       develops: []
     - kind: skill_sim
-      ref: ASC-ASC-SIM-3JEJ0P
+      ref: ASC-SIM-3JEJ0P
       persona: reanna_jaskolski
       topic: Guided Device Settings Navigation and Path Recovery
       mode: Combo
@@ -403,7 +403,7 @@ program:
     order: 9
     label: 'Call Flow Stage 2: Solve & Test - Hardware vs Software'
     estimated_hours: 4.0
-    expected_completion_day: 12
+    expected_completion_day: 5
     total_simulations: 15
     assessment_methods:
     - knowledge_check
@@ -470,7 +470,7 @@ program:
     order: 10
     label: 'Call Flow Stage 2: Solve & Test - Networking'
     estimated_hours: 3.0
-    expected_completion_day: 13
+    expected_completion_day: 6
     total_simulations: 13
     assessment_methods:
     - knowledge_check
@@ -543,7 +543,7 @@ program:
     order: 11
     label: 'Call Flow Stage 2: Solve & Test - Activations & Device Onboarding'
     estimated_hours: 7.0
-    expected_completion_day: 16
+    expected_completion_day: 6
     total_simulations: 35
     assessment_methods:
     - knowledge_check
@@ -652,7 +652,7 @@ program:
     order: 12
     label: 'Call Flow Stage 2: Solve & Test - Carrier Account'
     estimated_hours: 2.25
-    expected_completion_day: 17
+    expected_completion_day: 7
     total_simulations: 11
     assessment_methods:
     - knowledge_check
@@ -720,7 +720,7 @@ program:
     order: 13
     label: 'Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims'
     estimated_hours: 2.5
-    expected_completion_day: 18
+    expected_completion_day: 7
     total_simulations: 8
     assessment_methods:
     - knowledge_check
@@ -762,7 +762,7 @@ program:
     order: 14
     label: 'Call Flow Stage 4: Sales in Action'
     estimated_hours: 2.25
-    expected_completion_day: 19
+    expected_completion_day: 8
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -830,7 +830,7 @@ program:
     order: 15
     label: 'Call Flow Stage 5: Confirm, Recap, Close'
     estimated_hours: 1.17
-    expected_completion_day: 20
+    expected_completion_day: 9
     assessment_methods:
     - knowledge_check
     - simulation
@@ -872,7 +872,7 @@ program:
     order: 16
     label: Expert Readiness - Training Closing
     estimated_hours: 3.75
-    expected_completion_day: 21
+    expected_completion_day: 10
     total_simulations: 7
     assessment_methods:
     - knowledge_check
