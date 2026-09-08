@@ -297,6 +297,19 @@ skills:
 # against). `requirements` lists the skills each scenario evaluates, by level.
 # challenge_id is the ref a training_program.yaml skill_sim component points at.
 # Grouped by client / line-of-business; within a group: Live, then Testing/On hold.
+#
+# Naming invariant: challenge_id == _snake(source_profile_name) for every profile
+# (lowercase, non-alphanumeric runs -> "_"; the same transform tools/gen_program_components.py
+# applies to the xlsx `Name` column). So the human name and the slug are one fact in two forms.
+#
+# Optional `sim_id`: the ASC-SIM-… ref for the ASCEND sim whose `Name` (in
+# docs/training/Ascend Simulations.xlsx) equals this profile's source_profile_name. It mirrors
+# the matching training_program.yaml component -- challenge_id == component.persona and
+# sim_id == component.ref -- making the profile<->program link explicit in data.
+# check_training_program.py enforces that pairing. No code reads sim_id at runtime yet (data-only;
+# a stable anchor for tooling/validation). Absent until that sim exists in the workbook / goes
+# live in TA under this persona -- today only the 3 block_03 personas below qualify; the rest
+# fill in as ASCEND sims launch.
 # ---------------------------------------------------------------------------
 profiles:
 
@@ -4879,6 +4892,97 @@ profiles:
       as_needed:
       - resolve_concerns
     source_match: exact
+
+  # ======== ASCEND Launchpad · Block 3 — Tools for the Call Flow / Asurion Tools (3) ========
+  # Added 2026-09-08. These are the Block 3 simulator personas that began appearing in the live
+  # TrAIning Assist extract on 2026-09-01, taken by testers (challenge_ids were previously
+  # unknown to this file — the documented ASC-SIM <-> live-challenge_id crosswalk gap).
+  # Persona -> Block 3 topic (from training_program.yaml block_03): judy_terry = Expert Workspace,
+  # douglas_beatty = Expert Assist, isaac_barrows = Tool Efficiency.
+  #
+  # MAPPING GAP (read before trusting the scores): of the behaviors these sims currently evaluate
+  # in the raw extract, ONLY "show compassion" (-> show_empathy) is in the `skills:` catalog above.
+  # The others observed -- scope, provide assurance, ask effective questions, keep customer
+  # informed, manage call efficiently -- have NO behavior_names entry, so build_training_assist_skills
+  # drops them at the behavior->skill step regardless of the requirements listed here. Registering
+  # these profiles lets the show_empathy rows flow through; add the missing behaviors to `skills:`
+  # to score the rest. `requirements` below therefore lists only the mapped skill (show_empathy).
+  judy_terry:
+    challenge_id: judy_terry
+    sim_id: ASC-SIM-6J5TR3
+    source_profile_name: Judy Terry
+    reporting_label: Expert Workspace
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: Expert Workspace
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
+        scope, show compassion, provide assurance, ask effective questions. Only "show compassion"
+        is skill-mapped today; the rest are unmapped pending skills-catalog additions.
+  douglas_beatty:
+    challenge_id: douglas_beatty
+    sim_id: ASC-SIM-876TLE
+    source_profile_name: Douglas Beatty
+    reporting_label: Expert Assist
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: Expert Assist
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
+        ask effective questions, provide assurance, show compassion, scope. Only "show compassion"
+        is skill-mapped today; the rest are unmapped pending skills-catalog additions.
+  isaac_barrows:
+    challenge_id: isaac_barrows
+    sim_id: ASC-SIM-45TM95
+    source_profile_name: Isaac Barrows
+    reporting_label: Tool Efficiency
+    report: null
+    client: Asurion
+    lob: ASCEND Launchpad
+    status: Testing
+    scenario:
+      call_intent: Tool Efficiency
+      offer: not_applicable
+      receptiveness: not_applicable
+    tool_usage:
+      expert_assist: not_applicable
+      da_guided_flow: not_applicable
+      nc_guided_flow: not_applicable
+    requirements:
+      always:
+      - show_empathy
+    source_match: manual_add
+    notes:
+      eval_notes: ASCEND Launchpad Block 3 (Asurion Tools) sim persona. Observed raw behaviors —
+        show compassion, keep customer informed, provide assurance, manage call efficiently,
+        ask effective questions, scope. Only "show compassion" is skill-mapped today; the rest
+        are unmapped pending skills-catalog additions.
 
 # ---------------------------------------------------------------------------
 # Reconciliation — name aliases, unmatched profiles across the two source

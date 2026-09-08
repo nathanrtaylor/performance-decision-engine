@@ -6,6 +6,11 @@ reports which blocks still lack a gate test-call, enumerated components, or an
 expected completion day, plus any ``develops:`` skill that isn't a real cataloged
 metric and any cataloged skill no block develops yet.
 
+It also checks the profile<->program crosswalk: every profile in
+``training_profiles.yaml`` that declares a ``sim_id`` must match a program component
+whose ``ref == sim_id`` and ``persona == challenge_id`` (an inconsistent pairing is an
+error).
+
     python -m pde.cli.check_training_program
     python -m pde.cli.check_training_program --strict     # TODOs (warnings) fail too
 
@@ -20,6 +25,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+import yaml
+
 from pde.governance.versioning import resolve_active_config
 from pde.training.program import load_program, program_coverage
 
@@ -29,6 +36,29 @@ def _catalog_skills(configs_dir: Path) -> set:
     mc = cfg.get("metric_catalog") or {}
     mc = mc.get("metric_catalog", mc) if isinstance(mc, dict) else {}
     return set((mc.get("metrics") or {}).keys())
+
+
+def _profiles_with_sim_id(configs_dir: Path) -> dict:
+    """challenge_id -> sim_id for every profile in training_profiles.yaml that declares one."""
+    path = configs_dir / "training_profiles.yaml"
+    if not path.exists():
+        return {}
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    profiles = (data.get("profiles") or {}) if isinstance(data, dict) else {}
+    return {cid: p["sim_id"] for cid, p in profiles.items()
+            if isinstance(p, dict) and p.get("sim_id")}
+
+
+def _component_ref_to_persona(program_path: Path) -> dict:
+    """ref -> persona for every training_program component (raw YAML: load_program drops persona)."""
+    data = yaml.safe_load(program_path.read_text(encoding="utf-8")) or {}
+    out: dict = {}
+    for b in ((data.get("program") or {}).get("blocks") or []):
+        for c in (b.get("components") or []):
+            ref = c.get("ref")
+            if ref:
+                out[ref] = c.get("persona")
+    return out
 
 
 def main() -> int:
@@ -59,6 +89,16 @@ def main() -> int:
     if cov["develops_unknown"]:
         errors.append(f"develops references metric(s) not in the catalog: {cov['develops_unknown']}")
 
+    # ---- profile <-> program sim_id crosswalk consistency ----
+    sim_ids = _profiles_with_sim_id(configs_dir)
+    ref_to_persona = _component_ref_to_persona(program_path)
+    for cid, sid in sorted(sim_ids.items()):
+        if sid not in ref_to_persona:
+            errors.append(f"profile {cid!r} sim_id {sid!r} is not the ref of any training_program component")
+        elif ref_to_persona[sid] != cid:
+            errors.append(f"profile {cid!r} sim_id {sid!r} belongs to component persona "
+                          f"{ref_to_persona[sid]!r}, not {cid!r}")
+
     # ---- TODO warnings ----
     if cov["blocks_missing_gate"]:
         warnings.append(f"{len(cov['blocks_missing_gate'])} block(s) have no gate test_call (TODO): {cov['blocks_missing_gate']}")
@@ -72,6 +112,8 @@ def main() -> int:
     # ---- render ----
     print(f"training program: {program.name!r} -- {cov['n_blocks']} blocks, "
           f"{cov['n_skills_mapped']} skills mapped, pace {program.pace_hours_per_day} h/day")
+    if sim_ids:
+        print(f"  ..  {len(sim_ids)} profile sim_id crosswalk link(s) checked against program components")
     for e in errors:
         print(f"  ERROR  {e}")
     for w in warnings:
