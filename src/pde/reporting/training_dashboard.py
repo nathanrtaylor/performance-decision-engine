@@ -58,13 +58,83 @@ def _num(v: Any) -> Optional[float]:
         return None
 
 
+def _opt(v: Any) -> Optional[Any]:
+    return None if (v is None or (isinstance(v, float) and pd.isna(v))) else v
+
+
+def _meets(value: Optional[float], benchmark: Optional[float]) -> Optional[bool]:
+    """Is `value` at/above `benchmark`? None when either side is missing (unknown)."""
+    if value is None or benchmark is None:
+        return None
+    return value >= benchmark
+
+
+# --------------------------------------------------------------------------- #
+# Pure decision helpers (activity-inferred progress). Kept module-level so the
+# status taxonomy is unit-testable without building a whole dashboard record.
+# --------------------------------------------------------------------------- #
+def component_passed(comp, cbt_by_ref: Dict[str, dict], sim_by_ref: Dict[str, dict],
+                     vals: Dict[str, tuple], pass_mark: float) -> bool:
+    """One program component satisfied by activity: a scored sim/CBT at/above its benchmark
+    (pass_mark fallback when there's no scored signal), a completion-only CBT completed, or
+    False when there's no activity for it (not taken / not yet crosswalked)."""
+    if comp.kind == "cbt":
+        it = cbt_by_ref.get(comp.ref)
+        if not it:
+            return False
+        if not it.get("scored"):
+            return bool(it.get("completed"))
+        v = vals.get(comp.ref)
+        met = _meets(v[0], v[1]) if v else None
+        if met is not None:
+            return met
+        pr = it.get("pass_rate")                      # fallback: no scored signal in vals
+        return pr is not None and pr >= pass_mark
+    it = sim_by_ref.get(comp.ref)                     # skill_sim / test_call
+    return bool(it) and (it.get("pass_rate") or 0) >= pass_mark
+
+
+def block_status(has_progress: bool, current_num: Optional[int], order: int,
+                 has_below: bool, block_passed: bool) -> str:
+    """Per-block dot status. `has_below` (a surfaced below-mark skill) wins first, so the block
+    ladder agrees with the block_defic-driven overall status even before activity is tracked;
+    otherwise: no activity -> not_tracked, beyond the reached block -> locked, all components
+    satisfied -> passed, else in_progress."""
+    if has_below:
+        return "retraining"
+    if not has_progress:
+        return "not_tracked"
+    if current_num is not None and order > current_num:
+        return "locked"
+    if block_passed:
+        return "passed"
+    return "in_progress"
+
+
+def overall_status(has_vals: bool, has_progress: bool, has_deficiency: bool,
+                   all_blocks_passed: bool, on_track: Optional[bool]) -> str:
+    """Overall expert status. `completed` requires every block's components passed (so it stays
+    unreachable while any block is uncrosswalked -- see build_training_records)."""
+    if not has_vals:
+        return "in_training" if has_progress else "not_started"
+    if has_deficiency:
+        return "retraining"
+    if has_progress and all_blocks_passed:
+        return "completed"
+    if has_progress and on_track is False:
+        return "behind"
+    if has_progress:
+        return "on_track"
+    return "in_training"
+
+
 # --------------------------------------------------------------------------- #
 # Data layer
 # --------------------------------------------------------------------------- #
 def build_training_records(
     skills_df: pd.DataFrame,       # columns: agent_id, metric, value, benchmark
     agents_df: pd.DataFrame,       # roster: agent_id [, agent_name, class_id, trainer, icp_client,
-                                   #          training_start_date, current_block_order]
+                                   #          training_start_date]
     program: Program,
     policy: RemediationPolicy,
     skill_meta: Dict[str, Dict[str, str]],   # skill_id -> {label, category}
@@ -72,7 +142,7 @@ def build_training_records(
     pass_mark: float = 0.80,
     coaching_history: Optional[pd.DataFrame] = None,   # raw coaching_history frame (unbounded); queried for the cohort
     sims_taken: Optional[pd.DataFrame] = None,         # per-(agent,sim): challenge_id,label,sim_id,block_num,sessions,pass_rate,last_period
-    cbts_taken: Optional[pd.DataFrame] = None,         # per-(agent,course): courseid,coursename,sessions,pass_rate,last_period
+    cbts_taken: Optional[pd.DataFrame] = None,         # per-(agent,course): courseid,coursename,ref,block_num,scored,completed,sessions,pass_rate,last_period
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     sdf = skills_df.copy()
     sdf["agent_id"] = sdf["agent_id"].astype(str)
@@ -96,7 +166,6 @@ def build_training_records(
     # left-joined. An expert on the roster with no skill data yet is still shown
     # (status "not_started").
     per_agent = {str(k): v for k, v in sdf.groupby("agent_id")} if not sdf.empty else {}
-    any_progress = ("current_block_order" in acols) and bool(adf["current_block_order"].notna().any())
 
     # Recent coaching history, bounded to the training cohort: the coaching_history frame is
     # unbounded (every coached agent in the window), so query it for only the experts on this
@@ -109,9 +178,6 @@ def build_training_records(
 
     # Per-expert "sims practiced" and "CBTs completed" (from the raw extract). Each is grouped
     # agent_id -> [item dicts]; sims carry an optional block_num used to nest them under a block.
-    def _opt(v):
-        return None if (v is None or (isinstance(v, float) and pd.isna(v))) else v
-
     def _sim_item(r) -> Dict[str, Any]:
         bn = _opt(getattr(r, "block_num", None))
         pr = _num(getattr(r, "pass_rate", None))
@@ -188,12 +254,14 @@ def build_training_records(
         # ACTUAL current block is INFERRED FROM ACTIVITY -- the furthest block the expert has any
         # crosswalked sim/CBT activity in (direct evidence of having reached it). There is no roster
         # progress feed; completion of individual blocks is judged per-component below.
+        # NOTE (overstate risk): a single out-of-sequence activity sets current_num to that block
+        # and marks everything below it "reached". We accept that -- activity is the only evidence
+        # we have -- but it can flip pace to on_track/ahead on one stray sim; treat pace as a coarse
+        # signal, not a precise position. Skills also surface only at/under current_num, so a skill
+        # whose curriculum home is still ahead is not shown/counted until the expert reaches it.
         act_blocks = [x["block_num"] for x in (agent_sims + agent_cbts) if x["block_num"] is not None]
         current_num: Optional[int] = max(act_blocks) if act_blocks else None
         has_progress = current_num is not None
-        # Skills surface only at/under the reached block, so a skill whose curriculum home is still
-        # ahead of the expert is not shown/counted until they reach it.
-        skill_ceiling: Optional[int] = current_num
 
         # pace = ACTUAL current block vs EXPECTED block (only when actual progress is known)
         if current_num is not None and expected_num is not None:
@@ -203,36 +271,21 @@ def build_training_records(
         else:
             on_track, pace = None, None
 
-        # Per-component completion, inferred from activity: a block is "passed" when EVERY component
-        # is satisfied -- scored sims/CBTs at/above their pass bar, completion-only CBTs completed.
-        # A component with no activity (not taken, or not yet crosswalked) leaves the block unfinished.
+        # Per-component completion, inferred from activity (see component_passed): a block is
+        # "passed" when EVERY component is satisfied. A component with no activity leaves it unfinished.
         cbt_by_ref = {c["ref"]: c for c in agent_cbts if c.get("ref")}
         sim_by_ref = {s["sim_id"]: s for s in agent_sims if s.get("sim_id")}
-
-        def _passed_scored(metric_key: str, raw_rate) -> bool:
-            v = vals.get(metric_key)
-            if v and v[0] is not None and v[1] is not None:
-                return v[0] >= v[1]                          # score vs its (seeded/edited) benchmark
-            return raw_rate is not None and raw_rate >= pass_mark   # fallback when no signal
-
-        def _component_done(comp) -> bool:
-            if comp.kind == "cbt":
-                it = cbt_by_ref.get(comp.ref)
-                if not it:
-                    return False
-                return _passed_scored(comp.ref, it.get("pass_rate")) if it.get("scored") else bool(it.get("completed"))
-            it = sim_by_ref.get(comp.ref)                    # skill_sim / test_call
-            return bool(it) and (it.get("pass_rate") or 0) >= pass_mark
 
         block_defic: Dict[int, List[str]] = {}
         surfaced: set = set()
         passed_blocks: set = set()
         blocks: List[Dict[str, Any]] = []
         for b in program.blocks:
-            # SKILLS use `skill_reached` (the ceiling): a skill is only surfaced under a block at/under
-            # the reached block, so a skill whose curriculum home is still ahead is ignored until then.
-            skill_reached = (skill_ceiling is None) or (b.order <= skill_ceiling)
-            block_passed = bool(b.components) and all(_component_done(c) for c in b.components)
+            # A skill surfaces only at/under the reached block (current_num), so a skill whose
+            # curriculum home is still ahead is ignored until the expert reaches it.
+            skill_reached = (current_num is None) or (b.order <= current_num)
+            block_passed = bool(b.components) and all(
+                component_passed(c, cbt_by_ref, sim_by_ref, vals, pass_mark) for c in b.components)
             if block_passed:
                 passed_blocks.add(b.order)
             bskills = []
@@ -241,27 +294,16 @@ def build_training_records(
                     if sid not in vals:
                         continue
                     v, bm = vals[sid]
-                    below = v is not None and bm is not None and v < bm
+                    below = _meets(v, bm) is False
                     m = skill_meta.get(sid, {})
                     bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
                                     "category": m.get("category", ""),
-                                    "value": None if v is None else round(v, 3), "below": bool(below)})
+                                    "value": None if v is None else round(v, 3), "below": below})
                     surfaced.add(sid)
             has_below = any(s["below"] for s in bskills)
             if has_below:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
-            # Block status, all activity-inferred. Remediation flagging (below-mark skill ->
-            # retraining) is unchanged; "passed" now means the block's components are actually done.
-            if not has_progress:
-                status = "not_tracked"             # no activity anywhere yet
-            elif b.order > current_num:
-                status = "locked"                  # beyond the furthest block reached
-            elif has_below:
-                status = "retraining"              # reached block with a below-mark skill
-            elif block_passed:
-                status = "passed"                  # every component satisfied by activity
-            else:
-                status = "in_progress"             # reached but not yet fully complete
+            status = block_status(has_progress, current_num, b.order, has_below, block_passed)
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
                            "short": short_desc(b.label), "status": status, "skills": bskills,
                            "sims": [s for s in agent_sims if s["block_num"] == b.order],
@@ -271,8 +313,7 @@ def build_training_records(
         # future-block skills (above the ceiling) are ignored until the expert reaches them.
         vv = [vals[sid][0] for sid in surfaced if vals[sid][0] is not None]
         avg_skill = round(sum(vv) / len(vv), 3) if vv else None
-        deficient = [sid for sid in surfaced
-                     if vals[sid][0] is not None and vals[sid][1] is not None and vals[sid][0] < vals[sid][1]]
+        deficient = [sid for sid in surfaced if _meets(*vals[sid]) is False]
 
         # Remediation targets blocks the expert has reached (a below-mark skill means they
         # attempted it). block_defic holds those; drive triggering from it. (Once real gate
@@ -301,20 +342,10 @@ def build_training_records(
                     "groups": build_action_groups(f"Block {prim.order}", focus_labels),
                 }
 
-        if not vals:
-            # No skill-readiness signal yet. A progress feed means they've started (awaiting
-            # skill data) -> "in_training"; no feed and no data -> genuinely "not_started".
-            status = "in_training" if has_progress else "not_started"
-        elif block_defic:
-            status = "retraining"                         # has a below-mark skill -> needs remediation
-        elif has_progress and len(passed_blocks) == last_num:
-            status = "completed"                          # every learning block's components passed
-        elif has_progress and on_track is False:
-            status = "behind"
-        elif has_progress:
-            status = "on_track"
-        else:
-            status = "in_training"                        # has data, no deficiency, actual progress not tracked yet
+        # `completed` requires every block's components passed, so it stays unreachable while any
+        # block is still uncrosswalked (components: []); that dependency is intentional.
+        status = overall_status(bool(vals), has_progress, bool(block_defic),
+                                len(passed_blocks) == last_num, on_track)
 
         cur_block = next(({"num": bm["num"], "name": bm["name"], "short": bm["short"]}
                           for bm in blocks_meta if bm["num"] == current_num),
@@ -325,7 +356,7 @@ def build_training_records(
         handoff = None
         if status == "completed":
             cur_block = {"num": None, "name": "Completed", "short": "Completed", "done": True}
-            n_pass = sum(1 for (v, bm) in vals.values() if v is not None and bm is not None and v >= bm)
+            n_pass = sum(1 for (v, bm) in vals.values() if _meets(v, bm) is True)
             ranked = sorted(((v, skill_meta.get(m, {}).get("label", _title(m)))
                              for m, (v, bm) in vals.items() if v is not None), key=lambda x: x[0])
             handoff = {
@@ -357,8 +388,7 @@ def build_training_records(
         "report_date": str(report_date),
         "blocks": blocks_meta,
         "roster_fields_synthetic": False,   # real roster by default; demo generator overrides to True
-        "current_block_source": ("progress feed (actual block completion)" if any_progress
-                                 else "not tracked yet — no progress feed; the expected date is used only to judge on-track"),
+        "current_block_source": "inferred from crosswalked sim/CBT activity (furthest block reached)",
     }
     return records, meta
 
