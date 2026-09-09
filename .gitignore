@@ -28,6 +28,7 @@ htmlcov/
 Thumbs.db
 .vscode/
 .idea/
+~$*        # Office (Word/Excel) lock/temp files, e.g. ~$Ascend Simulations.xlsx
 
 # ---- generated artifacts ----
 outputs/runs/**
@@ -49,3 +50,8 @@ data/training/**
 # temporary ignore until we pick up the ASCEND work
 extraction/compiled_sql/adhoc_training_assist/**
 materials/**
+
+# ---- docs/training working files ----
+# Source docs (xlsx/docx/curriculum CSVs) already committed here stay tracked; new untracked
+# drops in this dir are ignored (use `git add -f` to track a new one deliberately).
+docs/training/
