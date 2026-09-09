@@ -1,0 +1,102 @@
+-- extraction/sql/training_assist_sessions.sql.j2
+--
+-- TrAIning Assist (AI-assisted training simulator) SESSION-grain verdicts.
+--
+-- One row per training SESSION (sim attempt): the simulator's own pass/fail verdict plus
+-- the native present/total behavior counts. This is the authoritative pass/fail signal,
+-- as opposed to the computed behaviorPresent pass-rate proxy in training_assist.sql.j2.
+--
+--   session_id          the sim attempt (join key; one attempt per row)
+--   agent_id            expert (EmployeeId)
+--   period              session day (the analog of behavior_scores' event date)
+--   scorecard_name      challenge_id (the sim persona)
+--   evaluation_results  EvaluationDetails.Results -- the native Pass/Fail verdict (string)
+--   present_behaviors   EvaluationDetails.logs.behaviors_present -- behaviors demonstrated
+--   max_behaviors       EvaluationDetails.logs.max_behaviors      -- behaviors evaluated
+--
+-- The best/any-pass rollup to a per-(agent, sim) verdict and the present/total evidence
+-- ratio are applied downstream by src/pde/cli/run_training_pipeline.py. The per-behavior
+-- skill pass-rates (the evidence that drives remediation) still come from the sibling
+-- behavior-grain extract, training_assist.sql.j2 -- this extract does NOT replace it.
+--
+-- Same extract idioms as training_assist.sql.j2: EmployeeId excludes test accounts, the
+-- Overview guard drops empty evaluations, and the window is applied to the SESSION start
+-- date. {{ start_date }} / {{ end_date }} / {{ source_schema }} / {{ training_table }}
+-- come from extract_run.yaml globals via compile_sql.build_context.
+
+SELECT DISTINCT
+    element_at(
+        edp_raw_data_map,
+        'dynamodb_Keys_SessionID_S'
+    ) AS session_id,
+
+    CAST(
+        element_at(
+            edp_raw_data_map,
+            'dynamodb_NewImage_EmployeeId_S'
+        ) AS BIGINT
+    ) AS agent_id,
+
+    CAST(
+        SUBSTRING(
+            element_at(
+                edp_raw_data_map,
+                'dynamodb_NewImage_SessionStartTime_S'
+            ),
+            1,
+            10
+        ) AS DATE
+    ) AS period,                                  -- DAY grain (the session day)
+
+    'all' AS call_type,
+
+    element_at(
+        edp_raw_data_map,
+        'dynamodb_NewImage_ChallengeId_S'
+    ) AS scorecard_name,
+
+    element_at(
+        edp_raw_data_map,
+        'dynamodb_NewImage_EvaluationDetails_M_Results_S'
+    ) AS evaluation_results,
+
+    TRY_CAST(
+        element_at(
+            edp_raw_data_map,
+            'dynamodb_NewImage_EvaluationDetails_M_logs_M_behaviors_present_N'
+        ) AS BIGINT
+    ) AS present_behaviors,
+
+    TRY_CAST(
+        element_at(
+            edp_raw_data_map,
+            'dynamodb_NewImage_EvaluationDetails_M_logs_M_max_behaviors_N'
+        ) AS BIGINT
+    ) AS max_behaviors
+
+FROM {{ source_schema }}.{{ training_table }}
+
+WHERE LOWER(
+        element_at(
+            edp_raw_data_map,
+            'dynamodb_NewImage_EmployeeId_S'
+        )
+    ) NOT LIKE '%test%'
+
+  AND element_at(
+        edp_raw_data_map,
+        'dynamodb_NewImage_EvaluationDetails_M_Overview_S'
+    ) != ''
+
+  -- Standard extract window, applied to the session start date so weeks align with a
+  -- normal extract.
+  AND CAST(
+        SUBSTRING(
+            element_at(
+                edp_raw_data_map,
+                'dynamodb_NewImage_SessionStartTime_S'
+            ),
+            1,
+            10
+        ) AS DATE
+      ) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'

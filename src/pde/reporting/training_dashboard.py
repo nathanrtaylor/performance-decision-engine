@@ -32,7 +32,9 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.5"   # 1.5: blocks carry `sims_expected`/`cbts_expected` (collapsed done/expected)
+SCHEMA_VERSION = "1.7"   # 1.7: block skills are block-discrete + latest-attempt (from block_skills), not the curriculum develops-map mean
+# 1.6: sim items carry native `passed`/`result`/`present_ratio` (EvaluationDetails.Results verdict + present/total evidence)
+# 1.5: blocks carry `sims_expected`/`cbts_expected` (collapsed done/expected)
 # 1.4: cbt items carry `scored`/`completed` (completion-only vs scored)
 # 1.3: per-block `sims` + per-expert `sims_unmapped` / `cbts`
                          # 1.2: per-expert `hist` (recent coaching history)
@@ -78,7 +80,11 @@ def component_passed(comp, cbt_by_ref: Dict[str, dict], sim_by_ref: Dict[str, di
                      vals: Dict[str, tuple], pass_mark: float) -> bool:
     """One program component satisfied by activity: a scored sim/CBT at/above its benchmark
     (pass_mark fallback when there's no scored signal), a completion-only CBT completed, or
-    False when there's no activity for it (not taken / not yet crosswalked)."""
+    False when there's no activity for it (not taken / not yet crosswalked).
+
+    For skill_sim / test_call the simulator's native Pass/Fail verdict (`passed`, from
+    EvaluationDetails.Results) is authoritative when present; the computed pass-rate vs
+    pass_mark is only a fallback for activity with no session-grain verdict."""
     if comp.kind == "cbt":
         it = cbt_by_ref.get(comp.ref)
         if not it:
@@ -92,7 +98,12 @@ def component_passed(comp, cbt_by_ref: Dict[str, dict], sim_by_ref: Dict[str, di
         pr = it.get("pass_rate")                      # fallback: no scored signal in vals
         return pr is not None and pr >= pass_mark
     it = sim_by_ref.get(comp.ref)                     # skill_sim / test_call
-    return bool(it) and (it.get("pass_rate") or 0) >= pass_mark
+    if not it:
+        return False
+    passed = it.get("passed")
+    if passed is not None:                            # native Results verdict wins
+        return bool(passed)
+    return (it.get("pass_rate") or 0) >= pass_mark    # fallback: computed pass-rate proxy
 
 
 def block_status(has_progress: bool, current_num: Optional[int], order: int,
@@ -144,6 +155,7 @@ def build_training_records(
     coaching_history: Optional[pd.DataFrame] = None,   # raw coaching_history frame (unbounded); queried for the cohort
     sims_taken: Optional[pd.DataFrame] = None,         # per-(agent,sim): challenge_id,label,sim_id,block_num,sessions,pass_rate,last_period
     cbts_taken: Optional[pd.DataFrame] = None,         # per-(agent,course): courseid,coursename,ref,block_num,scored,completed,sessions,pass_rate,last_period
+    block_skills: Optional[pd.DataFrame] = None,       # per-(agent,block,skill): block_num,skill,value,below (block-discrete, latest-attempt)
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     sdf = skills_df.copy()
     sdf["agent_id"] = sdf["agent_id"].astype(str)
@@ -184,11 +196,17 @@ def build_training_records(
         pr = _num(getattr(r, "pass_rate", None))
         cid = str(getattr(r, "challenge_id", "") or "")
         sid = _opt(getattr(r, "sim_id", None))
+        pv = _opt(getattr(r, "passed", None))            # native verdict: True / False / None(unknown)
+        res = _opt(getattr(r, "result", None))
+        ratio = _num(getattr(r, "present_ratio", None))  # behaviors_present / max_behaviors (evidence)
         return {"challenge_id": cid, "label": str(getattr(r, "label", "") or cid),
                 "sim_id": None if sid is None else str(sid),
                 "block_num": None if bn is None else int(bn),
                 "sessions": int(_num(getattr(r, "sessions", 0)) or 0),
                 "pass_rate": None if pr is None else round(pr, 3),
+                "passed": None if pv is None else bool(pv),
+                "result": None if res is None else str(res),
+                "present_ratio": None if ratio is None else round(ratio, 3),
                 "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
 
     def _cbt_item(r) -> Dict[str, Any]:
@@ -220,6 +238,21 @@ def build_training_records(
 
     sims_by_agent = _grouped(sims_taken, _sim_item)
     cbts_by_agent = _grouped(cbts_taken, _cbt_item)
+
+    # Block-discrete, latest-attempt skills: agent_id -> {block_num: [{skill, value, below}]}.
+    # When present this is the SOURCE OF TRUTH for each block's skills + deficiency (replacing the
+    # curriculum develops-map lookup against the block-agnostic `vals`).
+    use_block_skills = block_skills is not None
+    bskills_by_agent: Dict[str, Dict[int, List[Dict[str, Any]]]] = {}
+    if use_block_skills and not block_skills.empty:
+        bs = block_skills.copy()
+        bs["agent_id"] = bs["agent_id"].astype(str)
+        for aid_, grp_ in bs.groupby("agent_id"):
+            per_block: Dict[int, List[Dict[str, Any]]] = {}
+            for r in grp_.itertuples():
+                per_block.setdefault(int(r.block_num), []).append(
+                    {"skill": str(r.skill), "value": _num(r.value), "below": bool(r.below)})
+            bskills_by_agent[str(aid_)] = per_block
 
     records: List[Dict[str, Any]] = []
 
@@ -281,6 +314,9 @@ def build_training_records(
         surfaced: set = set()
         passed_blocks: set = set()
         blocks: List[Dict[str, Any]] = []
+        shown_vals: List[float] = []          # block-scoped skill values actually displayed (for avg_skill)
+        deficient_set: set = set()            # skills below-mark in ANY block (block-discrete)
+        agent_block_skills = bskills_by_agent.get(aid, {})
         for b in program.blocks:
             # A skill surfaces only at/under the reached block (current_num), so a skill whose
             # curriculum home is still ahead is ignored until the expert reaches it.
@@ -290,7 +326,22 @@ def build_training_records(
             if block_passed:
                 passed_blocks.add(b.order)
             bskills = []
-            if skill_reached:
+            if use_block_skills:
+                # Block-discrete: skills come only from THIS block's own sims (challenge->sim->block),
+                # scored from the latest attempt -- never back-attributed via the develops map.
+                for row in agent_block_skills.get(b.order, []):
+                    sid, v, below = row["skill"], row["value"], row["below"]
+                    m = skill_meta.get(sid, {})
+                    bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
+                                    "category": m.get("category", ""),
+                                    "value": None if v is None else round(v, 3), "below": below})
+                    surfaced.add(sid)
+                    if v is not None:
+                        shown_vals.append(v)
+                    if below:
+                        deficient_set.add(sid)
+            elif skill_reached:
+                # Legacy fallback (no block_skills): curriculum develops-map ∩ block-agnostic vals.
                 for sid in b.develops_all:
                     if sid not in vals:
                         continue
@@ -317,9 +368,13 @@ def build_training_records(
 
         # Readiness + remediation consider only skills that surfaced under a reached block;
         # future-block skills (above the ceiling) are ignored until the expert reaches them.
-        vv = [vals[sid][0] for sid in surfaced if vals[sid][0] is not None]
-        avg_skill = round(sum(vv) / len(vv), 3) if vv else None
-        deficient = [sid for sid in surfaced if _meets(*vals[sid]) is False]
+        if use_block_skills:
+            avg_skill = round(sum(shown_vals) / len(shown_vals), 3) if shown_vals else None
+            deficient = sorted(deficient_set)
+        else:
+            vv = [vals[sid][0] for sid in surfaced if vals[sid][0] is not None]
+            avg_skill = round(sum(vv) / len(vv), 3) if vv else None
+            deficient = [sid for sid in surfaced if _meets(*vals[sid]) is False]
 
         # Remediation targets blocks the expert has reached (a below-mark skill means they
         # attempted it). block_defic holds those; drive triggering from it. (Once real gate
@@ -350,7 +405,7 @@ def build_training_records(
 
         # `completed` requires every block's components passed, so it stays unreachable while any
         # block is still uncrosswalked (components: []); that dependency is intentional.
-        status = overall_status(bool(vals), has_progress, bool(block_defic),
+        status = overall_status(bool(vals) or bool(surfaced), has_progress, bool(block_defic),
                                 len(passed_blocks) == last_num, on_track)
 
         cur_block = next(({"num": bm["num"], "name": bm["name"], "short": bm["short"]}
@@ -772,12 +827,17 @@ function histSection(e){
   if(!(e.hist && e.hist.length)) return "";
   return `<div class="sec"><div class="h">Recent coaching history</div>${coachingHistoryTable(e.hist)}</div>`;
 }
-/* one row per sim practiced: label, ASC-SIM id (or —), pass-rate + sessions/last */
+/* one row per sim practiced: label, ASC-SIM id (or —), then the simulator's native Pass/Fail
+   verdict + the present/total evidence (falls back to the computed pass-rate when there is no
+   session-grain verdict), plus sessions/last. */
 function simRow(s){
   const sid = s.sim_id ? esc(s.sim_id) : "—";
   const meta = `${s.sessions||0} sess${s.last?" · "+esc(s.last):""}`;
+  const verdict = (s.passed===true) ? chip("good","Pass")
+                 : (s.passed===false) ? chip("critical","Fail") : "";
+  const evid = (s.present_ratio!=null) ? pct(s.present_ratio) : pct(s.pass_rate);
   return `<tr><td>${esc(s.label)}</td><td class="sid">${sid}</td>`+
-    `<td class="num">${pct(s.pass_rate)}<span class="meta">${meta}</span></td></tr>`;
+    `<td class="num">${verdict} <span class="meta">${evid} · ${meta}</span></td></tr>`;
 }
 function simsTable(items){
   return `<table class="cmtable"><tbody>${items.map(simRow).join("")}</tbody></table>`;

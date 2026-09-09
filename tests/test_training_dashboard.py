@@ -155,7 +155,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.5"
+    assert meta["schema_version"] == "1.7"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -190,7 +190,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.5"
+    assert meta["schema_version"] == "1.7"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
@@ -283,6 +283,71 @@ def test_no_activity_means_no_current_block_or_pace():
     assert a2["expected_block_num"] is not None  # expected is still computed (for comparison)
 
 
+def test_block_skills_drive_discrete_per_block_deficiency():
+    # When block_skills is supplied it is the source of truth for each block's skills: a skill
+    # surfaces (and flags a block) ONLY under the block it's provided for -- not via develops.
+    prog = _program()  # b1 greet, b2 solve, b3 close
+    # a1 reaches block 3; give block-scoped skills: greet OK under b1, close BELOW under b3, nothing on b2.
+    sims = pd.DataFrame([{"agent_id": "a1", "challenge_id": f"S{o}", "label": "s", "sim_id": f"S{o}",
+                          "block_num": o, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}
+                         for o in (1, 2, 3)])
+    block_skills = pd.DataFrame([
+        {"agent_id": "a1", "block_num": 1, "skill": "greet", "value": 0.90, "below": False},
+        {"agent_id": "a1", "block_num": 3, "skill": "close", "value": 0.50, "below": True},
+    ])
+    recs, _ = build_training_records(_skills_df(), _agents_df(), prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80,
+                                     sims_taken=sims, block_skills=block_skills)
+    a1 = {r["id"]: r for r in recs}["a1"]
+    bynum = {b["num"]: b for b in a1["blocks"]}
+    # block 2 has NO block_skills rows -> no skills, not flagged (even though _skills_df has 'solve' below)
+    assert bynum[2]["skills"] == [] and bynum[2]["status"] != "retraining"
+    # block 3 carries the below-mark skill -> retraining there
+    assert bynum[3]["status"] == "retraining"
+    assert [s["skill"] for s in bynum[3]["skills"] if s["below"]] == ["close"]
+    # remediation is discrete: driven by block 3 only, focus = Close
+    assert a1["remediation"]["primary_block"] == 3
+    assert a1["remediation"]["focus_skills"] == ["Close"]
+    # avg_skill is the mean of the block-scoped values shown (0.9, 0.5), not the skills_df means
+    assert a1["avg_skill"] == 0.7
+
+
+def test_native_verdict_governs_block_pass_while_skill_evidence_drives_remediation():
+    # The simulator's native Pass/Fail verdict decides whether a sim/block is passed; the
+    # per-skill pass-rates remain the evidence that drives remediation (unchanged behavior).
+    prog = _program()
+    agents = _agents_df()
+
+    def _sim(a, order, ref, passed, ratio, pr=0.99):
+        return {"agent_id": a, "challenge_id": ref, "label": ref, "sim_id": ref, "block_num": order,
+                "sessions": 1, "pass_rate": pr, "last_period": "2026-01-05",
+                "passed": passed, "result": "Pass" if passed else "Fail", "present_ratio": ratio}
+
+    sims = pd.DataFrame([
+        # a1 (solve below-mark): every sim PASSES the native verdict -> block-pass would be clean,
+        # but the below-mark skill still triggers remediation on its block.
+        _sim("a1", 1, "SIM1", True, 0.95), _sim("a1", 2, "SIM2", True, 0.90),
+        # a2 (all skills >= 0.80): FAILS the block-2 sim by native verdict despite pass_rate 0.99.
+        _sim("a2", 1, "SIM1", True, 0.95), _sim("a2", 2, "SIM2", False, 0.40),
+        _sim("a2", 3, "SIM3", True, 0.90),
+    ])
+    recs, _ = build_training_records(_skills_df(), agents, prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims)
+    by = {r["id"]: r for r in recs}
+
+    # a2: native FAIL on block 2 keeps it unpassed even though the computed pass_rate (0.99) clears 0.80,
+    # so the expert is NOT "completed" (no skill deficiency, so not "retraining" either).
+    a2 = by["a2"]
+    assert {b["num"]: b for b in a2["blocks"]}[2]["status"] != "passed"
+    assert a2["status"] != "completed"
+    assert a2["remediation"] is None                       # verdict fail alone does not target skills
+
+    # a1: below-mark skill (solve) still drives remediation regardless of the passing sim verdict.
+    a1 = by["a1"]
+    assert a1["remediation"] is not None
+    assert a1["remediation"]["focus_skills"] == ["Solve"]
+
+
 # --------------------------------------------------------------------------- #
 # Pure decision helpers (activity-inferred status taxonomy)
 # --------------------------------------------------------------------------- #
@@ -323,8 +388,13 @@ def test_component_passed():
     assert component_passed(cbt, {"cbt_x": {"scored": True}}, {}, {"cbt_x": (0.5, 0.8)}, 0.8) is False
     assert component_passed(cbt, {}, {}, {}, 0.8) is False                      # no activity
     sim = Component(kind="skill_sim", ref="S1")
+    # native Results verdict (`passed`) is authoritative when present -- wins over the pass-rate proxy
+    assert component_passed(sim, {}, {"S1": {"passed": True, "pass_rate": 0.1}}, {}, 0.8) is True
+    assert component_passed(sim, {}, {"S1": {"passed": False, "pass_rate": 0.99}}, {}, 0.8) is False
+    # fallback to the computed pass-rate when there's no native verdict (passed missing / None)
     assert component_passed(sim, {}, {"S1": {"pass_rate": 0.9}}, {}, 0.8) is True
     assert component_passed(sim, {}, {"S1": {"pass_rate": 0.7}}, {}, 0.8) is False
+    assert component_passed(sim, {}, {"S1": {"passed": None, "pass_rate": 0.9}}, {}, 0.8) is True
 
 
 # --------------------------------------------------------------------------- #

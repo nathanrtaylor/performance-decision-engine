@@ -48,6 +48,45 @@ outputs:
     params:
       training_table: "l1_asurion_dst_ai_assisted_training"
 
+  # Session-grain companion to training_assist: the simulator's own Pass/Fail verdict
+  # (EvaluationDetails.Results) + native present/total counts, one row per sim attempt.
+  # run_training_pipeline rolls this up (best/any-pass) to the per-sim pass/fail verdict;
+  # training_assist.csv above stays the per-behavior skill-evidence source.
+  training_assist_sessions:
+    sql_file: "extraction/sql/training_assist_sessions.sql.j2"
+    output_file: "training_assist_sessions.csv"
+    require_rows: false
+    expected_columns:
+      - session_id
+      - agent_id
+      - period
+      - call_type
+      - scorecard_name
+      - evaluation_results
+      - present_behaviors
+      - max_behaviors
+    params:
+      training_table: "l1_asurion_dst_ai_assisted_training"
+
+  # Per-session, per-behavior grain: keeps session_id + session_start_time so the pipeline can
+  # score a skill from the expert's LATEST attempt of a sim (block-discrete skill scoring).
+  # Companion to training_assist.csv (day grain) -- does not replace it.
+  training_assist_behaviors:
+    sql_file: "extraction/sql/training_assist_behaviors.sql.j2"
+    output_file: "training_assist_behaviors.csv"
+    require_rows: false
+    expected_columns:
+      - session_id
+      - agent_id
+      - session_start_time
+      - period
+      - call_type
+      - scorecard_name
+      - behavior
+      - behavior_present
+    params:
+      training_table: "l1_asurion_dst_ai_assisted_training"
+
   training_cbt:
     sql_file: "extraction/sql/training_cbt.sql.j2"
     output_file: "training_cbt.csv"
