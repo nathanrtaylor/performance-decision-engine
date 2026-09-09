@@ -4,7 +4,9 @@ from __future__ import annotations
 import pandas as pd
 
 from pde.training.program import Block, Component, Program, RemediationPolicy
-from pde.reporting.training_dashboard import build_training_records, short_desc
+from pde.reporting.training_dashboard import (
+    build_training_records, short_desc, block_status, overall_status, component_passed, _meets,
+)
 from pde.explainability.training_templates import build_action_groups
 
 
@@ -279,3 +281,98 @@ def test_no_activity_means_no_current_block_or_pace():
     assert a1["status"] == "retraining"          # has a below-mark skill (solve)
     assert a2["status"] == "in_training"         # has data, no deficiency, no activity tracked
     assert a2["expected_block_num"] is not None  # expected is still computed (for comparison)
+
+
+# --------------------------------------------------------------------------- #
+# Pure decision helpers (activity-inferred status taxonomy)
+# --------------------------------------------------------------------------- #
+def test_meets():
+    assert _meets(0.9, 0.8) is True
+    assert _meets(0.7, 0.8) is False
+    assert _meets(None, 0.8) is None and _meets(0.9, None) is None
+
+
+def test_block_status_ladder():
+    # a below-mark skill wins first -- even with no activity -- so the block ladder agrees with the
+    # block_defic-driven overall status (previously no-activity blocks all read not_tracked).
+    assert block_status(False, None, 2, has_below=True, block_passed=False) == "retraining"
+    assert block_status(False, None, 2, has_below=False, block_passed=False) == "not_tracked"
+    assert block_status(True, 3, 5, has_below=False, block_passed=False) == "locked"       # beyond reached
+    assert block_status(True, 3, 2, has_below=False, block_passed=True) == "passed"
+    assert block_status(True, 3, 3, has_below=False, block_passed=False) == "in_progress"
+    assert block_status(True, 3, 2, has_below=True, block_passed=True) == "retraining"     # deficiency beats passed
+
+
+def test_overall_status_cascade():
+    assert overall_status(False, False, False, False, None) == "not_started"
+    assert overall_status(False, True, False, False, None) == "in_training"
+    assert overall_status(True, True, True, False, True) == "retraining"
+    assert overall_status(True, True, False, True, True) == "completed"
+    assert overall_status(True, True, False, False, False) == "behind"
+    assert overall_status(True, True, False, False, True) == "on_track"
+    assert overall_status(True, False, False, False, None) == "in_training"   # data, no activity
+
+
+def test_component_passed():
+    cbt = Component(kind="cbt", ref="cbt_x")
+    # completion-only CBT: satisfied by completion alone (no score, never a pending 0%)
+    assert component_passed(cbt, {"cbt_x": {"scored": False, "completed": True}}, {}, {}, 0.8) is True
+    assert component_passed(cbt, {"cbt_x": {"scored": False, "completed": False}}, {}, {}, 0.8) is False
+    # scored CBT: vs its benchmark in vals
+    assert component_passed(cbt, {"cbt_x": {"scored": True}}, {}, {"cbt_x": (0.9, 0.8)}, 0.8) is True
+    assert component_passed(cbt, {"cbt_x": {"scored": True}}, {}, {"cbt_x": (0.5, 0.8)}, 0.8) is False
+    assert component_passed(cbt, {}, {}, {}, 0.8) is False                      # no activity
+    sim = Component(kind="skill_sim", ref="S1")
+    assert component_passed(sim, {}, {"S1": {"pass_rate": 0.9}}, {}, 0.8) is True
+    assert component_passed(sim, {}, {"S1": {"pass_rate": 0.7}}, {}, 0.8) is False
+
+
+# --------------------------------------------------------------------------- #
+# Activity-driven pace + completion-only CBT (integration)
+# --------------------------------------------------------------------------- #
+def test_pace_behind_and_ahead():
+    prog = _program()   # expected_completion_day 1 / 3 / 5
+    agents = pd.DataFrame([
+        {"agent_id": "beh", "agent_name": "B", "class_id": "C", "trainer": "T",
+         "icp_client": "training", "training_start_date": "2026-01-01"},   # 5 days in -> expected block 3
+        {"agent_id": "ahd", "agent_name": "A", "class_id": "C", "trainer": "T",
+         "icp_client": "training", "training_start_date": "2026-01-05"},   # 1 day in  -> expected block 1
+    ])
+    skills = pd.DataFrame([{"agent_id": a, "metric": "greet", "value": 0.9, "benchmark": 0.8}
+                           for a in ("beh", "ahd")])
+
+    def _sim(a, order):
+        return {"agent_id": a, "challenge_id": f"{a}{order}", "label": "s", "sim_id": f"{a}{order}",
+                "block_num": order, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}
+    sims = pd.DataFrame([_sim("beh", 1)] + [_sim("ahd", o) for o in (1, 2, 3)])
+    recs, _ = build_training_records(skills, agents, prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims)
+    by = {r["id"]: r for r in recs}
+    assert by["beh"]["current_block"]["num"] == 1 and by["beh"]["expected_block_num"] == 3
+    assert by["beh"]["pace"] == "behind" and by["beh"]["status"] == "behind"
+    assert by["ahd"]["current_block"]["num"] == 3 and by["ahd"]["expected_block_num"] == 1
+    assert by["ahd"]["pace"] == "ahead"
+
+
+def test_completion_only_cbt_passes_block_but_scored_below_does_not():
+    prog = Program(name="P", pace_hours_per_day=6.0, blocks=[
+        Block(id="b1", order=1, label="B1", expected_completion_day=1,
+              components=[Component(kind="cbt", ref="cbt_c1")]),
+    ])
+    agents = pd.DataFrame([{"agent_id": "z", "agent_name": "Z", "class_id": "C", "trainer": "T",
+                            "icp_client": "training", "training_start_date": "2026-01-01"}])
+    base_cbt = {"agent_id": "z", "courseid": "c1", "coursename": "C1", "ref": "cbt_c1",
+                "block_num": 1, "sessions": 1, "last_period": "2026-01-05"}
+    # completion-only: no score, satisfied by completion -> block passed (and no phantom pending score)
+    cbts = pd.DataFrame([{**base_cbt, "scored": False, "completed": True, "pass_rate": None}])
+    recs, _ = build_training_records(pd.DataFrame(columns=["agent_id", "metric", "value", "benchmark"]),
+                                     agents, prog, RemediationPolicy(), {}, report_date="2026-01-06",
+                                     pass_mark=0.80, cbts_taken=cbts)
+    b1 = {b["num"]: b for b in recs[0]["blocks"]}[1]
+    assert b1["status"] == "passed" and b1["cbts"][0]["scored"] is False and b1["cbts"][0]["pass_rate"] is None
+    # scored but below its benchmark -> component not satisfied -> block not passed
+    cbts2 = pd.DataFrame([{**base_cbt, "scored": True, "completed": True, "pass_rate": 0.5}])
+    skills2 = pd.DataFrame([{"agent_id": "z", "metric": "cbt_c1", "value": 0.5, "benchmark": 0.8}])
+    recs2, _ = build_training_records(skills2, agents, prog, RemediationPolicy(), {},
+                                      report_date="2026-01-06", pass_mark=0.80, cbts_taken=cbts2)
+    assert {b["num"]: b for b in recs2[0]["blocks"]}[1]["status"] == "in_progress"
