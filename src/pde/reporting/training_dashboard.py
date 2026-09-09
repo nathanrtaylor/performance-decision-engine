@@ -556,7 +556,7 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .lblk details.cm > summary::before{content:"\25B8";font-size:9px;line-height:1}
 .lblk details.cm[open] > summary::before{content:"\25BE"}
 .lblk .cnt{margin-left:auto;font-variant-numeric:tabular-nums}
-@media print{.lblk details.cm > .cmtable{display:table}}   /* keep tables visible when printing/PDF */
+@media print{.lblk details.cm > .cmtable{display:table !important}}   /* force tables visible in print/PDF even though collapsed by default */
 .cmtable td.sid{font-variant-numeric:tabular-nums;color:var(--text-2);white-space:nowrap}
 .cmtable td .meta{color:var(--muted);font-weight:400;margin-left:6px}
 .cmtable{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -783,10 +783,11 @@ function simsTable(items){
   return `<table class="cmtable"><tbody>${items.map(simRow).join("")}</tbody></table>`;
 }
 /* collapsible sim/CBT section: the summary shows done / expected (expected = the block's enumerated
-   components); expanding reveals the detail table. Open by default; collapse for a compact overview. */
+   components); expanding reveals the detail table. Collapsed by default for a compact overview
+   (the done/expected count stays visible); print/PDF force-expands the tables. */
 function cmSection(label, done, expected, tableHtml){
   const exp = (expected==null || expected<done) ? done : expected;
-  return `<details class="cm" open><summary class="subh">${esc(label)}`+
+  return `<details class="cm"><summary class="subh">${esc(label)}`+
     `<span class="cnt">${done}/${exp}</span></summary>${tableHtml}</details>`;
 }
 function blocksView(e){
