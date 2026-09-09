@@ -13,7 +13,6 @@ Outputs (in --out-dir): the usual pipeline artifacts plus training_dashboard.{ht
 from __future__ import annotations
 
 import argparse
-import re
 import sys
 from datetime import date
 from pathlib import Path
@@ -22,7 +21,7 @@ import pandas as pd
 
 from pde.cli import run_pipeline as base_pipeline
 from pde.reporting.training_dashboard import build_training_records, write_training_dashboard
-from pde.training.program import load_program, load_policy
+from pde.training.program import cbt_metric_key, load_program, load_policy
 from pde.training.roster import load_class_roster
 from pde.utils.io import load_yaml
 from pde.utils.logging import get_logger
@@ -125,12 +124,6 @@ def _build_sims_taken(raw_dir: Path, program, profiles_path: Path) -> pd.DataFra
     return agg[cols]
 
 
-def _cbt_metric_key(courseid) -> str:
-    """Live CBT metric key for a courseid -- matches gen_training_configs.py's `cbt_<id>` namespacing
-    and the cbt component `ref` emitted by gen_program_components.py."""
-    return "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", str(courseid)).strip("_").lower()
-
-
 def _build_cbts_taken(raw_dir: Path, block_by_ref: dict) -> pd.DataFrame:
     """Per-(agent, course) CBT summary, joined to blocks via the program's `kind: cbt` components.
 
@@ -152,7 +145,7 @@ def _build_cbts_taken(raw_dir: Path, block_by_ref: dict) -> pd.DataFrame:
     df["calc"] = pd.to_numeric(df.get("calc"), errors="coerce")
     scored_ids = set(df.groupby("courseid")["calc"].max().pipe(lambda s: s[s > 0]).index)
     agg = _agg_taken(df, ["courseid", "coursename"])
-    agg["ref"] = agg["courseid"].map(_cbt_metric_key)                    # matches the cbt component ref
+    agg["ref"] = agg["courseid"].map(cbt_metric_key)                     # matches the cbt component ref
     agg["block_num"] = agg["ref"].map(block_by_ref)
     agg["scored"] = agg["courseid"].isin(scored_ids)
     agg["completed"] = agg["sessions"] > 0

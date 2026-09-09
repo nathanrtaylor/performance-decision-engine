@@ -32,6 +32,8 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from pde.training.program import cbt_metric_key
+
 REPO = Path(__file__).resolve().parent.parent
 PROGRAM = REPO / "configs/training/training_program.yaml"
 SIMS = REPO / "docs/training/Ascend Simulations.xlsx"
@@ -62,11 +64,10 @@ def _sim_ref(x) -> str | None:
 
 
 def _norm_cbt_courseid(cid) -> str | None:
-    """Live-metric key for a course id: matches gen_training_configs.py's `cbt_<id>` namespacing."""
+    """Live cbt_<courseid> metric key for a course id, or None if blank. (Key format lives in
+    pde.training.program.cbt_metric_key -- the single source shared with the pipeline + catalog gen.)"""
     c = _clean(cid)
-    if not c:
-        return None
-    return "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", c).strip("_").lower()
+    return cbt_metric_key(c) if c else None
 
 
 def _pick_gate(e2e: list[dict]) -> dict:
