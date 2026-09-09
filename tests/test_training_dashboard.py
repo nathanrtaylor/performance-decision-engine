@@ -3,16 +3,20 @@ from __future__ import annotations
 
 import pandas as pd
 
-from pde.training.program import Block, Program, RemediationPolicy
+from pde.training.program import Block, Component, Program, RemediationPolicy
 from pde.reporting.training_dashboard import build_training_records, short_desc
 from pde.explainability.training_templates import build_action_groups
 
 
 def _program() -> Program:
+    # Each block carries one skill_sim component so activity-based completion can be exercised.
     return Program(name="Prog", pace_hours_per_day=6.0, blocks=[
-        Block(id="b1", order=1, label="Stage 1: Greeting", develops=["greet"], expected_completion_day=1),
-        Block(id="b2", order=2, label="Stage 2: Solve & Test - Device", develops=["solve"], expected_completion_day=3),
-        Block(id="b3", order=3, label="Stage 3: Close", develops=["close"], expected_completion_day=5),
+        Block(id="b1", order=1, label="Stage 1: Greeting", develops=["greet"], expected_completion_day=1,
+              components=[Component(kind="skill_sim", ref="SIM1")]),
+        Block(id="b2", order=2, label="Stage 2: Solve & Test - Device", develops=["solve"], expected_completion_day=3,
+              components=[Component(kind="skill_sim", ref="SIM2")]),
+        Block(id="b3", order=3, label="Stage 3: Close", develops=["close"], expected_completion_day=5,
+              components=[Component(kind="skill_sim", ref="SIM3")]),
     ])
 
 
@@ -32,18 +36,30 @@ def _skills_df():
 
 
 def _agents_df():
+    # No current_block_order: the current block is inferred from activity, never the roster.
     return pd.DataFrame([
         {"agent_id": "a1", "agent_name": "Ann", "class_id": "C1", "trainer": "T",
-         "icp_client": "training", "training_start_date": "2026-01-01", "current_block_order": 2},
+         "icp_client": "training", "training_start_date": "2026-01-01"},
         {"agent_id": "a2", "agent_name": "Bo", "class_id": "C1", "trainer": "T",
-         "icp_client": "training", "training_start_date": "2026-01-01", "current_block_order": 3},
+         "icp_client": "training", "training_start_date": "2026-01-01"},
     ])
+
+
+def _sims_df():
+    # Activity drives the inferred current block: a1 reaches block 2; a2 reaches and passes all 3.
+    rows = [("a1", 1, "SIM1", 0.9), ("a1", 2, "SIM2", 0.9),
+            ("a2", 1, "SIM1", 0.9), ("a2", 2, "SIM2", 0.9), ("a2", 3, "SIM3", 0.9)]
+    return pd.DataFrame([
+        {"agent_id": a, "challenge_id": ref, "label": ref, "sim_id": ref,
+         "block_num": bn, "sessions": 2, "pass_rate": pr, "last_period": "2026-01-05"}
+        for (a, bn, ref, pr) in rows])
 
 
 def _records():
     recs, meta = build_training_records(_skills_df(), _agents_df(), _program(),
                                         RemediationPolicy(), _SKILL_META,
-                                        report_date="2026-01-06", pass_mark=0.80)
+                                        report_date="2026-01-06", pass_mark=0.80,
+                                        sims_taken=_sims_df())
     return {r["id"]: r for r in recs}, meta
 
 
@@ -137,7 +153,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.3"
+    assert meta["schema_version"] == "1.4"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -172,7 +188,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.3"
+    assert meta["schema_version"] == "1.4"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
@@ -215,45 +231,51 @@ def test_locked_block_stays_blank_even_when_it_shares_a_skill():
     # Block 3 (locked, not yet reached) develops the same skill as block 1 (reached). The
     # expert has data for that skill, but it must NOT surface under the locked block.
     prog = Program(name="P", pace_hours_per_day=6.0, blocks=[
-        Block(id="b1", order=1, label="Stage 1: Greeting", develops=["greet"], expected_completion_day=1),
-        Block(id="b2", order=2, label="Stage 2: Solve", develops=["solve"], expected_completion_day=3),
-        Block(id="b3", order=3, label="Stage 3: Re-greet", develops=["greet"], expected_completion_day=5),
+        Block(id="b1", order=1, label="Stage 1: Greeting", develops=["greet"], expected_completion_day=1,
+              components=[Component(kind="skill_sim", ref="SIM1")]),
+        Block(id="b2", order=2, label="Stage 2: Solve", develops=["solve"], expected_completion_day=3,
+              components=[Component(kind="skill_sim", ref="SIM2")]),
+        Block(id="b3", order=3, label="Stage 3: Re-greet", develops=["greet"], expected_completion_day=5,
+              components=[Component(kind="skill_sim", ref="SIM3")]),
     ])
     skills = pd.DataFrame([{"agent_id": "a1", "metric": "greet", "value": 0.90, "benchmark": 0.80}])
     agents = pd.DataFrame([{"agent_id": "a1", "agent_name": "Ann", "class_id": "C1", "trainer": "T",
-                            "icp_client": "training", "training_start_date": "2026-01-01",
-                            "current_block_order": 1}])
+                            "icp_client": "training", "training_start_date": "2026-01-01"}])
+    # Activity reaches only block 1 -> block 3 is beyond the ceiling (locked).
+    sims = pd.DataFrame([{"agent_id": "a1", "challenge_id": "SIM1", "label": "G", "sim_id": "SIM1",
+                          "block_num": 1, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}])
     recs, _ = build_training_records(skills, agents, prog, RemediationPolicy(), _SKILL_META,
-                                     report_date="2026-01-06", pass_mark=0.80)
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims)
     blocks = {b["num"]: b for b in recs[0]["blocks"]}
-    assert blocks[1]["status"] == "in_progress" and [s["skill"] for s in blocks[1]["skills"]] == ["greet"]
+    assert blocks[1]["status"] == "passed" and [s["skill"] for s in blocks[1]["skills"]] == ["greet"]
     assert blocks[3]["status"] == "locked" and blocks[3]["skills"] == []   # blank, despite sharing "greet"
 
 
-def test_progress_feed_without_skill_data_is_in_training_not_not_started():
-    # An expert with a progress feed (current_block_order) but no skill data yet has clearly
+def test_activity_without_skill_data_is_in_training_not_not_started():
+    # An expert with crosswalked activity (a reached block) but no skill signal yet has clearly
     # started -> "in_training" (awaiting skill signal), NOT "not_started".
     agents = pd.DataFrame([{
         "agent_id": "a9", "agent_name": "Di", "class_id": "C3", "trainer": "T",
-        "icp_client": "training", "training_start_date": "2026-01-01", "current_block_order": 1}])
+        "icp_client": "training", "training_start_date": "2026-01-01"}])
+    sims = pd.DataFrame([{"agent_id": "a9", "challenge_id": "SIM1", "label": "G", "sim_id": "SIM1",
+                          "block_num": 1, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}])
     recs, _ = build_training_records(pd.DataFrame(columns=["agent_id", "metric", "value", "benchmark"]),
                                      agents, _program(), RemediationPolicy(), _SKILL_META,
-                                     report_date="2026-01-06", pass_mark=0.80)
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims)
     by = {r["id"]: r for r in recs}
     assert by["a9"]["status"] == "in_training"
     assert by["a9"]["current_block"]["num"] == 1
 
 
-def test_no_progress_feed_is_not_schedule_inferred():
-    # Without a progress feed (no current_block_order), progress is NOT inferred from the
-    # schedule: current block is unknown, pace is pending, blocks are never marked "passed".
-    agents = _agents_df().drop(columns=["current_block_order"])
-    recs, _ = build_training_records(_skills_df(), agents, _program(), RemediationPolicy(),
-                                     _SKILL_META, report_date="2026-01-06", pass_mark=0.80)
+def test_no_activity_means_no_current_block_or_pace():
+    # With no crosswalked activity, the current block is unknown and pace is pending; blocks are
+    # never marked "passed" (completion is activity-inferred). Remediation still flags below-mark skills.
+    recs, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                     _SKILL_META, report_date="2026-01-06", pass_mark=0.80)  # no sims
     by = {r["id"]: r for r in recs}
     a1, a2 = by["a1"], by["a2"]
     assert a1["current_block"]["num"] is None and a1["pace"] is None
     assert all(b["status"] in ("retraining", "not_tracked") for b in a1["blocks"])  # never "passed"
     assert a1["status"] == "retraining"          # has a below-mark skill (solve)
-    assert a2["status"] == "in_training"         # has data, no deficiency, progress not tracked
+    assert a2["status"] == "in_training"         # has data, no deficiency, no activity tracked
     assert a2["expected_block_num"] is not None  # expected is still computed (for comparison)

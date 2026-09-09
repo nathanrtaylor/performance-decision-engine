@@ -125,42 +125,38 @@ def _build_sims_taken(raw_dir: Path, program, profiles_path: Path) -> pd.DataFra
     return agg[cols]
 
 
-def _norm_course(s) -> str:
-    """Normalize a course/CBT-link name for joining (the xlsx CBT-link names end ' - Workday')."""
-    s = re.sub(r"\s*-\s*workday\s*$", "", str(s).strip().lower())
-    return re.sub(r"[^0-9a-z]+", " ", s).strip()
+def _cbt_metric_key(courseid) -> str:
+    """Live CBT metric key for a courseid -- matches gen_training_configs.py's `cbt_<id>` namespacing
+    and the cbt component `ref` emitted by gen_program_components.py."""
+    return "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", str(courseid)).strip("_").lower()
 
 
-def _cbt_block_map(sims_xlsx: Path) -> dict:
-    """normalized coursename -> learning-block order, from the xlsx 'WDL CBT Link' + 'Learning Block'.
-    This is the only content source tying CBTs to blocks; empty {} if the workbook is absent."""
-    if not sims_xlsx.exists():
-        return {}
-    try:
-        df = pd.read_excel(sims_xlsx, sheet_name="Sims 100")
-    except Exception:  # noqa: BLE001 -- a missing/renamed sheet just means no CBT->block map
-        return {}
-    out: dict = {}
-    for _, r in df.iterrows():
-        link, blk = r.get("WDL CBT Link"), r.get("Learning Block")
-        if pd.isna(link) or pd.isna(blk):
-            continue
-        out.setdefault(_norm_course(link), int(blk))
-    return out
+def _build_cbts_taken(raw_dir: Path, block_by_ref: dict) -> pd.DataFrame:
+    """Per-(agent, course) CBT summary, joined to blocks via the program's `kind: cbt` components.
 
+    Each course is classified so the dashboard can show it accurately instead of a score it will
+    never receive:
+      - `scored`   : the course is a scored assessment (some calc>0 anywhere in the extract);
+                     `pass_rate` is then its mean score.
+      - `completed`: the expert has completion records for it (>=1 session).
+    Completion-only courses (never scored) get `pass_rate = NA` -> the UI renders 'Completed'.
+    `block_num` is null for courses not represented by a cbt component (still shown, just unmapped).
 
-def _build_cbts_taken(raw_dir: Path, block_map: dict) -> pd.DataFrame:
-    """Per-(agent, course) CBT completion summary, with block_num joined from the xlsx CBT-link map.
-
-    Columns: agent_id, courseid, coursename, block_num, sessions, pass_rate, last_period.
-    `block_num` is null for courses not present in the xlsx 'WDL CBT Link' column (most of them)."""
-    cols = ["agent_id", "courseid", "coursename", "block_num", "sessions", "pass_rate", "last_period"]
+    Columns: agent_id, courseid, coursename, block_num, scored, completed, sessions, pass_rate, last_period."""
+    cols = ["agent_id", "courseid", "coursename", "ref", "block_num", "scored", "completed",
+            "sessions", "pass_rate", "last_period"]
     path = raw_dir / "training_cbt.csv"
     if not path.exists():
         return pd.DataFrame(columns=cols)
     df = pd.read_csv(path, dtype={"agent_id": str, "courseid": str, "coursename": str, "period": str})
+    df["calc"] = pd.to_numeric(df.get("calc"), errors="coerce")
+    scored_ids = set(df.groupby("courseid")["calc"].max().pipe(lambda s: s[s > 0]).index)
     agg = _agg_taken(df, ["courseid", "coursename"])
-    agg["block_num"] = agg["coursename"].map(lambda c: block_map.get(_norm_course(c)))
+    agg["ref"] = agg["courseid"].map(_cbt_metric_key)                    # matches the cbt component ref
+    agg["block_num"] = agg["ref"].map(block_by_ref)
+    agg["scored"] = agg["courseid"].isin(scored_ids)
+    agg["completed"] = agg["sessions"] > 0
+    agg.loc[~agg["scored"], "pass_rate"] = pd.NA   # completion-only: no score to report
     return agg[cols]
 
 
@@ -177,9 +173,6 @@ def main(argv=None) -> int:
                          "Lives under data/training/ (gitignored: PII, updated per run).")
     ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
-    ap.add_argument("--sims-xlsx", default="docs/training/Ascend Simulations.xlsx",
-                    help="Ascend Simulations workbook; its 'WDL CBT Link' + Learning Block columns map "
-                         "CBTs to learning blocks (nested under blocks in the dashboard).")
     ap.add_argument("--coaching-history", default=None,
                     help="coaching_history.csv for the 'Recent coaching history' block. Default: "
                          "<raw-dir>/coaching_history.csv, else data/raw/weekly/latest/coaching_history.csv.")
@@ -221,9 +214,12 @@ def main(argv=None) -> int:
             break
 
     # Sims practiced + CBTs completed (per expert), from the raw extract in --raw-dir.
-    # CBTs are mapped to blocks via the xlsx 'WDL CBT Link' column (the only course->block source).
+    # CBTs nest under blocks via the program's `kind: cbt` components (ref = cbt_<courseid> metric key),
+    # the source of truth maintained by tools/gen_program_components.py.
     sims_taken = _build_sims_taken(raw, program, profiles_path)
-    cbts_taken = _build_cbts_taken(raw, _cbt_block_map(Path(args.sims_xlsx)))
+    cbt_block_by_ref = {c.ref: b.order for b in program.blocks for c in b.components
+                        if getattr(c, "kind", None) == "cbt" and c.ref}
+    cbts_taken = _build_cbts_taken(raw, cbt_block_by_ref)
 
     records, meta = build_training_records(skills_df, agents_df, program, policy, skill_meta,
                                            report_date=report_date, pass_mark=args.pass_mark,

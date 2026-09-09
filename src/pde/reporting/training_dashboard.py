@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.3"   # 1.3: per-block `sims` + per-expert `sims_unmapped` / `cbts`
+SCHEMA_VERSION = "1.4"   # 1.4: cbt items carry `scored`/`completed` (completion-only vs scored)
+# 1.3: per-block `sims` + per-expert `sims_unmapped` / `cbts`
                          # 1.2: per-expert `hist` (recent coaching history)
 
 
@@ -128,7 +129,12 @@ def build_training_records(
         cid = str(getattr(r, "courseid", "") or "")
         bn = _opt(getattr(r, "block_num", None))
         return {"courseid": cid, "coursename": str(getattr(r, "coursename", "") or cid),
+                "ref": str(getattr(r, "ref", "") or ""),   # cbt_<courseid> metric key (matches program component)
                 "block_num": None if bn is None else int(bn),
+                # scored courses carry a real pass_rate; completion-only courses are tracked as
+                # 'completed' with no score (they never receive one).
+                "scored": bool(getattr(r, "scored", True)),
+                "completed": bool(getattr(r, "completed", True)),
                 "sessions": int(_num(getattr(r, "sessions", 0)) or 0),
                 "pass_rate": None if pr is None else round(pr, 3),
                 "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
@@ -179,18 +185,15 @@ def build_training_records(
                    if b.expected_completion_day is not None and b.expected_completion_day <= dss]
             expected_num = max(due) if due else 0
 
-        # ACTUAL current block comes from a progress feed (roster current_block_order) when
-        # present; otherwise it is unknown -- we do NOT infer it from the expected schedule.
-        cbo = aget(aid, "current_block_order")
-        has_progress = cbo is not None
-        current_num: Optional[int] = int(cbo) if has_progress else None
-
-        # Skill ceiling: cap which blocks may surface a skill, so a "future" skill doesn't show on
-        # a block the expert hasn't reached. With a progress feed -> the fed current block; without
-        # one -> the furthest block they have crosswalked sim/CBT activity in (evidence of reaching);
-        # None -> no evidence, so unbounded (skills surface under their curriculum block as before).
+        # ACTUAL current block is INFERRED FROM ACTIVITY -- the furthest block the expert has any
+        # crosswalked sim/CBT activity in (direct evidence of having reached it). There is no roster
+        # progress feed; completion of individual blocks is judged per-component below.
         act_blocks = [x["block_num"] for x in (agent_sims + agent_cbts) if x["block_num"] is not None]
-        skill_ceiling: Optional[int] = current_num if has_progress else (max(act_blocks) if act_blocks else None)
+        current_num: Optional[int] = max(act_blocks) if act_blocks else None
+        has_progress = current_num is not None
+        # Skills surface only at/under the reached block, so a skill whose curriculum home is still
+        # ahead of the expert is not shown/counted until they reach it.
+        skill_ceiling: Optional[int] = current_num
 
         # pace = ACTUAL current block vs EXPECTED block (only when actual progress is known)
         if current_num is not None and expected_num is not None:
@@ -200,17 +203,38 @@ def build_training_records(
         else:
             on_track, pace = None, None
 
+        # Per-component completion, inferred from activity: a block is "passed" when EVERY component
+        # is satisfied -- scored sims/CBTs at/above their pass bar, completion-only CBTs completed.
+        # A component with no activity (not taken, or not yet crosswalked) leaves the block unfinished.
+        cbt_by_ref = {c["ref"]: c for c in agent_cbts if c.get("ref")}
+        sim_by_ref = {s["sim_id"]: s for s in agent_sims if s.get("sim_id")}
+
+        def _passed_scored(metric_key: str, raw_rate) -> bool:
+            v = vals.get(metric_key)
+            if v and v[0] is not None and v[1] is not None:
+                return v[0] >= v[1]                          # score vs its (seeded/edited) benchmark
+            return raw_rate is not None and raw_rate >= pass_mark   # fallback when no signal
+
+        def _component_done(comp) -> bool:
+            if comp.kind == "cbt":
+                it = cbt_by_ref.get(comp.ref)
+                if not it:
+                    return False
+                return _passed_scored(comp.ref, it.get("pass_rate")) if it.get("scored") else bool(it.get("completed"))
+            it = sim_by_ref.get(comp.ref)                    # skill_sim / test_call
+            return bool(it) and (it.get("pass_rate") or 0) >= pass_mark
+
         block_defic: Dict[int, List[str]] = {}
         surfaced: set = set()
+        passed_blocks: set = set()
         blocks: List[Dict[str, Any]] = []
         for b in program.blocks:
-            # "reached" drives block STATUS (feed-driven, or "not_tracked" without a feed).
-            # SKILLS use `skill_reached` (the ceiling) instead: a skill is only surfaced under a
-            # block at/under the ceiling, so a skill whose curriculum home is still ahead of the
-            # expert is ignored until they reach that block. A block with no surfaced skills stays
-            # BLANK -- we never roll a skill up under a block the expert hasn't reached.
-            reached = (not has_progress) or (current_num is not None and b.order <= current_num)
+            # SKILLS use `skill_reached` (the ceiling): a skill is only surfaced under a block at/under
+            # the reached block, so a skill whose curriculum home is still ahead is ignored until then.
             skill_reached = (skill_ceiling is None) or (b.order <= skill_ceiling)
+            block_passed = bool(b.components) and all(_component_done(c) for c in b.components)
+            if block_passed:
+                passed_blocks.add(b.order)
             bskills = []
             if skill_reached:
                 for sid in b.develops_all:
@@ -226,19 +250,18 @@ def build_training_records(
             has_below = any(s["below"] for s in bskills)
             if has_below:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
-            # Block status: ACTUAL-completion-driven when a progress feed exists; otherwise
-            # data-driven. Never schedule-inferred -- pre-feed we do NOT claim blocks are passed.
-            if has_progress:
-                if b.order > current_num:
-                    status = "locked"
-                elif has_below:
-                    status = "retraining"          # reached block with a below-mark skill
-                elif b.order == current_num:
-                    status = "in_progress"
-                else:
-                    status = "passed"
+            # Block status, all activity-inferred. Remediation flagging (below-mark skill ->
+            # retraining) is unchanged; "passed" now means the block's components are actually done.
+            if not has_progress:
+                status = "not_tracked"             # no activity anywhere yet
+            elif b.order > current_num:
+                status = "locked"                  # beyond the furthest block reached
+            elif has_below:
+                status = "retraining"              # reached block with a below-mark skill
+            elif block_passed:
+                status = "passed"                  # every component satisfied by activity
             else:
-                status = "retraining" if has_below else "not_tracked"
+                status = "in_progress"             # reached but not yet fully complete
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
                            "short": short_desc(b.label), "status": status, "skills": bskills,
                            "sims": [s for s in agent_sims if s["block_num"] == b.order],
@@ -284,8 +307,8 @@ def build_training_records(
             status = "in_training" if has_progress else "not_started"
         elif block_defic:
             status = "retraining"                         # has a below-mark skill -> needs remediation
-        elif has_progress and current_num is not None and current_num >= last_num:
-            status = "completed"
+        elif has_progress and len(passed_blocks) == last_num:
+            status = "completed"                          # every learning block's components passed
         elif has_progress and on_track is False:
             status = "behind"
         elif has_progress:
@@ -736,11 +759,16 @@ function blocksView(e){
     return `<div class="lblk${blank?" locked":""}">${head}${body}</div>`;
   }).join("");
 }
-/* one row per CBT completed under a block: coursename, pass-rate + sessions/last */
+/* one row per CBT under a block: coursename, then a Completed badge and (for scored assessments)
+   the score. Completion-only courses show 'Completed' only -- never a pending/0% score. */
 function cbtTable(items){
-  return `<table class="cmtable"><tbody>${items.map(c=>
-    `<tr><td>${esc(c.coursename)}</td><td class="num">${pct(c.pass_rate)}`+
-    `<span class="meta">${c.sessions||0} sess${c.last?" · "+esc(c.last):""}</span></td></tr>`).join("")}</tbody></table>`;
+  return `<table class="cmtable"><tbody>${items.map(c=>{
+    const done = c.completed ? chip("good","Completed") : "";
+    const score = c.scored ? ` <span class="num">${pct(c.pass_rate)}</span>` : "";
+    const tag = c.scored ? "" : ` <span class="meta">completion-only</span>`;
+    return `<tr><td>${esc(c.coursename)}${tag}</td>`+
+      `<td class="num">${done}${score}<span class="meta">${c.sessions||0} sess${c.last?" · "+esc(c.last):""}</span></td></tr>`;
+  }).join("")}</tbody></table>`;
 }
 /* Sims the expert practiced that don't yet resolve to a block (no sim_id crosswalk). */
 function simsUnmappedSection(e){
@@ -795,7 +823,7 @@ function summaryText(e){
     const below=(b.skills||[]).filter(s=>s.below).map(s=>s.label);
     L.push("- Block "+b.num+" "+b.short+" — "+st+(below.length?"  (below: "+below.join(", ")+")":""));
     (b.sims||[]).forEach(s=>L.push("    sim: "+s.label+(s.sim_id?" ["+s.sim_id+"]":"")+" — "+pct(s.pass_rate)+", "+(s.sessions||0)+" sess"));
-    (b.cbts||[]).forEach(c=>L.push("    cbt: "+c.coursename+" — "+pct(c.pass_rate)+", "+(c.sessions||0)+" sess"));});
+    (b.cbts||[]).forEach(c=>L.push("    cbt: "+c.coursename+" — "+(c.scored?pct(c.pass_rate):"Completed")+", "+(c.sessions||0)+" sess"));});
   const other=e.sims_unmapped||[];
   if(other.length){L.push(""); L.push("OTHER SIMS PRACTICED (unmapped)");
     other.forEach(s=>L.push("- "+s.label+" — "+pct(s.pass_rate)+", "+(s.sessions||0)+" sess"));}
