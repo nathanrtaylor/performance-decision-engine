@@ -33,7 +33,7 @@ program:
     order: 1
     label: Welcome to Asurion
     estimated_hours: 4.5
-    expected_completion_day: 1
+    expected_completion_day: 2
     assessment_methods:
     - knowledge_check
     gate:
@@ -110,7 +110,7 @@ program:
     order: 2
     label: Expert Foundations - The Tech Coach Role & Call Flow
     estimated_hours: 2.0
-    expected_completion_day: 1
+    expected_completion_day: 3
     total_simulations: 13
     assessment_methods:
     - knowledge_check
@@ -167,7 +167,7 @@ program:
     order: 3
     label: Tools for the Call Flow - Asurion Tools
     estimated_hours: 3.0
-    expected_completion_day: 2
+    expected_completion_day: 3
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -224,7 +224,7 @@ program:
     order: 4
     label: Tools for the Call Flow - Client Tools
     estimated_hours: 2.67
-    expected_completion_day: 2
+    expected_completion_day: 4
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -292,7 +292,7 @@ program:
     order: 5
     label: Sales Foundation - Product Knowledge, Compliance & Integrity
     estimated_hours: 2.08
-    expected_completion_day: 3
+    expected_completion_day: 4
     total_simulations: 6
     assessment_methods:
     - knowledge_check
@@ -358,7 +358,7 @@ program:
     order: 6
     label: 'Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance'
     estimated_hours: 2.25
-    expected_completion_day: 3
+    expected_completion_day: 4
     total_simulations: 10
     assessment_methods:
     - knowledge_check
@@ -427,7 +427,7 @@ program:
     order: 7
     label: 'Call Flow Stage 2: Troubleshooting Basics'
     estimated_hours: 3.17
-    expected_completion_day: 4
+    expected_completion_day: 5
     total_simulations: 13
     assessment_methods:
     - knowledge_check
@@ -574,7 +574,7 @@ program:
     order: 9
     label: 'Call Flow Stage 2: Solve & Test - Hardware vs Software'
     estimated_hours: 4.0
-    expected_completion_day: 5
+    expected_completion_day: 6
     total_simulations: 15
     assessment_methods:
     - knowledge_check
@@ -724,7 +724,7 @@ program:
     order: 11
     label: 'Call Flow Stage 2: Solve & Test - Activations & Device Onboarding'
     estimated_hours: 7.0
-    expected_completion_day: 6
+    expected_completion_day: 7
     total_simulations: 35
     assessment_methods:
     - knowledge_check
@@ -843,7 +843,7 @@ program:
     order: 12
     label: 'Call Flow Stage 2: Solve & Test - Carrier Account'
     estimated_hours: 2.25
-    expected_completion_day: 7
+    expected_completion_day: 8
     total_simulations: 11
     assessment_methods:
     - knowledge_check
@@ -916,7 +916,7 @@ program:
     order: 13
     label: 'Call Flow Stage 2: Solve & Test - Insurance & Warranty Claims'
     estimated_hours: 2.5
-    expected_completion_day: 7
+    expected_completion_day: 8
     total_simulations: 8
     assessment_methods:
     - knowledge_check
@@ -968,7 +968,7 @@ program:
     order: 14
     label: 'Call Flow Stage 4: Sales in Action'
     estimated_hours: 2.25
-    expected_completion_day: 8
+    expected_completion_day: 9
     total_simulations: 10
     assessment_methods:
     - knowledge_check
