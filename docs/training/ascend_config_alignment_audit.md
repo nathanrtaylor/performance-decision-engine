@@ -9,6 +9,15 @@ block and a scorable skill.
 - **Owners:** Training Content team + Analytics
 - **Rich version:** `docs/training/ascend_config_alignment_audit.html` (self-contained, shareable/printable)
 
+> **Status update 2026-09-09:** **WI-3 DONE** — all TrAIning Assist behaviors are mapped to skills.
+> **WI-5 DONE** — the `ASC-ASC-SIM-3JEJ0P` typo is normalized in `gen_program_components.py`, so
+> regeneration no longer reintroduces it. **CBTs are now mapped to all 16 blocks** as `kind: cbt`
+> components (read from the curriculum course export), so the "every simulator **and CBT** resolves
+> to a block" goal is met for CBTs (3 link to scored metrics, 44 are completion-only). Progress and
+> pace are inferred from crosswalked activity — the roster `current_block_order` feed was removed.
+> Still open: **WI-1** (broader live sim↔challenge_id crosswalk as ASCEND cohorts run) and **WI-2**
+> (block `develops:` completeness). The snapshot counts below predate the CBT mapping.
+
 ---
 
 ## 1. Purpose & participants

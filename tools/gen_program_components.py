@@ -1,27 +1,25 @@
 """Enhance training_program.yaml with the Ascend Simulations curriculum.
 
-Merges docs/training/"Ascend Simulations.xlsx" into the program:
-  - SIMS (sheet "Sims 100"): per learning block, adds sim `components`
-    (SIM ID + persona + topic + mode) and sets `gate.test_call` from the block's
-    End-to-End Call sim.
-  - CBTs (sheet "CBTs", or --cbts-csv): per learning block, adds `kind: cbt`
-    components (ref + topic + modality, and an optional `courseid` crosswalk to the
-    live cbt_<courseid> metric). This source is OPTIONAL -- if the sheet/CSV is
-    absent no cbt components are emitted (the framework is a no-op until the CBT<->block
-    alignment list is provided). See the CBTs-sheet contract in _load_cbt_rows.
+Merges the ASCEND curriculum into the program:
+  - SIMS: docs/training/"Ascend Simulations.xlsx" (sheet "Sims 100") -> per learning block,
+    adds sim `components` (SIM ID + persona + topic + mode) and sets `gate.test_call` from the
+    block's End-to-End Call sim.
+  - CBTs: the curriculum course export (default docs/training/"Soluto_ASCND_VZW_Voice New
+    Hire.csv", override with --curriculum-csv) -> its Modality == CBT rows become `kind: cbt`
+    components. A CBT's `ref` is the live `cbt_<courseid>` metric key when its Workday
+    /course/<guid> link carries a GUID, else a name slug (no courseid yet).
 
 Existing block metadata (order, label, expected_completion_day, develops, gate.pass_mark,
 ...) is always preserved.
 
 IMPORTANT -- crosswalk gap: the Ascend sim IDs/personas do NOT match the live TA
 data's challenge_ids (0/93 overlap), so sim components are the CURRICULUM MAP, not yet
-scoring-linked. CBT components mirror this: `ref` is the curriculum id (a name slug) and
-`courseid` (when supplied) is the crosswalk to the live cbt_<courseid> metric, analogous
-to the profile `sim_id` crosswalk.
+scoring-linked. A CBT `ref` of the form cbt_<courseid> IS the live metric key (scoring-linked);
+a name-slug ref is curriculum-only until that course gets a courseid.
 
-    python tools/gen_program_components.py                 # regenerate (writes the file)
-    python tools/gen_program_components.py --dry-run        # preview only, no write
-    python tools/gen_program_components.py --cbts-csv path  # take CBTs from a CSV instead of the xlsx sheet
+    python tools/gen_program_components.py                       # regenerate (writes the file)
+    python tools/gen_program_components.py --dry-run             # preview only, no write
+    python tools/gen_program_components.py --curriculum-csv PATH # CBTs from a different course export
 """
 from __future__ import annotations
 
@@ -32,14 +30,40 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from pde.training.program import cbt_metric_key
+
 REPO = Path(__file__).resolve().parent.parent
 PROGRAM = REPO / "configs/training/training_program.yaml"
 SIMS = REPO / "docs/training/Ascend Simulations.xlsx"
-CBT_MAP_CSV = REPO / "configs/training/cbt_block_map.csv"   # default committed CBT<->block seed
+# The CBT curriculum (block -> CBTs) is read straight from the training-strategy course export.
+# A CBT's live Course ID is the GUID in its Workday /course/<guid> link (rows whose link has no
+# GUID, e.g. .../d/inst/..., have no courseid and get a name-slug ref).
+CURRICULUM_CSV = REPO / "docs/training/Soluto_ASCND_VZW_Voice New Hire.csv"
+# Live CBT extract, used only to recover a courseid for CBTs whose Workday link has no /course/<guid>
+# (many completion-only courses link to /d/inst/...). A course's id is recoverable here exactly when
+# it has completion data that would need to nest, so the backfill is self-consistent.
+CBT_EXTRACT = REPO / "data/raw/adhoc/latest/training_cbt.csv"
 
 _E2E = "End-to-End Call"
 _GATE_PRIORITY = ["readiness", "capstone", "gate", "end-to-end", "mixed queue"]
-_CBT_SHEET = "CBTs"
+_COURSE_GUID = re.compile(r"/course/([0-9a-fA-F]{32})")
+
+
+def _norm_name(s) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", str(s).lower()).strip()
+
+
+def _live_courseid_by_name(extract_csv: Path) -> dict:
+    """normalized coursename -> courseid, from the live CBT extract (empty if absent)."""
+    if not extract_csv.exists():
+        return {}
+    df = pd.read_csv(extract_csv, dtype={"courseid": str})
+    if not {"courseid", "coursename"} <= set(df.columns):
+        return {}
+    out: dict = {}
+    for _, r in df[["courseid", "coursename"]].dropna().drop_duplicates().iterrows():
+        out.setdefault(_norm_name(r["coursename"]), r["courseid"])
+    return out
 
 
 def _snake(x) -> str | None:
@@ -62,11 +86,10 @@ def _sim_ref(x) -> str | None:
 
 
 def _norm_cbt_courseid(cid) -> str | None:
-    """Live-metric key for a course id: matches gen_training_configs.py's `cbt_<id>` namespacing."""
+    """Live cbt_<courseid> metric key for a course id, or None if blank. (Key format lives in
+    pde.training.program.cbt_metric_key -- the single source shared with the pipeline + catalog gen.)"""
     c = _clean(cid)
-    if not c:
-        return None
-    return "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", c).strip("_").lower()
+    return cbt_metric_key(c) if c else None
 
 
 def _pick_gate(e2e: list[dict]) -> dict:
@@ -79,75 +102,38 @@ def _pick_gate(e2e: list[dict]) -> dict:
 
 
 # --------------------------------------------------------------------------- CBTs
-def _find_col(cols: list[str], *cands: str) -> str | None:
-    """Case-insensitive column lookup among candidate header names."""
-    lower = {str(c).strip().lower(): c for c in cols}
-    for cand in cands:
-        hit = lower.get(cand.strip().lower())
-        if hit is not None:
-            return hit
-    return None
-
-
-def _load_cbt_rows(sims_xlsx: Path, cbts_csv: str | None) -> tuple[pd.DataFrame | None, str | None]:
-    """Load the CBT<->block source (df, source-label), or (None, None) if absent.
-
-    Source priority: --cbts-csv arg  >  the xlsx 'CBTs' sheet  >  the committed seed CBT_MAP_CSV.
-    CONTRACT (columns, case-insensitive; only the first two are required):
-      - Learning Block   (block number 1-16)          [req]  aliases: Block, LB
-      - CBT Name         (course/CBT title)            [req]  aliases: Course, Course Name, Name, Coursename
-      - Course ID        (live courseid, if known)     [opt]  aliases: CourseID, courseid  -> ref becomes the live cbt_<id> metric key
-      - Modality         (CBT / Video / CBT bundle)    [opt]
-      - Topic            (short topic label)           [opt]
-    """
-    if cbts_csv:
-        p = Path(cbts_csv)
-        return (pd.read_csv(p), str(p)) if p.exists() else (None, None)
-    try:
-        return pd.read_excel(sims_xlsx, sheet_name=_CBT_SHEET), f"{sims_xlsx.name}[{_CBT_SHEET}]"
-    except (ValueError, FileNotFoundError):  # sheet or workbook missing
-        pass
-    if CBT_MAP_CSV.exists():
-        return pd.read_csv(CBT_MAP_CSV), str(CBT_MAP_CSV.relative_to(REPO))
-    return None, None
-
-
-def _cbt_components_by_block(df: pd.DataFrame) -> dict[int, list[dict]]:
-    """block order -> [cbt component dicts], from the CBT source. Empty if columns don't resolve."""
-    cols = list(df.columns)
-    c_blk = _find_col(cols, "Learning Block", "Block", "LB")
-    c_name = _find_col(cols, "CBT Name", "Course Name", "Course", "Coursename", "Name")
-    if not c_blk or not c_name:
-        raise SystemExit(
-            f"CBT source is missing required columns. Need a block column (Learning Block) and a "
-            f"name column (CBT Name). Found: {cols}"
-        )
-    c_cid = _find_col(cols, "Course ID", "CourseID", "courseid")
-    c_mod = _find_col(cols, "Modality", "Mode")
-    c_topic = _find_col(cols, "Topic")
-
+def _cbt_components_by_block(curriculum_csv: Path, courseid_by_name: dict) -> dict[int, list[dict]]:
+    """block order -> [cbt component dicts], parsed from the curriculum CSV (its ``Modality == CBT``
+    rows). The courseid comes from the Workday ``/course/<guid>`` link, or (when the link has none)
+    the live-extract coursename match; ``ref`` is then the ``cbt_<courseid>`` metric key -- which
+    links to the scored metric and drives the dashboard's CBT->block nesting. Rows with no courseid
+    from either source get a name-slug ref (curriculum-only). Returns {} if the file is absent."""
+    if not curriculum_csv.exists():
+        return {}
+    df = pd.read_csv(curriculum_csv)
     out: dict[int, list[dict]] = {}
     for _, r in df.iterrows():
-        blk = pd.to_numeric(r.get(c_blk), errors="coerce")
-        name = _clean(r.get(c_name))
-        if pd.isna(blk) or not name:
+        if (_clean(r.get("Modality")) or "").lower() != "cbt":
             continue
-        raw_cid = _clean(r.get(c_cid)) if c_cid else None
-        # ref = the live cbt_<courseid> metric key when a Course ID is given (so the component links
-        # straight to the scored metric + the dashboard's CBT->block nesting); else a name slug.
-        comp: dict = {"kind": "cbt", "ref": _norm_cbt_courseid(raw_cid) or _snake(name)}
-        comp["topic"] = _clean(r.get(c_topic)) if (c_topic and _clean(r.get(c_topic))) else name
-        comp["modality"] = (_clean(r.get(c_mod)) if c_mod else None) or "CBT"
-        comp["develops"] = []  # TODO: link once CBT<->skill alignment is provided
-        out.setdefault(int(blk), []).append(comp)
+        m = re.match(r"Learning Block\s*0*(\d+)", str(r.get("Learning Block") or ""))
+        name = _clean(r.get("Course"))
+        if not m or not name:
+            continue
+        gid = _COURSE_GUID.search(str(r.get("Workday Learning Link") or ""))
+        courseid = gid.group(1) if gid else courseid_by_name.get(_norm_name(name))
+        ref = _norm_cbt_courseid(courseid) if courseid else _snake(name)
+        out.setdefault(int(m.group(1)), []).append(
+            {"kind": "cbt", "ref": ref, "topic": name, "modality": "CBT", "develops": []})
     return out
 
 
 # --------------------------------------------------------------------------- main
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Merge Ascend sims (+ optional CBTs) into training_program.yaml.")
-    ap.add_argument("--cbts-csv", default=None,
-                    help="Optional CSV of CBT<->block alignments (else the 'CBTs' sheet of the xlsx is used if present).")
+    ap = argparse.ArgumentParser(description="Merge Ascend sims + CBTs into training_program.yaml.")
+    ap.add_argument("--curriculum-csv", default=str(CURRICULUM_CSV),
+                    help="Course export (block/course/modality/Workday link) that supplies the CBT<->block map.")
+    ap.add_argument("--cbt-extract", default=str(CBT_EXTRACT),
+                    help="Live training_cbt.csv, used only to recover courseids for CBTs whose Workday link lacks a GUID.")
     ap.add_argument("--dry-run", action="store_true", help="Print what would be written; do not modify the file.")
     args = ap.parse_args()
 
@@ -162,8 +148,10 @@ def main() -> int:
             continue
         by_block.setdefault(int(r["_blk"]), []).append(r.to_dict())
 
-    cbt_df, cbt_source = _load_cbt_rows(SIMS, args.cbts_csv)
-    cbt_by_block = _cbt_components_by_block(cbt_df) if cbt_df is not None else {}
+    curriculum = Path(args.curriculum_csv)
+    cbt_by_block = _cbt_components_by_block(curriculum, _live_courseid_by_name(Path(args.cbt_extract)))
+    cbt_source = (str(curriculum.relative_to(REPO)) if curriculum.is_relative_to(REPO) else str(curriculum)) \
+        if cbt_by_block else f"none found ({curriculum})"
 
     n_comp = n_gate = n_cbt = 0
     for block in p["blocks"]:
@@ -204,16 +192,15 @@ def main() -> int:
         "# ASCEND \"Launchpad\" program structure -- learning blocks + curriculum routing.\n"
         "# ============================================================================\n"
         "# Block metadata (order/label/expected_completion_day/develops/gate.pass_mark) is\n"
-        "# hand-curated; `components` and `gate.test_call` are merged from\n"
-        "# docs/training/\"Ascend Simulations.xlsx\" by tools/gen_program_components.py:\n"
-        "#   - sims  (sheet \"Sims 100\")  -> kind: skill_sim | test_call\n"
-        "#   - CBTs  (sheet \"CBTs\")      -> kind: cbt   (optional source; absent = no cbt components)\n"
+        "# hand-curated; `components` and `gate.test_call` are merged by tools/gen_program_components.py:\n"
+        "#   - sims: docs/training/\"Ascend Simulations.xlsx\" (sheet \"Sims 100\") -> kind: skill_sim | test_call\n"
+        "#   - CBTs: the curriculum course export (its Modality == CBT rows)     -> kind: cbt\n"
         "#\n"
         "# CROSSWALK GAP: sim `ref` is the Ascend SIM ID and `persona` is the design persona;\n"
         "# neither matches the live TA data's challenge_ids yet (0/93 overlap). CBT `ref` is the live\n"
-        "# `cbt_<courseid>` metric key when a Course ID was supplied (links straight to the scored\n"
-        "# metric + drives the dashboard's CBT->block nesting), else a name slug (curriculum-only,\n"
-        "# pending a courseid). `develops` stays block-level (best-effort seed) until then.\n"
+        "# `cbt_<courseid>` metric key when the course's Workday link carries a GUID (links straight to\n"
+        "# the scored metric + drives the dashboard's CBT->block nesting), else a name slug (curriculum-\n"
+        "# only, pending a courseid). `develops` stays block-level (best-effort seed) until then.\n"
         "# Regenerate components with: python tools/gen_program_components.py\n"
         "# ============================================================================\n\n"
     )
@@ -223,8 +210,7 @@ def main() -> int:
     n_sim_blocks = sum(1 for b in p["blocks"]
                        if any(c.get("kind") in ("skill_sim", "test_call") for c in (b.get("components") or [])))
     summary = (f"sims: {n_comp} components across {n_sim_blocks} blocks; gate.test_call on {n_gate} blocks. "
-               f"cbts: {n_cbt} components across {n_cbt_blocks} blocks "
-               f"(source: {cbt_source or 'none found -- no cbt components emitted'}).")
+               f"cbts: {n_cbt} components across {n_cbt_blocks} blocks (source: {cbt_source}).")
 
     if args.dry_run:
         print("DRY RUN -- no file written.")

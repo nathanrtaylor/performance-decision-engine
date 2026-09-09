@@ -25,7 +25,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from pde.training.program import load_program, build_skill_routing
+from pde.training.program import cbt_metric_key, load_program, build_skill_routing
 
 REPO = Path(__file__).resolve().parent.parent
 OUT = REPO / "configs" / "training" / "mappings"
@@ -88,12 +88,18 @@ def _cbt_metrics(raw_dir: Path):
     metrics = {}
     for cid in sorted(scored, key=str):
         label = _labelize(names.get(cid) or cid)
-        name = "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", str(cid)).strip("_").lower()
+        name = cbt_metric_key(cid)
         metrics[name] = _metric_entry(
             source="training_cbt", source_metric_key=cid, category="cbt",
             desc=f"CBT assessment score: {label}.", label=label,
         )
     return metrics, (["cbt"] if metrics else [])
+
+
+def _merge_benchmarks(existing: dict, metrics, pass_mark: float) -> dict:
+    """Per-metric benchmarks: keep any value already on disk (a curated pass bar), seed only NEW
+    metrics at the default pass_mark. Lets re-running the generator never reset a hand-tuned bar."""
+    return {m: existing.get(m, {"default": pass_mark}) for m in metrics}
 
 
 def _metric_entry(source: str, source_metric_key, category: str, desc: str, label: str) -> dict:
@@ -149,7 +155,7 @@ def main() -> int:
     if bm_path.exists():
         prev = yaml.safe_load(bm_path.read_text(encoding="utf-8")) or {}
         existing_bm = (prev.get("benchmarks") or {}) if isinstance(prev, dict) else {}
-    benchmarks = {"benchmarks": {m: existing_bm.get(m, {"default": args.pass_mark}) for m in metrics}}
+    benchmarks = {"benchmarks": _merge_benchmarks(existing_bm, metrics, args.pass_mark)}
     # conversation_type carries BOTH the learning block a skill maps to and that
     # block's description (from training_program.yaml `develops:`, the earliest block
     # that teaches the skill), so a retake reads e.g.

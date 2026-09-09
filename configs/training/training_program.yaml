@@ -3,16 +3,15 @@
 # ASCEND "Launchpad" program structure -- learning blocks + curriculum routing.
 # ============================================================================
 # Block metadata (order/label/expected_completion_day/develops/gate.pass_mark) is
-# hand-curated; `components` and `gate.test_call` are merged from
-# docs/training/"Ascend Simulations.xlsx" by tools/gen_program_components.py:
-#   - sims  (sheet "Sims 100")  -> kind: skill_sim | test_call
-#   - CBTs  (sheet "CBTs")      -> kind: cbt   (optional source; absent = no cbt components)
+# hand-curated; `components` and `gate.test_call` are merged by tools/gen_program_components.py:
+#   - sims: docs/training/"Ascend Simulations.xlsx" (sheet "Sims 100") -> kind: skill_sim | test_call
+#   - CBTs: the curriculum course export (its Modality == CBT rows)     -> kind: cbt
 #
 # CROSSWALK GAP: sim `ref` is the Ascend SIM ID and `persona` is the design persona;
 # neither matches the live TA data's challenge_ids yet (0/93 overlap). CBT `ref` is the live
-# `cbt_<courseid>` metric key when a Course ID was supplied (links straight to the scored
-# metric + drives the dashboard's CBT->block nesting), else a name slug (curriculum-only,
-# pending a courseid). `develops` stays block-level (best-effort seed) until then.
+# `cbt_<courseid>` metric key when the course's Workday link carries a GUID (links straight to
+# the scored metric + drives the dashboard's CBT->block nesting), else a name slug (curriculum-
+# only, pending a courseid). `develops` stays block-level (best-effort seed) until then.
 # Regenerate components with: python tools/gen_program_components.py
 # ============================================================================
 

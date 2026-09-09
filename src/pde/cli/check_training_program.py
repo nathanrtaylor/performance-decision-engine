@@ -4,12 +4,15 @@ Companion to ``check_config`` for the training domain. Loads
 ``configs/training/training_program.yaml`` and the training metric catalog, and
 reports which blocks still lack a gate test-call, enumerated components, or an
 expected completion day, plus any ``develops:`` skill that isn't a real cataloged
-metric and any cataloged skill no block develops yet.
+metric and any cataloged *skill* no block develops yet (CBT-assessment metrics are
+excluded from that check -- they are course completions, not block ``develops:`` skills).
 
-It also checks the profile<->program crosswalk: every profile in
-``training_profiles.yaml`` that declares a ``sim_id`` must match a program component
-whose ``ref == sim_id`` and ``persona == challenge_id`` (an inconsistent pairing is an
-error).
+It also checks component consistency: the profile<->program crosswalk (every profile in
+``training_profiles.yaml`` that declares a ``sim_id`` must match a program component whose
+``ref == sim_id`` and ``persona == challenge_id`` -- an inconsistent pairing is an error),
+and warns on any component ``ref`` reused by more than one component (which silently
+collapses the crosswalk). CBT components are also summarized: how many link to a scored
+``cbt_*`` metric vs. are completion-only (no scored metric, which is expected).
 
     python -m pde.cli.check_training_program
     python -m pde.cli.check_training_program --strict     # TODOs (warnings) fail too
@@ -31,11 +34,12 @@ from pde.governance.versioning import resolve_active_config
 from pde.training.program import load_program, program_coverage
 
 
-def _catalog_skills(configs_dir: Path) -> set:
+def _catalog_metrics(configs_dir: Path) -> dict:
+    """metric_key -> metric entry, from the active training metric catalog."""
     cfg = resolve_active_config(configs_dir)
     mc = cfg.get("metric_catalog") or {}
     mc = mc.get("metric_catalog", mc) if isinstance(mc, dict) else {}
-    return set((mc.get("metrics") or {}).keys())
+    return mc.get("metrics") or {}
 
 
 def _profiles_with_sim_id(configs_dir: Path) -> dict:
@@ -49,15 +53,14 @@ def _profiles_with_sim_id(configs_dir: Path) -> dict:
             if isinstance(p, dict) and p.get("sim_id")}
 
 
-def _component_ref_to_persona(program_path: Path) -> dict:
-    """ref -> persona for every training_program component (raw YAML: load_program drops persona)."""
+def _components(program_path: Path) -> list:
+    """All program components as dicts {block, kind, ref, persona} (raw YAML: load_program drops persona)."""
     data = yaml.safe_load(program_path.read_text(encoding="utf-8")) or {}
-    out: dict = {}
+    out: list = []
     for b in ((data.get("program") or {}).get("blocks") or []):
         for c in (b.get("components") or []):
-            ref = c.get("ref")
-            if ref:
-                out[ref] = c.get("persona")
+            out.append({"block": b.get("id"), "kind": c.get("kind"),
+                        "ref": c.get("ref"), "persona": c.get("persona")})
     return out
 
 
@@ -72,7 +75,11 @@ def main() -> int:
     program_path = Path(args.program) if args.program else configs_dir / "training_program.yaml"
 
     program = load_program(program_path)
-    catalog = _catalog_skills(configs_dir)
+    metrics = _catalog_metrics(configs_dir)
+    # Skill metrics drive coverage; CBT-assessment metrics are excluded (they are course
+    # completions, not block `develops:` skills -- otherwise every cbt_* metric shows as unmapped).
+    catalog = {k for k, m in metrics.items() if (m or {}).get("category") != "cbt"}
+    cbt_metric_keys = {k for k, m in metrics.items() if (m or {}).get("category") == "cbt"}
     cov = program_coverage(program, catalog)
 
     errors: list[str] = []
@@ -89,15 +96,21 @@ def main() -> int:
     if cov["develops_unknown"]:
         errors.append(f"develops references metric(s) not in the catalog: {cov['develops_unknown']}")
 
-    # ---- profile <-> program sim_id crosswalk consistency ----
+    # ---- component consistency: crosswalk + duplicate refs ----
+    comps = _components(program_path)
+    ref_to_persona = {c["ref"]: c["persona"] for c in comps if c["ref"]}
     sim_ids = _profiles_with_sim_id(configs_dir)
-    ref_to_persona = _component_ref_to_persona(program_path)
     for cid, sid in sorted(sim_ids.items()):
         if sid not in ref_to_persona:
             errors.append(f"profile {cid!r} sim_id {sid!r} is not the ref of any training_program component")
         elif ref_to_persona[sid] != cid:
             errors.append(f"profile {cid!r} sim_id {sid!r} belongs to component persona "
                           f"{ref_to_persona[sid]!r}, not {cid!r}")
+
+    # A ref reused across components silently collapses the crosswalk (ref -> persona is 1:1).
+    dup_refs = sorted(r for r, n in Counter(c["ref"] for c in comps if c["ref"]).items() if n > 1)
+    if dup_refs:
+        warnings.append(f"{len(dup_refs)} component ref(s) reused by more than one component: {dup_refs}")
 
     # ---- TODO warnings ----
     if cov["blocks_missing_gate"]:
@@ -114,6 +127,11 @@ def main() -> int:
           f"{cov['n_skills_mapped']} skills mapped, pace {program.pace_hours_per_day} h/day")
     if sim_ids:
         print(f"  ..  {len(sim_ids)} profile sim_id crosswalk link(s) checked against program components")
+    cbt_refs = [c["ref"] for c in comps if c["kind"] == "cbt" and c["ref"]]
+    if cbt_refs:
+        linked = sum(1 for r in cbt_refs if r in cbt_metric_keys)
+        print(f"  ..  {len(cbt_refs)} CBT component(s): {linked} linked to a scored metric, "
+              f"{len(cbt_refs) - linked} completion-only / not yet scored")
     for e in errors:
         print(f"  ERROR  {e}")
     for w in warnings:

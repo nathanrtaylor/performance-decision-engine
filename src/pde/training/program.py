@@ -24,6 +24,7 @@ Design notes
 """
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from math import ceil
 from pathlib import Path
@@ -45,6 +46,18 @@ def _clean(v: Any) -> Optional[Any]:
     if isinstance(v, str) and v.strip().upper() == _TODO:
         return None
     return v
+
+
+def cbt_metric_key(courseid: Any) -> str:
+    """Live CBT metric key for a course id: ``cbt_`` + the normalized id.
+
+    THE single source of this naming convention. The CBT<->block/metric join relies on
+    the key produced here matching everywhere it is built -- gen_training_configs.py
+    (metric catalog), gen_program_components.py (component ``ref``), and
+    run_training_pipeline.py (dashboard nesting). Keeping it in one place stops those
+    three from silently diverging (a divergence yields block_num = NaN with no error).
+    """
+    return "cbt_" + re.sub(r"[^0-9A-Za-z]+", "_", str(courseid)).strip("_").lower()
 
 
 # --------------------------------------------------------------------------- #
