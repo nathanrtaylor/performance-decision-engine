@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.4"   # 1.4: cbt items carry `scored`/`completed` (completion-only vs scored)
+SCHEMA_VERSION = "1.5"   # 1.5: blocks carry `sims_expected`/`cbts_expected` (collapsed done/expected)
+# 1.4: cbt items carry `scored`/`completed` (completion-only vs scored)
 # 1.3: per-block `sims` + per-expert `sims_unmapped` / `cbts`
                          # 1.2: per-expert `hist` (recent coaching history)
 
@@ -304,10 +305,15 @@ def build_training_records(
             if has_below:
                 block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
             status = block_status(has_progress, current_num, b.order, has_below, block_passed)
+            # Expected counts = the block's enumerated sim/CBT components (the denominator for the
+            # collapsed "done / expected" summary in the dashboard).
+            sims_expected = sum(1 for c in b.components if c.kind in ("skill_sim", "test_call"))
+            cbts_expected = sum(1 for c in b.components if c.kind == "cbt")
             blocks.append({"num": b.order, "id": b.id, "name": b.label,
                            "short": short_desc(b.label), "status": status, "skills": bskills,
                            "sims": [s for s in agent_sims if s["block_num"] == b.order],
-                           "cbts": [c for c in agent_cbts if c["block_num"] == b.order]})
+                           "cbts": [c for c in agent_cbts if c["block_num"] == b.order],
+                           "sims_expected": sims_expected, "cbts_expected": cbts_expected})
 
         # Readiness + remediation consider only skills that surfaced under a reached block;
         # future-block skills (above the ceiling) are ignored until the expert reaches them.
@@ -545,6 +551,12 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .lblk .bnum{font-variant-numeric:tabular-nums;color:var(--muted);font-weight:600;min-width:52px}
 .lblk .bname{font-weight:600;flex:1}
 .lblk .subh{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:700;padding:8px 12px 0}
+.lblk details.cm > summary{list-style:none;display:flex;align-items:center;gap:6px;cursor:pointer}
+.lblk details.cm > summary::-webkit-details-marker{display:none}
+.lblk details.cm > summary::before{content:"\25B8";font-size:9px;line-height:1}
+.lblk details.cm[open] > summary::before{content:"\25BE"}
+.lblk .cnt{margin-left:auto;font-variant-numeric:tabular-nums}
+@media print{.lblk details.cm > .cmtable{display:table}}   /* keep tables visible when printing/PDF */
 .cmtable td.sid{font-variant-numeric:tabular-nums;color:var(--text-2);white-space:nowrap}
 .cmtable td .meta{color:var(--muted);font-weight:400;margin-left:6px}
 .cmtable{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -770,6 +782,13 @@ function simRow(s){
 function simsTable(items){
   return `<table class="cmtable"><tbody>${items.map(simRow).join("")}</tbody></table>`;
 }
+/* collapsible sim/CBT section: the summary shows done / expected (expected = the block's enumerated
+   components); expanding reveals the detail table. Open by default; collapse for a compact overview. */
+function cmSection(label, done, expected, tableHtml){
+  const exp = (expected==null || expected<done) ? done : expected;
+  return `<details class="cm" open><summary class="subh">${esc(label)}`+
+    `<span class="cnt">${done}/${exp}</span></summary>${tableHtml}</details>`;
+}
 function blocksView(e){
   return e.blocks.map(b=>{
     const m = BLK_META[b.status]||{cls:"muted",label:b.status};
@@ -783,8 +802,8 @@ function blocksView(e){
     let body = "";
     if(!blank){
       body += `<table class="cmtable"><tbody>${skillRows(b)}</tbody></table>`;
-      if(hasSims) body += `<div class="subh">Sims practiced</div>${simsTable(b.sims)}`;
-      if(hasCbts) body += `<div class="subh">CBTs completed</div>${cbtTable(b.cbts)}`;
+      if(hasSims) body += cmSection("Sims practiced", b.sims.length, b.sims_expected, simsTable(b.sims));
+      if(hasCbts) body += cmSection("CBTs completed", b.cbts.filter(c=>c.completed).length, b.cbts_expected, cbtTable(b.cbts));
     }
     return `<div class="lblk${blank?" locked":""}">${head}${body}</div>`;
   }).join("");

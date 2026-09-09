@@ -1,4 +1,4 @@
-"""Tests for the Phase 4 training dashboard data layer + remediation narratives."""
+﻿"""Tests for the Phase 4 training dashboard data layer + remediation narratives."""
 from __future__ import annotations
 
 import pandas as pd
@@ -155,7 +155,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.4"
+    assert meta["schema_version"] == "1.5"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -190,7 +190,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.4"
+    assert meta["schema_version"] == "1.5"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
