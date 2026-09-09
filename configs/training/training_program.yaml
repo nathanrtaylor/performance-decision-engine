@@ -302,8 +302,7 @@ program:
     gate:
       test_call: TODO
       pass_mark: 0.9
-    develops:
-    - brand_representation
+    develops: []
     components:
     - kind: cbt
       ref: cbt_20008859412510010a38b04b1efd0001
@@ -378,9 +377,6 @@ program:
     - show_empathy
     - reassure
     - set_expectations
-    - protect_customer_information
-    - professionalism_courtesy
-    - positive_tone
     components:
     - kind: cbt
       ref: cbt_64844428d3b010010c4df913730d0001
@@ -995,7 +991,6 @@ program:
     - conversational_language
     - ask_to_enroll
     - recorded_disclosures_statement
-    - build_confidence
     components:
     - kind: cbt
       ref: cbt_64844428d3b010010d1de0960dff0000
