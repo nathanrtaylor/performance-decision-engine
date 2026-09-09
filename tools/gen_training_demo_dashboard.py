@@ -68,7 +68,7 @@ def main(argv=None) -> int:
         ("TRN-D", "2026-08-29", 9, "R. Vega"),     # ~3 days in  -> just started
     ]
 
-    sk_rows, ag_rows = [], []
+    sk_rows, ag_rows, sim_rows = [], [], []
     n = 0
     for cid, start, size, trainer in classes:
         dss = int((report - pd.Timestamp(start)).days)
@@ -87,13 +87,19 @@ def main(argv=None) -> int:
                     vals[s] = round(rnd.uniform(0.55, 0.72), 3)  # clearly below the 80% mark
             for s, v in vals.items():
                 sk_rows.append({"agent_id": aid, "metric": s, "value": v, "benchmark": 0.80})
+            # Progress is inferred from activity (the roster no longer carries current_block_order):
+            # emit one synthetic sim per reached block so the dashboard derives current_block = cur.
+            for order in range(1, cur + 1):
+                sim_rows.append({"agent_id": aid, "challenge_id": f"{aid}-b{order}",
+                                 "label": f"Block {order} practice", "sim_id": None, "block_num": order,
+                                 "sessions": 1, "pass_rate": 0.9, "last_period": args.report_date})
             ag_rows.append({"agent_id": aid, "agent_name": f"Expert {n:05d}", "class_id": cid,
-                            "trainer": trainer, "icp_client": "training",
-                            "training_start_date": start, "current_block_order": cur})
+                            "trainer": trainer, "icp_client": "training", "training_start_date": start})
 
     records, meta = build_training_records(pd.DataFrame(sk_rows), pd.DataFrame(ag_rows),
                                            program, policy, skill_meta,
-                                           report_date=args.report_date, pass_mark=0.80)
+                                           report_date=args.report_date, pass_mark=0.80,
+                                           sims_taken=pd.DataFrame(sim_rows))
     meta["roster_fields_synthetic"] = True    # honest: this is illustrative/anonymized data
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)

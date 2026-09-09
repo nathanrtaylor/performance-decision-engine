@@ -1,10 +1,11 @@
 """SIMULATED training dashboard for review — real roster, synthesized progress.
 
 Uses the REAL class roster (who / class / trainer / start date) and the REAL block
-schedule (expected_completion_day), but SYNTHESIZES a per-expert progress feed
-(current_block_order) and skill scores so the dashboard shows the full range we'd
-expect mid-program: ahead / on-track / behind on pace, plus retraining, in-training,
-and not-started. Clearly labeled SIMULATED — not real performance data.
+schedule (expected_completion_day), but SYNTHESIZES per-expert activity (sims/CBTs) and
+skill scores so the dashboard shows the full range we'd expect mid-program: ahead /
+on-track / behind on pace, plus retraining, in-training, completed, and not-started.
+Current block is inferred from the synthesized activity (no roster progress feed).
+Clearly labeled SIMULATED — not real performance data.
 
     python tools/gen_training_review_dashboard.py [--report-date YYYY-MM-DD] [--seed N] [--out PATH]
 
@@ -34,6 +35,27 @@ def _skill_ids() -> list:
     mc = yaml.safe_load((REPO / "configs/training/mappings/metric_catalog.yaml").read_text(encoding="utf-8"))
     mc = mc.get("metric_catalog", mc)
     return [m for m, meta in (mc.get("metrics") or {}).items() if (meta or {}).get("source") == "training_assist_skills"]
+
+
+def _passing_activity(program, aid: str, upto: int, rd: str):
+    """Synthetic activity satisfying every component in blocks 1..upto (matching component refs),
+    so those blocks read 'passed' and current_block = upto. Returns (sim_rows, cbt_rows).
+    Progress is inferred from activity now -- there is no roster current_block_order feed."""
+    sims, cbts = [], []
+    for b in program.blocks:
+        if b.order > upto:
+            break
+        for c in b.components:
+            if not c.ref:
+                continue
+            if c.kind == "cbt":
+                cbts.append({"agent_id": aid, "courseid": c.ref, "coursename": c.ref, "ref": c.ref,
+                             "block_num": b.order, "scored": False, "completed": True,
+                             "sessions": 1, "pass_rate": None, "last_period": rd})
+            else:
+                sims.append({"agent_id": aid, "challenge_id": c.ref, "label": c.ref, "sim_id": c.ref,
+                             "block_num": b.order, "sessions": 1, "pass_rate": 0.95, "last_period": rd})
+    return sims, cbts
 
 
 def main(argv=None) -> int:
@@ -67,7 +89,7 @@ def main(argv=None) -> int:
     report = pd.Timestamp(args.report_date)
 
     last_num = max(b.order for b in program.blocks)
-    cbo_by_agent, sk_rows, completed = {}, [], 0
+    sk_rows, sim_rows, cbt_rows, completed = [], [], [], 0
     for aid, row in roster.set_index("agent_id").iterrows():
         try:
             dss = int((report - pd.Timestamp(row["training_start_date"]).normalize()).days)
@@ -75,9 +97,10 @@ def main(argv=None) -> int:
             dss = 9
         eb = expected_block(dss)
 
-        # a few COMPLETED experts (cleared all blocks) -> shows the completion hand-off report
+        # a few COMPLETED experts (every block's components passed) -> completion hand-off report
         if completed < 3 and rnd.random() < 0.05:
-            cbo_by_agent[aid] = last_num + 1                      # graduated (all blocks passed)
+            s, c = _passing_activity(program, aid, last_num, args.report_date)
+            sim_rows += s; cbt_rows += c
             for sid in skill_ids:                                # data for every block, all passing
                 sk_rows.append({"agent_id": aid, "metric": sid,
                                 "value": round(rnd.uniform(0.85, 0.98), 3), "benchmark": 0.80})
@@ -85,12 +108,13 @@ def main(argv=None) -> int:
             continue
 
         roll = rnd.random()
-        if roll < 0.12:            # ~12% haven't produced data yet -> not_started (no feed, no skills)
+        if roll < 0.12:            # ~12% haven't produced activity yet -> not_started (no activity, no skills)
             continue
-        # progress feed: current block around the expected block -> ahead / on / behind
+        # current block inferred from activity around the expected block -> ahead / on / behind
         offset = rnd.choice([-3, -2, -1, -1, 0, 0, 1, 1, 2])
         current = min(15, max(1, eb + offset))
-        cbo_by_agent[aid] = current
+        s, c = _passing_activity(program, aid, current, args.report_date)
+        sim_rows += s; cbt_rows += c
 
         remediate = rnd.random() < 0.32
         base = rnd.uniform(0.84, 0.95)
@@ -107,9 +131,6 @@ def main(argv=None) -> int:
             for r in sk_rows:
                 if r["agent_id"] == aid and r["metric"] in lowered:
                     r["value"] = round(rnd.uniform(0.55, 0.72), 3)
-
-    roster = roster.copy()
-    roster["current_block_order"] = roster["agent_id"].map(cbo_by_agent)   # NaN -> not_started
 
     # SIMULATED prior coaching history for ~30% of experts, so the "Recent coaching history"
     # block is demonstrable in the review (real runs read the extract's coaching_history.csv).
@@ -129,7 +150,9 @@ def main(argv=None) -> int:
 
     records, meta = build_training_records(pd.DataFrame(sk_rows), roster, program, policy, skill_meta,
                                            report_date=args.report_date, pass_mark=0.80,
-                                           coaching_history=coaching_history)
+                                           coaching_history=coaching_history,
+                                           sims_taken=pd.DataFrame(sim_rows),
+                                           cbts_taken=pd.DataFrame(cbt_rows))
     meta["notice"] = NOTICE
     meta["notice_badge"] = "SIMULATED — REVIEW"
 
