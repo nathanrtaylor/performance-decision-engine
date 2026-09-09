@@ -115,6 +115,20 @@ skills:
     - reassurance
     - provide assurance
     mapping_status: mapped_alias
+  professionalism_courtesy:
+    label: Professionalism & Courtesy
+    category: customer_connection
+    source_eval_name: Demonstrate Professionalism and Courtesy
+    behavior_names:
+    - demonstrate professionalism and courtesy
+    mapping_status: mapped
+  positive_tone:
+    label: Positive & Helpful Tone
+    category: customer_connection
+    source_eval_name: Positive and Helpful Tone
+    behavior_names:
+    - positive and helpful tone
+    mapping_status: mapped
 
   # —— Call Control (call_control) ——
   verification:
@@ -123,6 +137,7 @@ skills:
     source_eval_name: Verification
     behavior_names:
     - verification
+    - verify the customer
     mapping_status: mapped
   set_expectations:
     label: Set Expectations
@@ -224,6 +239,7 @@ skills:
     source_eval_name: Core Benefit 1
     behavior_names:
     - core benefit - rrr explained
+    - core benefits
     mapping_status: review_required
   core_benefit_2:
     label: Core Benefit 2
@@ -255,6 +271,13 @@ skills:
     behavior_names:
     - smart offer conversational language
     mapping_status: mapped_alias
+  build_confidence:
+    label: Build Confidence Through Language
+    category: sales_delivery
+    source_eval_name: Build Confidence Through Language
+    behavior_names:
+    - build confidence through language
+    mapping_status: mapped
 
   # —— Closing (closing) ——
   ask_for_sale:
@@ -293,6 +316,7 @@ skills:
     source_eval_name: Resolve Concerns
     behavior_names:
     - resolve the customer's concern
+    - resolve concern
     mapping_status: mapped_alias
 
   # —— Compliance (compliance) ——
@@ -303,6 +327,20 @@ skills:
     behavior_names:
     - disclosures statement
     mapping_status: mapped_alias
+  protect_customer_information:
+    label: Protect Customer Information
+    category: compliance
+    source_eval_name: Protect Customer Information
+    behavior_names:
+    - protect customer information
+    mapping_status: mapped
+  brand_representation:
+    label: Act as a Representative of Our Brand
+    category: compliance
+    source_eval_name: Act as a Representative of Our Brand
+    behavior_names:
+    - act as a representative of our brand
+    mapping_status: mapped
 
   # —— Call Close (call_close) ——
   ty_reinforcement:
@@ -5270,10 +5308,21 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - scope
+      - understand_customer_issue
+      - resolve_concerns
+      - core_benefit_1
+      - conversational_language
+      - build_confidence
+      - professionalism_courtesy
+      - positive_tone
+      - brand_representation
+      - keep_customer_informed
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic Home Plans vs. Insurance; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: Explain the difference between Verizon Home Device Protect as a home plan and Verizon Mobile Protect as mobile device insurance using compliant, customer-friendly language. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Home Plans vs. Insurance); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   alexa_berge:
     challenge_id: alexa_berge
     sim_id: ASC-SIM-S7YD8X
@@ -5376,10 +5425,14 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - warm_greeting
+      - professionalism_courtesy
+      - positive_tone
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Greeting; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Introduce yourself as a Tech Coach and ask how you can help. Ask for the customer’s full name and phone number using natural call-opening language. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Greeting); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   camryn_kihn:
     challenge_id: camryn_kihn
     sim_id: ASC-SIM-5RA5XW
@@ -5397,10 +5450,14 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - verification
+      - protect_customer_information
+      - keep_customer_informed
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Combo; system Training Assist and Assima; objective Compliance. Intent: Complete happy-path verification for an account OWNER using the correct process. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Verification); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   bennett_mante:
     challenge_id: bennett_mante
     sim_id: ASC-SIM-45TWJ7
@@ -5418,10 +5475,15 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - verification
+      - protect_customer_information
+      - keep_customer_informed
+      - manage_call_efficiency
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Combo; system Training Assist and Assima; objective Compliance. Intent: Complete happy-path verification for an account MANAGER using the correct process. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Verification); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   stan_green:
     challenge_id: stan_green
     sim_id: ASC-SIM-VHTX8B
@@ -5439,10 +5501,18 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - verification
+      - protect_customer_information
+      - scope
+      - show_empathy
+      - reassure
+      - keep_customer_informed
+      - manage_call_efficiency
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Verification; mode Training Assist Only; system Training Assist; objective Compliance. Intent: Handle a customer who is unable to complete adaptive authentication without disclosing protected information. Decline to discuss account details when the caller does not meet verification requirements. Set expectations with an unauthorized user who needs the account owner to assist. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Verification); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   rebecca_brekke:
     challenge_id: rebecca_brekke
     sim_id: ASC-SIM-WNFJPJ
@@ -5460,10 +5530,15 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
-    source_match: program_map
+    requirements:
+      always:
+      - account_assessment
+      - understand_customer_issue
+      - keep_customer_informed
+      - manage_call_efficiency
+    source_match: manual_add
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 1: Greeting, Verify, Assess, Empathy & Assurance sim — topic Account Assessment; mode Combo; system Training Assist; objective Sales. Intent: Provide the Account Assessment after Verification. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: ASCEND Launchpad sim persona (Account Assessment); now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub).
   # ======== ASCEND Launchpad · block_07 — Call Flow Stage 2: Troubleshooting Basics (7 pre-registered, not yet live) ========
   amanda_waller:
     challenge_id: amanda_waller

@@ -12,7 +12,11 @@ topic_map:
     ask_for_sale: 'Retake: Ask for the Sale'
     ask_to_enroll: 'Retake: Ask to Enroll'
     ask_to_send_link: 'Retake: Ask to Send Enrollment Link'
+    brand_representation: 'Retake: Act as a Representative of Our Brand'
+    protect_customer_information: 'Retake: Protect Customer Information'
     recorded_disclosures_statement: 'Retake: Recorded Disclosures Statement'
+    positive_tone: 'Retake: Positive & Helpful Tone'
+    professionalism_courtesy: 'Retake: Professionalism & Courtesy'
     reassure: 'Retake: Reassure the Customer'
     show_empathy: 'Retake: Show Empathy'
     warm_greeting: 'Retake: Warm Greeting'
@@ -22,6 +26,7 @@ topic_map:
     resolve_concerns: 'Retake: Resolve Customer Concerns'
     resolve: 'Retake: Resolve'
     test_resolution: 'Retake: Confirm / Test Resolution'
+    build_confidence: 'Retake: Build Confidence Through Language'
     conversational_language: 'Retake: Conversational Language'
     discovery_question: 'Retake: Discovery Questions'
     engagement_question: 'Retake: Engagement Questions'
@@ -212,7 +217,15 @@ topic_map:
     'Retake: Ask for the Sale': 'Re-training — Block 14: Sales in Action'
     'Retake: Ask to Enroll': 'Re-training — Block 14: Sales in Action'
     'Retake: Ask to Send Enrollment Link': 'Re-training — Block 14: Sales in Action'
+    'Retake: Act as a Representative of Our Brand': 'Re-training — Block 5: Sales
+      Foundation - Product Knowledge, Compliance & Integrity'
+    'Retake: Protect Customer Information': 'Re-training — Block 6: Greeting, Verify,
+      Assess, Empathy & Assurance'
     'Retake: Recorded Disclosures Statement': 'Re-training — Block 14: Sales in Action'
+    'Retake: Positive & Helpful Tone': 'Re-training — Block 6: Greeting, Verify, Assess,
+      Empathy & Assurance'
+    'Retake: Professionalism & Courtesy': 'Re-training — Block 6: Greeting, Verify,
+      Assess, Empathy & Assurance'
     'Retake: Reassure the Customer': 'Re-training — Block 6: Greeting, Verify, Assess,
       Empathy & Assurance'
     'Retake: Show Empathy': 'Re-training — Block 6: Greeting, Verify, Assess, Empathy
@@ -229,6 +242,8 @@ topic_map:
     'Retake: Resolve': 'Re-training — Block 8: Solve & Test - Device Basics'
     'Retake: Confirm / Test Resolution': 'Re-training — Block 8: Solve & Test - Device
       Basics'
+    'Retake: Build Confidence Through Language': 'Re-training — Block 14: Sales in
+      Action'
     'Retake: Conversational Language': 'Re-training — Block 14: Sales in Action'
     'Retake: Discovery Questions': 'Re-training — Block 14: Sales in Action'
     'Retake: Engagement Questions': 'Re-training — Block 14: Sales in Action'

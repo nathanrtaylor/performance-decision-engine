@@ -22,7 +22,15 @@ benchmarks:
     default: 0.8
   ask_to_send_link:
     default: 0.8
+  brand_representation:
+    default: 0.8
+  protect_customer_information:
+    default: 0.8
   recorded_disclosures_statement:
+    default: 0.8
+  positive_tone:
+    default: 0.8
+  professionalism_courtesy:
     default: 0.8
   reassure:
     default: 0.8
@@ -41,6 +49,8 @@ benchmarks:
   resolve:
     default: 0.8
   test_resolution:
+    default: 0.8
+  build_confidence:
     default: 0.8
   conversational_language:
     default: 0.8
