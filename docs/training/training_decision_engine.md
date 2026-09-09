@@ -5,6 +5,12 @@
 **Last updated:** 2026-09-01.
 **Scope of this doc:** everything we know and have built for the training decision engine to date, the design decisions and their rationale, open questions, and the proposed schema you'll use to define the program structure.
 
+> **Update 2026-09-09:** historical design/review artifact. Since it was written the engine was built
+> and iterated well past Phase 3: components (sims **and CBTs**) are enumerated across all 16 blocks,
+> `gate.test_call` is set wherever a block has an End-to-End sim, ~29 skills are cataloged, and
+> pace/current block are inferred from crosswalked activity (no roster progress feed). Current state
+> lives in `docs/training/NEXT_STEPS.md` (top banner); the sections below are the original proposal.
+
 ---
 
 ## 1. What it is
@@ -125,7 +131,7 @@ Added `extraction/sql/training_cbt.sql.j2` (DAY grain) reading `hive.care.l1_asu
 
 Phase 3's crux is the **program structure**, which you will define incrementally. It is a config you fill in a block at a time; the engine runs on whatever is defined and a checker reports what's still missing. Below is the **proposed schema** (empty scaffold + field docs) — please review and adjust the shape before we build against it.
 
-> **Seeded from the ASCEND strategy doc.** A 16-block instance now exists at `configs/training/training_program.yaml` (blocks, order, labels, assessment methods, simulation counts, gates at `pass_mark: 0.90`, and best-effort `develops:` skill mappings — all 22 cataloged skills covered). It adds **pacing dimensions** on top of the schema below: per-block `estimated_hours` and **`expected_completion_day`** (days since training start, derived from cumulative hours at a program-level `pace.hours_per_day` knob — provisional until the real class calendar replaces it). `gate.test_call` refs, component (CBT/sim) enumeration, and the tools/troubleshooting skill mappings remain `TODO`.
+> **Seeded from the ASCEND strategy doc.** A 16-block instance now exists at `configs/training/training_program.yaml` (blocks, order, labels, assessment methods, simulation counts, gates at `pass_mark: 0.90`, and best-effort `develops:` skill mappings — the cataloged skills covered). It adds **pacing dimensions** on top of the schema below: per-block `estimated_hours` and **`expected_completion_day`** (hand-set days since training start; `pace.hours_per_day` is 7.0). **Update 2026-09-09:** component (sim + CBT) enumeration is now complete across all 16 blocks and `gate.test_call` is set wherever a block has an End-to-End sim (a few blocks' gate.test_call remain `TODO`).
 
 ```yaml
 # configs/training/training_program.yaml  (PROPOSED SCHEMA -- for review)

@@ -2,6 +2,14 @@
 
 Quick handoff to resume. Full design/status: `docs/training/training_decision_engine.md`.
 
+> **Update 2026-09-09:** much has shipped since this note. **WI-3** (all TrAIning Assist behaviors
+> mapped to skills) and **WI-5** (the `ASC-ASC-SIM-` SIM-ID typo, now fixed in the generator) are
+> **DONE**. **CBTs are mapped to all 16 blocks** (`kind: cbt` components, read from the curriculum
+> course export by `gen_program_components.py`). Pace and current block are now **inferred from
+> crosswalked sim/CBT activity** — the roster `current_block_order` feed was removed. `pace.hours_per_day`
+> is **7.0**. `check_training_program` validates the sim_id crosswalk + CBT coverage. The phase list,
+> counts, and TODO items below are HISTORICAL — treat this banner as the current state.
+
 ## Latest session (2026-09-02) — dashboard polish, committed `113f415`
 232 tests green. Suite + review-sim regenerate clean.
 - **Completion hand-off report** for graduated experts (all blocks passed): readiness summary,
@@ -59,7 +67,7 @@ d552279  Phase 0: consolidate scaffolding
 
 ## Assumptions to confirm (flagged in code)
 - CBT `userid` == employee id; CBT `score` 0–100 (both one-line changes in `extraction/sql/training_cbt.sql.j2`).
-- `expected_completion_day` derived at `pace.hours_per_day: 6` (content-only) — replace with real class calendar.
+- `expected_completion_day` is hand-set per block (pace is now `hours_per_day: 7.0`) — replace with real class calendar.
 - Reconciliation gaps: 3 unmapped sim behaviors; 11 challenge_ids not in `training_profiles.yaml`.
 - Rebase `training-insights` onto `main` once PR #18 merges.
 
