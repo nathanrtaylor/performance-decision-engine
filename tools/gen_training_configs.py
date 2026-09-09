@@ -142,7 +142,14 @@ def main() -> int:
     }
 
     metric_catalog = {"metric_catalog": {"category_defaults": category_defaults, "metrics": metrics}}
-    benchmarks = {"benchmarks": {m: {"default": args.pass_mark} for m in metrics}}
+    # Preserve any per-metric benchmark already on disk (hand-tuned required scores); seed only NEW
+    # metrics at the default. So re-running after the data changes never resets a curated pass bar.
+    existing_bm = {}
+    bm_path = OUT / "benchmarks.yaml"
+    if bm_path.exists():
+        prev = yaml.safe_load(bm_path.read_text(encoding="utf-8")) or {}
+        existing_bm = (prev.get("benchmarks") or {}) if isinstance(prev, dict) else {}
+    benchmarks = {"benchmarks": {m: existing_bm.get(m, {"default": args.pass_mark}) for m in metrics}}
     # conversation_type carries BOTH the learning block a skill maps to and that
     # block's description (from training_program.yaml `develops:`, the earliest block
     # that teaches the skill), so a retake reads e.g.
