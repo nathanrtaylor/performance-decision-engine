@@ -199,10 +199,10 @@ topic_map:
     'Retake: Goodbye With Rapport': 'Re-training — Block 15: Confirm, Recap, Close'
     'Retake: Survey': 'Re-training — Block 15: Confirm, Recap, Close'
     'Retake: Thank & Reinforce': 'Re-training — Block 15: Confirm, Recap, Close'
-    'Retake: Keep Customer Informed': 'Re-training — Block 2: Expert Foundations -
-      The Tech Coach Role & Call Flow'
-    'Retake: Manage Call Efficiently': 'Re-training — Block 2: Expert Foundations
-      - The Tech Coach Role & Call Flow'
+    'Retake: Keep Customer Informed': 'Re-training — Block 3: Tools for the Call Flow
+      - Asurion Tools'
+    'Retake: Manage Call Efficiently': 'Re-training — Block 3: Tools for the Call
+      Flow - Asurion Tools'
     'Retake: Scope of Support': 'Re-training — Block 2: Expert Foundations - The Tech
       Coach Role & Call Flow'
     'Retake: Set Expectations': 'Re-training — Block 2: Expert Foundations - The Tech
@@ -212,8 +212,7 @@ topic_map:
     'Retake: Ask for the Sale': 'Re-training — Block 14: Sales in Action'
     'Retake: Ask to Enroll': 'Re-training — Block 14: Sales in Action'
     'Retake: Ask to Send Enrollment Link': 'Re-training — Block 14: Sales in Action'
-    'Retake: Recorded Disclosures Statement': 'Re-training — Block 5: Sales Foundation
-      - Product Knowledge, Compliance & Integrity'
+    'Retake: Recorded Disclosures Statement': 'Re-training — Block 14: Sales in Action'
     'Retake: Reassure the Customer': 'Re-training — Block 6: Greeting, Verify, Assess,
       Empathy & Assurance'
     'Retake: Show Empathy': 'Re-training — Block 6: Greeting, Verify, Assess, Empathy
@@ -224,7 +223,8 @@ topic_map:
       Empathy & Assurance'
     'Retake: Advanced Discovery': 'Re-training — Block 6: Greeting, Verify, Assess,
       Empathy & Assurance'
-    'Retake: Understand Customer Issue': 'Re-training — Block 7: Troubleshooting Basics'
+    'Retake: Understand Customer Issue': 'Re-training — Block 2: Expert Foundations
+      - The Tech Coach Role & Call Flow'
     'Retake: Resolve Customer Concerns': 'Re-training — Block 14: Sales in Action'
     'Retake: Resolve': 'Re-training — Block 8: Solve & Test - Device Basics'
     'Retake: Confirm / Test Resolution': 'Re-training — Block 8: Solve & Test - Device
