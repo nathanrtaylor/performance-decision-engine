@@ -131,4 +131,18 @@ outputs:
       coaching_status_in:
         - "Submitted"
         - "Excused"
+      # Coaching-type filter (wired into coaching_history.sql.j2). Seeded with ALL coaching types
+      # currently present in the extract so you can edit from here:
+      #   - coaching_type_in  : allowlist — keep ONLY these types. Remove a line to exclude that type.
+      #                         (Comment out / empty the whole list to keep every type, incl. future ones.)
+      #   - coaching_type_not_in : blocklist — drop these types (applied after the allowlist).
+      # NOTE: with an allowlist populated, a NEW coaching_type added upstream is excluded until listed here.
+      coaching_type_in:
+        - "In The Game"
+        - "ADAPT"
+        - "Seek To Understand"
+        - "Enhanced Feedback"
+        - "Get to Know Me"
+        - "Growth Plan"
+      coaching_type_not_in: []
       
