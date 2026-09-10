@@ -1039,7 +1039,8 @@ document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
   const cur=document.documentElement.getAttribute("data-theme");
   document.documentElement.setAttribute("data-theme", cur==="dark"?"light":"dark");};})();
 
-document.getElementById("title").textContent = META.program + " — Training Dashboard";
+// "Launchpad" dropped from the header title only; META.program keeps the full program name.
+document.getElementById("title").textContent = META.program.replace(/\s*Launchpad/gi, "").trim() + " — Training Dashboard";
 document.getElementById("subline").textContent =
   `Pass mark ${Math.round(BENCH*100)}% · ${EXPERTS.length} experts · generated ${META.generated}`;
 if(META.notice){const sb=document.getElementById("synbadge"); sb.textContent="● "+(META.notice_badge||"SIMULATED"); sb.style.display="";
