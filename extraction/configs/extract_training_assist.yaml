@@ -59,6 +59,7 @@ outputs:
     expected_columns:
       - session_id
       - agent_id
+      - session_start_time
       - period
       - call_type
       - scorecard_name

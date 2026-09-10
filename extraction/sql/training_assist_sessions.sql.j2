@@ -37,6 +37,14 @@ SELECT DISTINCT
         ) AS BIGINT
     ) AS agent_id,
 
+    SUBSTRING(
+        REPLACE(
+            element_at(edp_raw_data_map, 'dynamodb_NewImage_SessionStartTime_S'),
+            'T', ' '
+        ),
+        1, 19
+    ) AS session_start_time,                      -- full ts, orders same-day attempts newest-first
+
     CAST(
         SUBSTRING(
             element_at(

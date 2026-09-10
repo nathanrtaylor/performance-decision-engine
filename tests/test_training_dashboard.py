@@ -155,7 +155,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.7"
+    assert meta["schema_version"] == "1.8"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -190,7 +190,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.7"
+    assert meta["schema_version"] == "1.8"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
@@ -281,6 +281,31 @@ def test_no_activity_means_no_current_block_or_pace():
     assert a1["status"] == "retraining"          # has a below-mark skill (solve)
     assert a2["status"] == "in_training"         # has data, no deficiency, no activity tracked
     assert a2["expected_block_num"] is not None  # expected is still computed (for comparison)
+
+
+def test_sim_and_cbt_items_carry_attempts_newest_first():
+    # The per-attempt drill-down list flows through into each sim/cbt item, order preserved.
+    sims = pd.DataFrame([{
+        "agent_id": "a1", "challenge_id": "SIM2", "label": "S2", "sim_id": "SIM2", "block_num": 2,
+        "sessions": 2, "pass_rate": 0.9, "last_period": "2026-01-05",
+        "passed": True, "result": "Cleared", "present_ratio": 1.0,
+        "attempts": [{"when": "2026-01-05 15:00", "result": "Cleared", "passed": True, "present": 10, "max": 10, "ratio": 1.0},
+                     {"when": "2026-01-05 09:00", "result": "Not cleared", "passed": False, "present": 6, "max": 10, "ratio": 0.6}]}])
+    cbts = pd.DataFrame([{
+        "agent_id": "a1", "courseid": "c1", "coursename": "C1", "ref": "cbt_c1", "block_num": 2,
+        "scored": True, "completed": True, "sessions": 2, "pass_rate": 0.9, "last_period": "2026-01-05",
+        "attempts": [{"when": "2026-01-05", "score": 0.9}, {"when": "2026-01-04", "score": 0.5}]}])
+    recs, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80, sims_taken=sims, cbts_taken=cbts)
+    b2 = {b["num"]: b for b in {r["id"]: r for r in recs}["a1"]["blocks"]}[2]
+    assert [a["result"] for a in b2["sims"][0]["attempts"]] == ["Cleared", "Not cleared"]   # newest-first preserved
+    assert [a["score"] for a in b2["cbts"][0]["attempts"]] == [0.9, 0.5]
+    # backward compatible: a frame with no `attempts` column -> empty list, no error
+    recs2, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(), _SKILL_META,
+                                      report_date="2026-01-06", pass_mark=0.80,
+                                      sims_taken=sims.drop(columns=["attempts"]))
+    b2b = {b["num"]: b for b in {r["id"]: r for r in recs2}["a1"]["blocks"]}[2]
+    assert b2b["sims"][0]["attempts"] == []
 
 
 def test_block_skills_drive_discrete_per_block_deficiency():

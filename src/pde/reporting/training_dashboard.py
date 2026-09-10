@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.7"   # 1.7: block skills are block-discrete + latest-attempt (from block_skills), not the curriculum develops-map mean
+SCHEMA_VERSION = "1.8"   # 1.8: sim/cbt items carry `attempts` (per-attempt drill-down, newest-first); CBT top line = highest
+# 1.7: block skills are block-discrete + latest-attempt (from block_skills), not the curriculum develops-map mean
 # 1.6: sim items carry native `passed`/`result`/`present_ratio` (EvaluationDetails.Results verdict + present/total evidence)
 # 1.5: blocks carry `sims_expected`/`cbts_expected` (collapsed done/expected)
 # 1.4: cbt items carry `scored`/`completed` (completion-only vs scored)
@@ -199,6 +200,7 @@ def build_training_records(
         pv = _opt(getattr(r, "passed", None))            # native verdict: True / False / None(unknown)
         res = _opt(getattr(r, "result", None))
         ratio = _num(getattr(r, "present_ratio", None))  # behaviors_present / max_behaviors (evidence)
+        attempts = getattr(r, "attempts", None)
         return {"challenge_id": cid, "label": str(getattr(r, "label", "") or cid),
                 "sim_id": None if sid is None else str(sid),
                 "block_num": None if bn is None else int(bn),
@@ -207,12 +209,14 @@ def build_training_records(
                 "passed": None if pv is None else bool(pv),
                 "result": None if res is None else str(res),
                 "present_ratio": None if ratio is None else round(ratio, 3),
+                "attempts": list(attempts) if isinstance(attempts, list) else [],
                 "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
 
     def _cbt_item(r) -> Dict[str, Any]:
         pr = _num(getattr(r, "pass_rate", None))
         cid = str(getattr(r, "courseid", "") or "")
         bn = _opt(getattr(r, "block_num", None))
+        attempts = getattr(r, "attempts", None)
         return {"courseid": cid, "coursename": str(getattr(r, "coursename", "") or cid),
                 "ref": str(getattr(r, "ref", "") or ""),   # cbt_<courseid> metric key (matches program component)
                 "block_num": None if bn is None else int(bn),
@@ -222,6 +226,7 @@ def build_training_records(
                 "completed": bool(getattr(r, "completed", True)),
                 "sessions": int(_num(getattr(r, "sessions", 0)) or 0),
                 "pass_rate": None if pr is None else round(pr, 3),
+                "attempts": list(attempts) if isinstance(attempts, list) else [],
                 "last": None if _opt(getattr(r, "last_period", None)) is None else str(r.last_period)}
 
     def _grouped(df: Optional[pd.DataFrame], builder) -> Dict[str, List[Dict[str, Any]]]:
@@ -611,7 +616,7 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .lblk details.cm > summary::before{content:"\25B8";font-size:9px;line-height:1}
 .lblk details.cm[open] > summary::before{content:"\25BE"}
 .lblk .cnt{margin-left:auto;font-variant-numeric:tabular-nums}
-@media print{.lblk details.cm > .cmtable{display:table !important}}   /* force tables visible in print/PDF even though collapsed by default */
+@media print{.lblk details.cm > .cmtable, .att > .atttbl{display:table !important}}   /* force tables visible in print/PDF even though collapsed by default */
 .cmtable td.sid{font-variant-numeric:tabular-nums;color:var(--text-2);white-space:nowrap}
 .cmtable td .meta{color:var(--muted);font-weight:400;margin-left:6px}
 .cmtable{width:100%;border-collapse:collapse;font-size:12.5px}
@@ -620,6 +625,20 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .cmtable td.cat{color:var(--muted)}
 .cmtable th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:0 12px 6px 0;border-bottom:1px solid var(--grid)}
 .cmtable td.m{font-weight:650;color:var(--text-1)}
+/* Per-sim / per-CBT expandable attempt rows (nested inside the "Sims practiced"/"CBTs completed" section). */
+.attlist{display:flex;flex-direction:column}
+.att>summary,.attline{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;
+  padding:5px 12px;border-top:1px solid var(--grid);font-size:12.5px}
+.attline{cursor:default}
+.att>summary::-webkit-details-marker{display:none}
+.att>summary::before{content:"\25B8";font-size:9px;line-height:1;color:var(--muted);flex:0 0 auto}
+.att[open]>summary::before{content:"\25BE"}
+.attline::before{content:"";flex:0 0 auto;width:9px}   /* align plain lines with the carets */
+.att .ilbl,.attline .ilbl{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att .sid,.attline .sid{color:var(--text-2);font-variant-numeric:tabular-nums}
+.att .inum,.attline .inum{margin-left:auto;text-align:right;white-space:nowrap}
+.atttbl{margin:2px 0 8px 26px;width:calc(100% - 26px)}
+.atttbl th{font-size:10.5px}
 .retrain{display:flex;flex-direction:column;padding:12px 14px;border-radius:10px;
   border:1px solid color-mix(in srgb,var(--serious) 40%,var(--border));
   background:color-mix(in srgb,var(--serious) 8%,var(--surface-2));font-size:13px}
@@ -827,21 +846,34 @@ function histSection(e){
   if(!(e.hist && e.hist.length)) return "";
   return `<div class="sec"><div class="h">Recent coaching history</div>${coachingHistoryTable(e.hist)}</div>`;
 }
-/* one row per sim practiced: label, ASC-SIM id (or —), then the simulator's native Pass/Fail
-   verdict + the present/total evidence (falls back to the computed pass-rate when there is no
-   session-grain verdict), plus sessions/last. */
-function simRow(s){
+/* Per sim: a top line (the simulator's native Pass/Fail verdict + present/total evidence, best/
+   any-pass — unchanged) that EXPANDS to every individual attempt, newest-first. Collapsed by
+   default; a sim with no per-attempt data renders as a plain line (no toggle). */
+function simAttemptRows(atts){
+  return atts.map(a=>{
+    const v = (a.passed===true) ? chip("good","Cleared")
+            : (a.passed===false) ? chip("critical","Not cleared")
+            : (a.result ? esc(a.result) : "—");
+    const ratio = (a.present!=null && a.max!=null) ? `${a.present}/${a.max}` : "—";
+    const p = (a.ratio!=null) ? ` <span class="meta">${pct(a.ratio)}</span>` : "";
+    return `<tr><td>${esc(a.when||"—")}</td><td>${v}</td><td class="num">${ratio}${p}</td></tr>`;
+  }).join("");
+}
+function simItem(s){
   const sid = s.sim_id ? esc(s.sim_id) : "—";
   const meta = `${s.sessions||0} sess${s.last?" · "+esc(s.last):""}`;
   const verdict = (s.passed===true) ? chip("good","Pass")
                  : (s.passed===false) ? chip("critical","Fail") : "";
   const evid = (s.present_ratio!=null) ? pct(s.present_ratio) : pct(s.pass_rate);
-  return `<tr><td>${esc(s.label)}</td><td class="sid">${sid}</td>`+
-    `<td class="num">${verdict} <span class="meta">${evid} · ${meta}</span></td></tr>`;
+  const summary = `<span class="ilbl">${esc(s.label)}</span><span class="sid">${sid}</span>`+
+    `<span class="inum">${verdict} <span class="meta">${evid} · ${meta}</span></span>`;
+  const atts = s.attempts||[];
+  if(!atts.length) return `<div class="attline">${summary}</div>`;
+  return `<details class="att"><summary>${summary}</summary>`+
+    `<table class="cmtable atttbl"><thead><tr><th>When</th><th>Result</th><th>Score</th></tr></thead>`+
+    `<tbody>${simAttemptRows(atts)}</tbody></table></details>`;
 }
-function simsTable(items){
-  return `<table class="cmtable"><tbody>${items.map(simRow).join("")}</tbody></table>`;
-}
+function simsTable(items){ return `<div class="attlist">${items.map(simItem).join("")}</div>`; }
 /* collapsible sim/CBT section: the summary shows done / expected (expected = the block's enumerated
    components); expanding reveals the detail table. Collapsed by default for a compact overview
    (the done/expected count stays visible); print/PDF force-expands the tables. */
@@ -869,17 +901,27 @@ function blocksView(e){
     return `<div class="lblk${blank?" locked":""}">${head}${body}</div>`;
   }).join("");
 }
-/* one row per CBT under a block: coursename, then a Completed badge and (for scored assessments)
-   the score. Completion-only courses show 'Completed' only -- never a pending/0% score. */
-function cbtTable(items){
-  return `<table class="cmtable"><tbody>${items.map(c=>{
-    const done = c.completed ? chip("good","Completed") : "";
-    const score = c.scored ? ` <span class="num">${pct(c.pass_rate)}</span>` : "";
-    const tag = c.scored ? "" : ` <span class="meta">completion-only</span>`;
-    return `<tr><td>${esc(c.coursename)}${tag}</td>`+
-      `<td class="num">${done}${score}<span class="meta">${c.sessions||0} sess${c.last?" · "+esc(c.last):""}</span></td></tr>`;
-  }).join("")}</tbody></table>`;
+/* Per CBT: a top line (Completed badge + HIGHEST score for scored courses; completion-only shows
+   'Completed' only) that EXPANDS to every attempt (per completion-day), newest-first. Collapsed by
+   default; a course with no per-attempt data renders as a plain line. */
+function cbtAttemptRows(atts){
+  return atts.map(a=>`<tr><td>${esc(a.when||"—")}</td>`+
+    `<td class="num">${a.score!=null?pct(a.score):chip("good","Completed")}</td></tr>`).join("");
 }
+function cbtItem(c){
+  const done = c.completed ? chip("good","Completed") : "";
+  const score = c.scored ? ` <span class="num">${pct(c.pass_rate)}</span>` : "";
+  const tag = c.scored ? "" : ` <span class="meta">completion-only</span>`;
+  const meta = `${c.sessions||0} sess${c.last?" · "+esc(c.last):""}`;
+  const summary = `<span class="ilbl">${esc(c.coursename)}${tag}</span>`+
+    `<span class="inum">${done}${score} <span class="meta">${meta}</span></span>`;
+  const atts = c.attempts||[];
+  if(!atts.length) return `<div class="attline">${summary}</div>`;
+  return `<details class="att"><summary>${summary}</summary>`+
+    `<table class="cmtable atttbl"><thead><tr><th>When</th><th>Score</th></tr></thead>`+
+    `<tbody>${cbtAttemptRows(atts)}</tbody></table></details>`;
+}
+function cbtTable(items){ return `<div class="attlist">${items.map(cbtItem).join("")}</div>`; }
 /* Sims the expert practiced that don't yet resolve to a block (no sim_id crosswalk). */
 function simsUnmappedSection(e){
   if(!(e.sims_unmapped && e.sims_unmapped.length)) return "";

@@ -159,16 +159,56 @@ def _build_sim_results(raw_dir: Path) -> pd.DataFrame:
     return out[cols]
 
 
-def _agg_taken(df: pd.DataFrame, key_cols: list) -> pd.DataFrame:
+def _agg_taken(df: pd.DataFrame, key_cols: list, rate_agg: str = "mean") -> pd.DataFrame:
     """Roll day-grain rows up to per-(agent, key) practice aggregates:
-    sessions = distinct practice days, pass_rate = mean(calc), last_period = max(period)."""
+    sessions = distinct practice days, pass_rate = <rate_agg>(calc), last_period = max(period).
+    `rate_agg` is "mean" (default) or "max" (highest attempt -- used for CBT top line)."""
     df = df.copy()
     df["calc"] = pd.to_numeric(df.get("calc"), errors="coerce")
     g = df.groupby(["agent_id"] + key_cols, dropna=False)
     out = g.agg(sessions=("period", "nunique"),
-                pass_rate=("calc", "mean"),
+                pass_rate=("calc", rate_agg),
                 last_period=("period", "max")).reset_index()
     out["pass_rate"] = out["pass_rate"].round(3)
+    return out
+
+
+def _sim_attempts(raw_dir: Path) -> dict:
+    """Per-(agent_id, challenge_id) list of individual sim attempts, newest-first.
+
+    From the session-grain extract. Each attempt: {when, result, passed, present, max, ratio}.
+    Ordered by session_start_time when present, else period + session_id (day-order fallback
+    until the extract is re-run with session_start_time). Keyed (agent_id, challenge_id_lower)."""
+    path = raw_dir / "training_assist_sessions.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path, dtype={"agent_id": str, "scorecard_name": str, "session_id": str,
+                                  "evaluation_results": str, "period": str, "session_start_time": str})
+    if df.empty:
+        return {}
+    order_col = "session_start_time" if "session_start_time" in df.columns else "period"
+    df = df.sort_values([order_col, "session_id"], ascending=False)
+    df = df.drop_duplicates("session_id", keep="first")   # one row per real session (drop CDC dupes)
+    pres = pd.to_numeric(df.get("present_behaviors"), errors="coerce")
+    mx = pd.to_numeric(df.get("max_behaviors"), errors="coerce")
+    df["ratio_val"] = (pres / mx.where(mx > 0)).clip(0.0, 1.0)
+    out: dict = {}
+    for r in df.itertuples():
+        key = (str(r.agent_id), str(r.scorecard_name).strip().lower())
+        when = getattr(r, "session_start_time", None)
+        if when is None or (isinstance(when, float) and pd.isna(when)):
+            when = r.period
+        passed = _norm_result(r.evaluation_results)
+        p = getattr(r, "present_behaviors", None); m = getattr(r, "max_behaviors", None)
+        ratio = getattr(r, "ratio_val", None)
+        out.setdefault(key, []).append({
+            "when": str(when),
+            "result": (None if r.evaluation_results is None or (isinstance(r.evaluation_results, float) and pd.isna(r.evaluation_results)) else str(r.evaluation_results)),
+            "passed": None if passed is None else bool(passed),
+            "present": None if p is None or pd.isna(p) else int(p),
+            "max": None if m is None or pd.isna(m) else int(m),
+            "ratio": None if ratio is None or pd.isna(ratio) else round(float(ratio), 3),
+        })
     return out
 
 
@@ -183,7 +223,7 @@ def _build_sims_taken(raw_dir: Path, program, profiles_path: Path) -> pd.DataFra
     present/total evidence); null where no session-grain data exists for the sim.
     """
     cols = ["agent_id", "challenge_id", "label", "sim_id", "block_num", "sessions", "pass_rate",
-            "last_period", "passed", "result", "present_ratio"]
+            "last_period", "passed", "result", "present_ratio", "attempts"]
     path = raw_dir / "training_assist.csv"
     if not path.exists():
         return pd.DataFrame(columns=cols)
@@ -214,6 +254,14 @@ def _build_sims_taken(raw_dir: Path, program, profiles_path: Path) -> pd.DataFra
     for c in ("passed", "result", "present_ratio"):
         if c not in agg.columns:
             agg[c] = pd.NA
+
+    # Per-attempt drill-down list (newest-first), keyed (agent_id, challenge_id_lower).
+    att = _sim_attempts(raw_dir)
+    agg["attempts"] = [att.get((str(a), str(c).strip().lower()), []) for a, c in
+                       zip(agg["agent_id"], agg["challenge_id"])]
+    # Top-line session count = real attempts (so it matches the drill-down row count); fall back to
+    # the day-based count only when there is no session-grain data for the sim.
+    agg["sessions"] = [len(a) if a else s for a, s in zip(agg["attempts"], agg["sessions"])]
     return agg[cols]
 
 
@@ -223,26 +271,40 @@ def _build_cbts_taken(raw_dir: Path, block_by_ref: dict) -> pd.DataFrame:
     Each course is classified so the dashboard can show it accurately instead of a score it will
     never receive:
       - `scored`   : the course is a scored assessment (some calc>0 anywhere in the extract);
-                     `pass_rate` is then its mean score.
+                     `pass_rate` is then its HIGHEST attempt score (max calc).
       - `completed`: the expert has completion records for it (>=1 session).
     Completion-only courses (never scored) get `pass_rate = NA` -> the UI renders 'Completed'.
     `block_num` is null for courses not represented by a cbt component (still shown, just unmapped).
+    `attempts` is the per-completion-day drill-down list (newest-first).
 
-    Columns: agent_id, courseid, coursename, block_num, scored, completed, sessions, pass_rate, last_period."""
+    Columns: agent_id, courseid, coursename, block_num, scored, completed, sessions, pass_rate,
+    last_period, attempts."""
     cols = ["agent_id", "courseid", "coursename", "ref", "block_num", "scored", "completed",
-            "sessions", "pass_rate", "last_period"]
+            "sessions", "pass_rate", "last_period", "attempts"]
     path = raw_dir / "training_cbt.csv"
     if not path.exists():
         return pd.DataFrame(columns=cols)
     df = pd.read_csv(path, dtype={"agent_id": str, "courseid": str, "coursename": str, "period": str})
     df["calc"] = pd.to_numeric(df.get("calc"), errors="coerce")
     scored_ids = set(df.groupby("courseid")["calc"].max().pipe(lambda s: s[s > 0]).index)
-    agg = _agg_taken(df, ["courseid", "coursename"])
+    agg = _agg_taken(df, ["courseid", "coursename"], rate_agg="max")     # top line = HIGHEST attempt
     agg["ref"] = agg["courseid"].map(cbt_metric_key)                     # matches the cbt component ref
     agg["block_num"] = agg["ref"].map(block_by_ref)
     agg["scored"] = agg["courseid"].isin(scored_ids)
     agg["completed"] = agg["sessions"] > 0
     agg.loc[~agg["scored"], "pass_rate"] = pd.NA   # completion-only: no score to report
+
+    # Per-attempt drill-down (newest-first), keyed (agent_id, courseid).
+    att: dict = {}
+    for r in df.sort_values("period", ascending=False).itertuples():
+        key = (str(r.agent_id), str(r.courseid))
+        att.setdefault(key, []).append({
+            "when": str(r.period),
+            "score": None if pd.isna(r.calc) else round(float(r.calc), 3),
+        })
+    agg["attempts"] = [att.get((str(a), str(c)), []) for a, c in zip(agg["agent_id"], agg["courseid"])]
+    # Top-line session count = number of attempt rows shown in the drill-down (per completion-day).
+    agg["sessions"] = [len(a) if a else s for a, s in zip(agg["attempts"], agg["sessions"])]
     return agg[cols]
 
 
