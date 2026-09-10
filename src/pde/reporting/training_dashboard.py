@@ -765,7 +765,7 @@ function renderTiles(rows){
     {v:c("behind"), k:"Behind schedule"},
     {v:c("retraining"), k:"Re-training needed"},
     {v:c("completed"), k:"Completed"},
-    {v:pct(avg), k:"Avg skill readiness"},
+    /* {v:pct(avg), k:"Avg skill readiness"},   // hidden for now (skill scoring not yet validated) */
     {v:(avgDays==null?"—":avgDays+"d"), k:"Avg days in program", time:true},
     {v:(onPct==null?"—":onPct+"%"), k:"On pace vs schedule", time:true},
   ];
@@ -806,7 +806,8 @@ function card(e){
     `<div class="dim">${esc(e.class_id)}${e.trainer?" · "+esc(e.trainer):""}</div>`+
     `<div class="dim">${esc(curBlockText(e))} ${onTrackChip(e)}</div>`+
     `<div class="dim muted">${esc(expectedText(e))}</div>`+
-    `<div class="foot">${ladderDots(e)}<span>${footL} · skill ${pct(e.avg_skill)}</span></div>`+
+    // skill readiness hidden for now (was: `${footL} · skill ${pct(e.avg_skill)}`)
+    `<div class="foot">${ladderDots(e)}<span>${footL}</span></div>`+
   `</button>`;
 }
 function render(){
@@ -964,7 +965,7 @@ function summaryText(e){
   L.push("Class "+e.class_id+(e.trainer?" · trainer "+e.trainer:""));
   L.push("Status: "+((STATUS_META[e.status]||{}).label||e.status)+(e.pace?"  ·  pace: "+e.pace:""));
   L.push(curBlockText(e)+(e.expected_block_num!=null?"  ·  "+expectedText(e):""));
-  L.push("Skill readiness: "+pct(e.avg_skill));
+  // L.push("Skill readiness: "+pct(e.avg_skill));   // hidden for now (skill scoring not yet validated)
   if(e.handoff){L.push(""); L.push("COMPLETION HAND-OFF"); L.push("- "+e.handoff.summary);
     if((e.handoff.watch||[]).length) L.push("- Watch in production: "+e.handoff.watch.join(", ")); L.push("- "+e.handoff.note);}
   else if(e.remediation){const r=e.remediation; L.push(""); L.push("REMEDIATION — "+(r.primary_block_label||("Block "+r.primary_block)));
@@ -1009,7 +1010,8 @@ function openModal(id){
       <div class="focusband">
         <div><div class="k">Current learning block</div><div class="topic">${esc(curBlockText(e))}</div>
           <div>${onTrackChip(e)} <span class="muted">${esc(exp)}${e.days_since_start!=null?` · day ${e.days_since_start}`:""}</span></div></div>
-        <div><div class="k">Skill readiness</div><div class="topic">${pct(e.avg_skill)}</div></div>
+        <!-- skill readiness hidden for now (skill scoring not yet validated):
+        <div><div class="k">Skill readiness</div><div class="topic">${pct(e.avg_skill)}</div></div> -->
       </div>
       <div class="sec"><div class="h">${primary}</div>${primaryView}</div>
       ${histSection(e)}
