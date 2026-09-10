@@ -5340,10 +5340,12 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
+    requirements:
+      always: [brand_representation, build_confidence, professionalism_courtesy, keep_customer_informed,
+               positive_tone, resolve_concerns]
     source_match: program_map
     notes:
-      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: Provide basic VHDP plan benefits. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Roleplay Tool; objective Sales. Intent: Provide basic VHDP plan benefits. Now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub)."
   bruce_gulgowski:
     challenge_id: bruce_gulgowski
     sim_id: ASC-SIM-J63FQX
@@ -5361,10 +5363,12 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
+    requirements:
+      always: [brand_representation, build_confidence, professionalism_courtesy, keep_customer_informed,
+               positive_tone, resolve_concerns]
     source_match: program_map
     notes:
-      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Training Assist; objective Sales. Intent: Use your tools to answer detailed VHDP questions about eligible home technology, service fees, and claim limits. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: "ASCEND Launchpad Sales Foundation - Product Knowledge, Compliance & Integrity sim — topic VHDP Product Details; mode Training Assist Only; system Training Assist; objective Sales. Intent: Use your tools to answer detailed VHDP questions about eligible home technology, service fees, and claim limits. Now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub)."
   korey_gutmann:
     challenge_id: korey_gutmann
     sim_id: ASC-SIM-YZDT5H

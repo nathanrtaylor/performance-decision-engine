@@ -2,6 +2,7 @@
 import pandas as pd
 
 from pde.ingestion.training_assist_skills import (
+    ascend_challenge_ids,
     build_behavior_skill_map,
     build_profile_requirements,
     build_training_assist_skills,
@@ -124,3 +125,35 @@ def test_empty_input_returns_empty_frame():
     out = build_training_assist_skills(pd.DataFrame(), PROFILES)
     assert out.empty
     assert "skill" in out.columns
+
+
+# --------------------------------------------------------------------------- #
+# ASCEND scope filter (lob == ASCEND Launchpad)
+# --------------------------------------------------------------------------- #
+_LOB_PROFILES = {
+    **PROFILES,
+    "profiles": {
+        "asc_x": {"challenge_id": "asc_x", "lob": "ASCEND Launchpad",
+                  "requirements": {"always": ["warm_greeting"]}},
+        "verizon_y": {"challenge_id": "verizon_y", "lob": "Connected Home",
+                      "requirements": {"always": ["warm_greeting"]}},
+    },
+}
+
+
+def test_ascend_challenge_ids_selects_only_ascend_lob():
+    assert ascend_challenge_ids(_LOB_PROFILES) == {"asc_x"}
+
+
+def test_ascend_only_drops_non_ascend_but_default_keeps_all():
+    raw = pd.DataFrame([
+        _raw(1, "asc_x", "greeting", 3, 4),
+        _raw(1, "verizon_y", "greeting", 1, 4),
+    ])
+    # default (off): both personas' greeting rows aggregate into the one skill
+    keep_all = build_training_assist_skills(raw, _LOB_PROFILES)
+    assert keep_all[keep_all["skill"] == "warm_greeting"]["numerator"].iloc[0] == 4   # 3 + 1
+    # ascend_only: the non-ASCEND (verizon_y) row is dropped before rollup
+    asc = build_training_assist_skills(raw, _LOB_PROFILES, ascend_only=True)
+    assert asc[asc["skill"] == "warm_greeting"]["numerator"].iloc[0] == 3             # asc_x only
+    assert asc["denominator"].iloc[0] == 4

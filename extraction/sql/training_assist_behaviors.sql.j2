@@ -1,0 +1,98 @@
+-- extraction/sql/training_assist_behaviors.sql.j2
+--
+-- TrAIning Assist per-SESSION, per-behavior grain (one row per behavior per sim attempt).
+--
+-- Unlike training_assist.sql.j2 (which aggregates behaviors to the DAY and drops session
+-- identity), this keeps session_id + session_start_time so downstream can score a skill from
+-- an expert's LATEST attempt of a sim -- experts routinely re-run a sim several times in one
+-- day, so day-pooling would bury the improvement. Columns:
+--   session_id          the sim attempt (join key)
+--   agent_id            expert (EmployeeId)
+--   session_start_time  full timestamp, used to pick the latest attempt
+--   period              session day
+--   scorecard_name      challenge_id (the sim persona)
+--   behavior            evaluated behavior (lowercased/trimmed)
+--   behavior_present    0/1 flag (EvaluationDetails.Body[].behaviorPresent)
+--
+-- The behavior->skill mapping, challenge->sim->block crosswalk, latest-attempt pick, and
+-- per-block aggregation are applied downstream by src/pde/cli/run_training_pipeline.py
+-- (_build_block_skills). Same extract idioms as training_assist.sql.j2.
+-- {{ start_date }} / {{ end_date }} / {{ source_schema }} / {{ training_table }} come from
+-- extract_run.yaml globals via compile_sql.build_context.
+
+WITH base AS (
+    SELECT DISTINCT
+        element_at(edp_raw_data_map, 'dynamodb_Keys_SessionID_S') AS session_id,
+
+        CAST(
+            element_at(edp_raw_data_map, 'dynamodb_NewImage_EmployeeId_S') AS BIGINT
+        ) AS agent_id,
+
+        SUBSTRING(
+            REPLACE(
+                element_at(edp_raw_data_map, 'dynamodb_NewImage_SessionStartTime_S'),
+                'T', ' '
+            ),
+            1, 19
+        ) AS session_start_time,
+
+        CAST(
+            SUBSTRING(
+                element_at(edp_raw_data_map, 'dynamodb_NewImage_SessionStartTime_S'),
+                1, 10
+            ) AS DATE
+        ) AS session_date,
+
+        element_at(edp_raw_data_map, 'dynamodb_NewImage_ChallengeId_S') AS challenge_id,
+
+        json_extract(
+            edp_raw_data,
+            '$.dynamodb.NewImage.EvaluationDetails.M.Body.L'
+        ) AS evaluation_details
+
+    FROM {{ source_schema }}.{{ training_table }}
+
+    WHERE LOWER(
+            element_at(edp_raw_data_map, 'dynamodb_NewImage_EmployeeId_S')
+          ) NOT LIKE '%test%'
+
+      AND element_at(
+            edp_raw_data_map,
+            'dynamodb_NewImage_EvaluationDetails_M_Overview_S'
+          ) != ''
+
+      AND CAST(
+            SUBSTRING(
+                element_at(edp_raw_data_map, 'dynamodb_NewImage_SessionStartTime_S'),
+                1, 10
+            ) AS DATE
+          ) BETWEEN DATE '{{ start_date }}' AND DATE '{{ end_date }}'
+)
+
+SELECT
+    b.session_id,
+    b.agent_id,
+    b.session_start_time,
+    CAST(b.session_date AS DATE) AS period,
+    'all' AS call_type,
+    b.challenge_id AS scorecard_name,
+
+    LOWER(
+        TRIM(json_extract_scalar(behavior_item, '$.M.behavior.S'))
+    ) AS behavior,
+
+    COALESCE(
+        TRY_CAST(json_extract_scalar(behavior_item, '$.M.behaviorPresent.N') AS DOUBLE),
+        0.0
+    ) AS behavior_present
+
+FROM base b
+
+CROSS JOIN UNNEST(
+    COALESCE(
+        TRY(CAST(b.evaluation_details AS ARRAY(JSON))),
+        CAST(ARRAY[] AS ARRAY(JSON))
+    )
+) AS u(behavior_item)
+
+WHERE LOWER(TRIM(json_extract_scalar(behavior_item, '$.M.behavior.S'))) != ''

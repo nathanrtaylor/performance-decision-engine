@@ -44,6 +44,9 @@ def main() -> int:
                     help=f"Path to training_profiles.yaml (default: {_DEFAULT_PROFILES})")
     ap.add_argument("--out", default=None,
                     help=f"Output CSV path (default: <raw-dir>/{_OUTPUT_NAME})")
+    ap.add_argument("--include-non-ascend", action="store_true",
+                    help="Keep non-ASCEND personas (lob != ASCEND Launchpad). Default: ASCEND-only, "
+                         "so non-ASCEND practice never influences skill readiness.")
     args = ap.parse_args()
 
     raw_dir = Path(args.raw_dir)
@@ -57,7 +60,7 @@ def main() -> int:
     raw_df = read_parquet_or_csv(in_path)
     profiles = load_yaml(args.profiles)
 
-    skills_df = build_training_assist_skills(raw_df, profiles)
+    skills_df = build_training_assist_skills(raw_df, profiles, ascend_only=not args.include_non_ascend)
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     skills_df.to_csv(out_path, index=False)

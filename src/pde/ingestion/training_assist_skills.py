@@ -68,6 +68,22 @@ def _counted_levels(profiles: Dict[str, Any]) -> Set[str]:
     return counted
 
 
+def ascend_challenge_ids(profiles: Dict[str, Any]) -> Set[str]:
+    """Normalized challenge_ids for ASCEND Launchpad profiles (``lob == 'ASCEND Launchpad'``).
+
+    ASCEND membership is the training dashboard's scope: non-ASCEND personas (Mobility,
+    Soluto, Connected Home, ...) are excluded entirely. In the data this is equivalent to
+    "has a ``sim_id``" and "``client == Asurion``", but ``lob`` is the explicit marker and is
+    robust to sim_id-less ASCEND stubs.
+    """
+    out: Set[str] = set()
+    for pid, prof in (profiles.get("profiles") or {}).items():
+        prof = prof or {}
+        if _norm(prof.get("lob")) == "ascend launchpad":
+            out.add(_norm(prof.get("challenge_id") or pid))
+    return out
+
+
 def build_behavior_skill_map(profiles: Dict[str, Any]) -> Dict[str, str]:
     """behavior (normalized) -> skill_id, from skills.<id>.behavior_names."""
     b2s: Dict[str, str] = {}
@@ -110,7 +126,7 @@ def _empty_frame() -> pd.DataFrame:
 
 
 def build_training_assist_skills(
-    raw_df: pd.DataFrame, profiles: Dict[str, Any]
+    raw_df: pd.DataFrame, profiles: Dict[str, Any], *, ascend_only: bool = False
 ) -> pd.DataFrame:
     """Roll raw behavior rows up to relevance-filtered skill-level pass-rates.
 
@@ -120,6 +136,9 @@ def build_training_assist_skills(
         agent_id, week_ending, call_type, scorecard_name, behavior,
         attempts, numerator, denominator, calc
     profiles : parsed configs/training/training_profiles.yaml
+    ascend_only : when True, drop behaviors from non-ASCEND personas (lob != ASCEND
+        Launchpad) BEFORE the skill rollup, so non-ASCEND practice never influences skill
+        readiness. The training dashboard CLI enables this; direct callers default to off.
     """
     if raw_df is None or raw_df.empty:
         return _empty_frame()
@@ -136,6 +155,21 @@ def build_training_assist_skills(
     df["_behavior"] = df["behavior"].map(_norm)
     df["_challenge"] = df["scorecard_name"].map(_norm)
     df["skill"] = df["_behavior"].map(b2s)
+
+    # --- ASCEND scope: drop non-ASCEND personas entirely (before any rollup) ---
+    if ascend_only:
+        ascend = ascend_challenge_ids(profiles)
+        dropped_cids = sorted(set(df["_challenge"]) - ascend - {""})
+        before = len(df)
+        df = df[df["_challenge"].isin(ascend)].copy()
+        if before - len(df):
+            log.info(
+                "training_assist: ASCEND-only -- dropped %d behavior row(s) from %d non-ASCEND "
+                "challenge_id(s) (lob != ASCEND Launchpad): %s",
+                before - len(df), len(dropped_cids), dropped_cids[:25],
+            )
+        if df.empty:
+            return _empty_frame()
 
     # --- data-quality visibility (first-pass mapping has known gaps) ---
     unmapped_beh = sorted(set(df.loc[df["skill"].isna(), "_behavior"]) - {""})
