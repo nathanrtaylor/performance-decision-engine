@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.8"   # 1.8: sim/cbt items carry `attempts` (per-attempt drill-down, newest-first); CBT top line = highest
+SCHEMA_VERSION = "1.9"   # 1.9: days_since_start = TRAINING days (distinct class activity-days), not calendar days
+# 1.8: sim/cbt items carry `attempts` (per-attempt drill-down, newest-first); CBT top line = highest
 # 1.7: block skills are block-discrete + latest-attempt (from block_skills), not the curriculum develops-map mean
 # 1.6: sim items carry native `passed`/`result`/`present_ratio` (EvaluationDetails.Results verdict + present/total evidence)
 # 1.5: blocks carry `sims_expected`/`cbts_expected` (collapsed done/expected)
@@ -157,6 +158,7 @@ def build_training_records(
     sims_taken: Optional[pd.DataFrame] = None,         # per-(agent,sim): challenge_id,label,sim_id,block_num,sessions,pass_rate,last_period
     cbts_taken: Optional[pd.DataFrame] = None,         # per-(agent,course): courseid,coursename,ref,block_num,scored,completed,sessions,pass_rate,last_period
     block_skills: Optional[pd.DataFrame] = None,       # per-(agent,block,skill): block_num,skill,value,below (block-discrete, latest-attempt)
+    class_training_days: Optional[Dict[str, List[str]]] = None,  # class_id -> distinct training-day dates; drives pace in training days (not calendar days)
 ) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     sdf = skills_df.copy()
     sdf["agent_id"] = sdf["agent_id"].astype(str)
@@ -273,12 +275,22 @@ def build_training_records(
         icp = str(aget(aid, "icp_client", "") or "")
         name = str(aget(aid, "agent_name", aid) or aid)
 
-        # days since training start
+        # TRAINING days since start (not calendar days). When a class training-day calendar is
+        # provided, dss = count of that class's activity-days in [start, report] -- so weekends /
+        # holidays / class-wide off days don't count, but an individual's absence still does (the
+        # class had data that day). Falls back to calendar days when no calendar is passed
+        # (tests / demo). See _class_training_days in run_training_pipeline.
         dss: Optional[int] = None
         start = aget(aid, "training_start_date")
         if start is not None:
             try:
-                dss = int((rdate - pd.Timestamp(start).normalize()).days)
+                if class_training_days is not None:
+                    cdays = class_training_days.get(class_id, [])
+                    start_iso = pd.Timestamp(start).normalize().strftime("%Y-%m-%d")
+                    report_iso = rdate.strftime("%Y-%m-%d")
+                    dss = sum(1 for d in cdays if start_iso <= str(d)[:10] <= report_iso)
+                else:
+                    dss = int((rdate - pd.Timestamp(start).normalize()).days)
             except Exception:  # noqa: BLE001
                 dss = None
 
@@ -736,7 +748,7 @@ function onTrackChip(e){
   return chip("warning","behind");
 }
 function curBlockText(e){const b=e.current_block||{};if(b.done)return "Completed — all blocks passed";return b.num!=null?("Block "+b.num+(b.short&&b.short!=="—"?" — "+b.short:"")):"Not tracked yet";}
-function expectedText(e){return e.expected_block_num!=null?("Expected: Block "+e.expected_block_num+(e.days_since_start!=null?" · day "+e.days_since_start:"")):"";}
+function expectedText(e){return e.expected_block_num!=null?("Expected: Block "+e.expected_block_num+(e.days_since_start!=null?" · training day "+e.days_since_start:"")):"";}
 
 const state = {class_id:"__all", trainer:"__all", status:"__all", q:""};
 const uniq = k => [...new Set(EXPERTS.map(e=>e[k]).filter(x=>x!=null&&x!==""))].sort();
@@ -766,7 +778,7 @@ function renderTiles(rows){
     {v:c("retraining"), k:"Re-training needed"},
     {v:c("completed"), k:"Completed"},
     /* {v:pct(avg), k:"Avg skill readiness"},   // hidden for now (skill scoring not yet validated) */
-    {v:(avgDays==null?"—":avgDays+"d"), k:"Avg days in program", time:true},
+    {v:(avgDays==null?"—":avgDays+"d"), k:"Avg training days", time:true},
     {v:(onPct==null?"—":onPct+"%"), k:"On pace vs schedule", time:true},
   ];
   document.getElementById("tiles").innerHTML = tiles.map(t=>
@@ -1009,7 +1021,7 @@ function openModal(id){
     <div class="mbody">
       <div class="focusband">
         <div><div class="k">Current learning block</div><div class="topic">${esc(curBlockText(e))}</div>
-          <div>${onTrackChip(e)} <span class="muted">${esc(exp)}${e.days_since_start!=null?` · day ${e.days_since_start}`:""}</span></div></div>
+          <div>${onTrackChip(e)} <span class="muted">${esc(exp)}${e.days_since_start!=null?` · training day ${e.days_since_start}`:""}</span></div></div>
         <!-- skill readiness hidden for now (skill scoring not yet validated):
         <div><div class="k">Skill readiness</div><div class="topic">${pct(e.avg_skill)}</div></div> -->
       </div>

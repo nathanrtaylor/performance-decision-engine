@@ -308,6 +308,36 @@ def _build_cbts_taken(raw_dir: Path, block_by_ref: dict) -> pd.DataFrame:
     return agg[cols]
 
 
+def _class_training_days(raw_dir: Path, roster_df: pd.DataFrame) -> dict:
+    """{class_id: sorted list of distinct dates the CLASS had training activity}.
+
+    A "class training day" = any date on which any roster member of that class has a row in
+    training_assist.csv OR training_cbt.csv. Used to measure pacing in TRAINING days rather than
+    calendar days, so weekends / holidays / class-wide off days (no data) don't count while an
+    individual's absence still does (the class had data that day). NOT ASCEND-filtered on purpose --
+    this is "did the class train", so maximize coverage across all logged training activity.
+    """
+    if roster_df is None or roster_df.empty:
+        return {}
+    amap = dict(zip(roster_df["agent_id"].astype(str), roster_df["class_id"].astype(str)))
+    frames = []
+    for name in ("training_assist.csv", "training_cbt.csv"):
+        p = raw_dir / name
+        if not p.exists():
+            continue
+        df = pd.read_csv(p, dtype={"agent_id": str, "period": str}, usecols=lambda c: c in ("agent_id", "period"))
+        if df.empty or "agent_id" not in df.columns or "period" not in df.columns:
+            continue
+        df["class_id"] = df["agent_id"].map(amap)
+        df = df.dropna(subset=["class_id", "period"])
+        frames.append(df[["class_id", "period"]])
+    if not frames:
+        return {}
+    allp = pd.concat(frames, ignore_index=True).drop_duplicates()
+    return {str(cid): sorted(g["period"].astype(str).unique())
+            for cid, g in allp.groupby("class_id")}
+
+
 def _build_block_skills(raw_dir: Path, program, profiles: dict, pass_mark: float = 0.80) -> pd.DataFrame:
     """Per-(agent, block, skill) LATEST-attempt pass-rate -- block-discrete skill scoring.
 
@@ -455,11 +485,15 @@ def main(argv=None) -> int:
     if (raw / "training_assist_behaviors.csv").exists():
         block_skills = _build_block_skills(raw, program, load_yaml(profiles_path) or {}, args.pass_mark)
 
+    # Pace by TRAINING days (distinct days the class actually had activity), not calendar days.
+    class_training_days = _class_training_days(raw, agents_df)
+
     records, meta = build_training_records(skills_df, agents_df, program, policy, skill_meta,
                                            report_date=report_date, pass_mark=args.pass_mark,
                                            coaching_history=coaching_history,
                                            sims_taken=sims_taken, cbts_taken=cbts_taken,
-                                           block_skills=block_skills)
+                                           block_skills=block_skills,
+                                           class_training_days=class_training_days)
     path = write_training_dashboard(out, records, meta)
     n_rem = sum(1 for r in records if r["remediation"])
     print(f"training dashboard: {len(records)} experts, {n_rem} with remediation -> {path}")

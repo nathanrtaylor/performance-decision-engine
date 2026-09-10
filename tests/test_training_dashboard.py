@@ -76,6 +76,35 @@ def test_meta_carries_program_and_blocks():
     assert [b["num"] for b in meta["blocks"]] == [1, 2, 3]
 
 
+def test_days_since_start_counts_class_training_days_not_calendar():
+    # class_training_days makes dss = distinct class activity-days in [start, report], so weekends /
+    # skipped days don't count. Class trained Thu 1/1, Fri 1/2, Mon 1/5 (skipping the weekend) ->
+    # from start 1/1 to report 1/6, that's 3 TRAINING days, not 5 calendar days.
+    ctd = {"C1": ["2026-01-01", "2026-01-02", "2026-01-05"]}
+    recs, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                     _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
+                                     sims_taken=_sims_df(), class_training_days=ctd)
+    a1 = {r["id"]: r for r in recs}["a1"]
+    assert a1["days_since_start"] == 3                 # training days, not 5 calendar
+    # blocks due by training-day 3: expected_completion_day 1,2,3 -> here _program has days 1/3/5,
+    # so blocks with expected_completion_day <= 3 = blocks 1 and 2 -> expected_num 2.
+    assert a1["expected_block_num"] == 2
+
+    # late joiner: start after the first class day only counts class-days on/after their start
+    agents = _agents_df().copy()
+    agents.loc[agents.agent_id == "a1", "training_start_date"] = "2026-01-05"
+    recs2, _ = build_training_records(_skills_df(), agents, _program(), RemediationPolicy(),
+                                      _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
+                                      sims_taken=_sims_df(), class_training_days=ctd)
+    assert {r["id"]: r for r in recs2}["a1"]["days_since_start"] == 1   # only 1/5 is >= start
+
+    # no calendar passed -> unchanged calendar-day behavior (backward compatible)
+    recs3, _ = build_training_records(_skills_df(), _agents_df(), _program(), RemediationPolicy(),
+                                      _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
+                                      sims_taken=_sims_df())
+    assert {r["id"]: r for r in recs3}["a1"]["days_since_start"] == 5   # calendar days
+
+
 def test_current_block_and_pacing():
     recs, _ = _records()
     a1 = recs["a1"]
@@ -155,7 +184,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.8"
+    assert meta["schema_version"] == "1.9"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -190,7 +219,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.8"
+    assert meta["schema_version"] == "1.9"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
