@@ -29,3 +29,15 @@ WHERE CAST(hc.coaching_date AS DATE) BETWEEN DATE '{{ start_date }}' AND DATE '{
   AND hc.coaching_status IN (
     {% for s in coaching_status_in %}'{{ s }}'{% if not loop.last %},{% endif %}{% endfor %}
   )
+  {% if coaching_type_in %}
+  -- optional coaching_type allowlist (keep ONLY these); omit/empty in the config to keep all types
+  AND hc.coaching_type IN (
+    {% for t in coaching_type_in %}'{{ t }}'{% if not loop.last %},{% endif %}{% endfor %}
+  )
+  {% endif %}
+  {% if coaching_type_not_in %}
+  -- optional coaching_type blocklist (drop these), applied after the allowlist
+  AND hc.coaching_type NOT IN (
+    {% for t in coaching_type_not_in %}'{{ t }}'{% if not loop.last %},{% endif %}{% endfor %}
+  )
+  {% endif %}
