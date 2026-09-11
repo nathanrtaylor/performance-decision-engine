@@ -1041,10 +1041,13 @@ function openModal(id){
       +"&body="+encodeURIComponent(summaryText(e).slice(0,1800));};
   document.getElementById("mPrint").onclick = ()=>window.print();
   document.getElementById("closeBtn").focus();
-  if(location.hash !== "#e="+id) history.replaceState(null,"","#e="+id);
+  if(location.hash !== "#e="+id) setHash("#e="+id);
 }
+// Guarded history update: no-op in sandboxed/null-origin contexts (e.g. SharePoint's about:srcdoc
+// preview), where a relative-hash replaceState throws SecurityError and would halt the whole script.
+function setHash(h){ try{ history.replaceState(null,"",h); }catch(_){} }
 function closeModal(){document.getElementById("overlay").classList.remove("open");
-  if(location.hash.startsWith("#e=")) history.replaceState(null,"","#");}
+  if(location.hash.startsWith("#e=")) setHash("#");}
 document.getElementById("overlay").addEventListener("click", e=>{ if(e.target.id==="overlay") closeModal(); });
 document.addEventListener("keydown", e=>{ if(e.key==="Escape") closeModal(); });
 (function(){const btn=document.getElementById("themebtn");btn.onclick=()=>{
