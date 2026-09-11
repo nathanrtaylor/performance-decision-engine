@@ -9,7 +9,20 @@ from pde.training.program import (
     build_skill_routing, program_coverage, evaluate_block_gates,
     expected_completion_day, behind_schedule_blocks, plan_remediation,
     blocks_implicated_by_skills, load_program, load_policy,
+    skills_observed_before_taught,
 )
+
+
+def test_skills_observed_before_taught_flags_early_and_skips_untaught():
+    prog = Program(name="P", blocks=[
+        Block(id="b1", order=1, label="B1", develops=["greet"]),
+        Block(id="b2", order=2, label="B2", develops=["solve"]),
+        Block(id="b3", order=3, label="B3", develops=["close"]),
+    ])
+    observed = [("close", 1), ("close", 3), ("greet", 1), ("solve", 2), ("untaught", 1), (None, 2)]
+    out = skills_observed_before_taught(prog, observed)
+    assert out == {"close": {"taught": 3, "early_blocks": [1]}}   # only 'close' seen (block 1) before taught (block 3)
+    # greet/solve observed at/after their taught block -> not flagged; untaught + None -> skipped
 
 
 # --------------------------------------------------------------------------- #

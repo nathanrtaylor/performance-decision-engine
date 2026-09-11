@@ -31,7 +31,8 @@ from pathlib import Path
 import yaml
 
 from pde.governance.versioning import resolve_active_config
-from pde.training.program import load_program, program_coverage
+from pde.ingestion.training_assist_skills import ascend_challenge_ids, build_behavior_skill_map, _norm
+from pde.training.program import load_program, program_coverage, skills_observed_before_taught
 
 
 def _catalog_metrics(configs_dir: Path) -> dict:
@@ -40,6 +41,16 @@ def _catalog_metrics(configs_dir: Path) -> dict:
     mc = cfg.get("metric_catalog") or {}
     mc = mc.get("metric_catalog", mc) if isinstance(mc, dict) else {}
     return mc.get("metrics") or {}
+
+
+def _catalog_skill_ids(configs_dir: Path) -> set:
+    """Defined skill ids from training_profiles.yaml `skills:` -- the authoritative develops targets
+    (a skill can be defined + placed before it has data/a scored metric)."""
+    path = configs_dir / "training_profiles.yaml"
+    if not path.exists():
+        return set()
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    return set((data.get("skills") or {}) if isinstance(data, dict) else {})
 
 
 def _profiles_with_sim_id(configs_dir: Path) -> dict:
@@ -69,6 +80,10 @@ def main() -> int:
     ap.add_argument("--configs-dir", default="configs/training", help="Training configs directory")
     ap.add_argument("--program", default=None, help="Path to training_program.yaml (default: <configs-dir>/training_program.yaml)")
     ap.add_argument("--strict", action="store_true", help="Treat TODO warnings as errors")
+    ap.add_argument("--raw-dir", default=None,
+                    help="If given, also lint observed vs taught: flag ASCEND behaviors that map to no "
+                         "skill, and skills observed (via a persona's sim) in a block earlier than "
+                         "their develops block (e.g. data/raw/adhoc/latest).")
     args = ap.parse_args()
 
     configs_dir = Path(args.configs_dir)
@@ -76,9 +91,12 @@ def main() -> int:
 
     program = load_program(program_path)
     metrics = _catalog_metrics(configs_dir)
-    # Skill metrics drive coverage; CBT-assessment metrics are excluded (they are course
-    # completions, not block `develops:` skills -- otherwise every cbt_* metric shows as unmapped).
-    catalog = {k for k, m in metrics.items() if (m or {}).get("category") != "cbt"}
+    # develops targets are validated against the DEFINED skill catalog (training_profiles.yaml
+    # `skills:`), unioned with scored skill metrics. A skill can be defined + placed in a block's
+    # develops before it has data/a scored metric (dormant until an exercising persona requires it);
+    # validating against the derived metric_catalog alone would wrongly flag those as unknown.
+    # CBT-assessment metrics are excluded (course completions, not block develops skills).
+    catalog = _catalog_skill_ids(configs_dir) | {k for k, m in metrics.items() if (m or {}).get("category") != "cbt"}
     cbt_metric_keys = {k for k, m in metrics.items() if (m or {}).get("category") == "cbt"}
     cov = program_coverage(program, catalog)
 
@@ -121,6 +139,34 @@ def main() -> int:
         warnings.append(f"{len(cov['blocks_missing_expected_day'])} block(s) have no expected_completion_day: {cov['blocks_missing_expected_day']}")
     if cov["unmapped_catalog_skills"]:
         warnings.append(f"{len(cov['unmapped_catalog_skills'])} cataloged skill(s) not developed by any block: {cov['unmapped_catalog_skills']}")
+
+    # ---- observed-vs-taught lint (only with --raw-dir): new/unmapped behaviors + earlier-than-taught skills ----
+    if args.raw_dir:
+        import pandas as pd
+        ta = Path(args.raw_dir) / "training_assist.csv"
+        if not ta.exists():
+            warnings.append(f"--raw-dir given but {ta} not found; skipped observed-vs-taught lint")
+        else:
+            prof_data = yaml.safe_load((configs_dir / "training_profiles.yaml").read_text(encoding="utf-8")) or {}
+            asc = ascend_challenge_ids(prof_data)
+            b2s = build_behavior_skill_map(prof_data)
+            profs = prof_data.get("profiles") or {}
+            cid_sim = {_norm(p.get("challenge_id") or k): (p or {}).get("sim_id") for k, p in profs.items()}
+            order_by_id = {b.id: b.order for b in program.blocks}
+            ref_block = {c["ref"]: order_by_id.get(c["block"]) for c in comps if c["ref"]}
+            df = pd.read_csv(ta, dtype={"scorecard_name": str})
+            df["_cid"] = df["scorecard_name"].map(_norm)
+            df = df[df["_cid"].isin(asc)].copy()
+            df["_beh"] = df["behavior"].map(_norm)
+            df["skill"] = df["_beh"].map(b2s)
+            df["block"] = df["_cid"].map(cid_sim).map(ref_block)
+            unmapped = sorted(set(df.loc[df["skill"].isna() & (df["_beh"] != ""), "_beh"]))
+            if unmapped:
+                warnings.append(f"{len(unmapped)} ASCEND behavior(s) map to no skill (new skills to map): {unmapped}")
+            observed = [(s, b) for s, b in zip(df["skill"], df["block"]) if pd.notna(s) and pd.notna(b)]
+            for skill, info in sorted(skills_observed_before_taught(program, observed).items()):
+                warnings.append(f"skill {skill!r} observed in block(s) {info['early_blocks']} earlier than its "
+                                f"taught block {info['taught']} (new-profile drift -- consider moving develops earlier)")
 
     # ---- render ----
     print(f"training program: {program.name!r} -- {cov['n_blocks']} blocks, "

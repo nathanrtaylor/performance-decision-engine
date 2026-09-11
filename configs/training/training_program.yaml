@@ -302,7 +302,8 @@ program:
     gate:
       test_call: TODO
       pass_mark: 0.9
-    develops: []
+    develops:
+    - coverage_examples
     components:
     - kind: cbt
       ref: cbt_20008859412510010a38b04b1efd0001
@@ -438,7 +439,10 @@ program:
     gate:
       test_call: TODO
       pass_mark: 0.9
-    develops: []
+    develops:
+    - active_listening
+    - test_troubleshooting
+    - transfer_escalation
     components:
     - kind: cbt
       ref: cbt_64844428d3b010010c7a298a80490001
@@ -1066,6 +1070,7 @@ program:
     - goodbye_with_rapport
     - survey
     - ty_reinforcement
+    - recap
     components:
     - kind: cbt
       ref: soluto_ascnd_vzw_the_closing_framework
