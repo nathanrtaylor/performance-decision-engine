@@ -82,6 +82,16 @@ explainability:
 conversation_types:
   default: "Re-training"
 
+# ---------------------------------------------------
+# Training dashboard publish target (optional).
+# The dashboard is ALWAYS written to the run's --out-dir. When publish_dir is set, an additional
+# copy (training_dashboard.{html,json}) is ALSO written there and OVERWRITTEN every run -- a stable
+# location a downstream job syncs/pushes to a remote folder. Relative paths resolve from the repo
+# root. Leave empty to disable. The --publish-dir CLI flag overrides this.
+# ---------------------------------------------------
+training_dashboard:
+  publish_dir: ""            # e.g. "outputs/training_runs/published" or a synced folder path
+
 meta:
   version: v2026_09_01_training_baseline
   data_snapshot: auto

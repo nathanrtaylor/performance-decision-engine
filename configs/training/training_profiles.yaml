@@ -364,6 +364,41 @@ skills:
     behavior_names:
     - goodbye w/ rapport
     mapping_status: mapped_alias
+  active_listening:
+    label: Active Listening
+    category: discovery
+    source_eval_name: Actively Listen
+    behavior_names:
+    - actively listen
+    mapping_status: mapped
+  test_troubleshooting:
+    label: Test Troubleshooting Effective
+    category: resolution
+    source_eval_name: Test Troubleshooting Was Effective
+    behavior_names:
+    - test troubleshooting was effective
+    mapping_status: mapped
+  transfer_escalation:
+    label: Follow Transfer Procedures
+    category: call_control
+    source_eval_name: Follow The Proper Transfer Procedures
+    behavior_names:
+    - follow the proper transfer procedures
+    mapping_status: mapped
+  coverage_examples:
+    label: Examples of Coverage
+    category: value_presentation
+    source_eval_name: Examples Of Coverage
+    behavior_names:
+    - examples of coverage
+    mapping_status: mapped
+  recap:
+    label: Recap
+    category: call_close
+    source_eval_name: Recap
+    behavior_names:
+    - recap
+    mapping_status: mapped
 
 # ---------------------------------------------------------------------------
 # Simulator profiles — one per challenge_id (the persona an expert practices
@@ -5561,10 +5596,11 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
+    requirements:
+      always: [scope, understand_customer_issue]
     source_match: program_map
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Asking Questions; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask open and closed-ended probing questions to gather device, symptom, timing, and impact. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Asking Questions; mode Training Assist Only; system Training Assist; objective Technical Resolution. Intent: Ask open and closed-ended probing questions to gather device, symptom, timing, and impact. Now observed live in the TA extract -- requirements set from its observed behaviors mapped to skills (was a program_map stub)."
   rhett_stokes:
     challenge_id: rhett_stokes
     sim_id: ASC-SIM-QUV2JC
@@ -5624,10 +5660,11 @@ profiles:
       expert_assist: not_applicable
       da_guided_flow: not_applicable
       nc_guided_flow: not_applicable
-    requirements: {}
+    requirements:
+      always: [understand_customer_issue, show_empathy, reassure]
     source_match: program_map
     notes:
-      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Active Listening; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Use active listening to uncover a missed detail in the customer’s description. [This can be re-written, but needs to target some version of active listening skills]. Pre-registered from Ascend Simulations.xlsx (Sims 100); not yet observed in the live TA extract, so requirements are empty pending real behaviors."
+      eval_notes: "ASCEND Launchpad Call Flow Stage 2: Troubleshooting Basics sim — topic Active Listening; mode Training Assist Only; system Training Assist; objective Customer Experience. Intent: Use active listening to uncover a missed detail. Now observed live in the TA extract -- requirements set from observed behaviors mapped to skills (was a program_map stub). NOTE: the observed 'actively listen' behavior is not yet in the skills catalog (pending an active_listening skill); add it to requirements here once that mapping lands."
   hyman_greenholt:
     challenge_id: hyman_greenholt
     sim_id: ASC-SIM-4GH382

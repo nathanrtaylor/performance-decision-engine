@@ -217,6 +217,37 @@ def build_skill_routing(program: Program) -> Dict[str, List[str]]:
     return routing
 
 
+def skills_observed_before_taught(program: Program, observed) -> Dict[str, Dict[str, Any]]:
+    """Skills seen (via a persona's sim) in a block EARLIER than the block that teaches them.
+
+    ``observed`` is an iterable of ``(skill_id, block_num)`` pairs. Returns
+    ``{skill_id: {"taught": earliest_develops_block, "early_blocks": [sorted blocks < taught]}}``.
+
+    This surfaces the recurring case where a newly-introduced profile exercises a skill before the
+    block that develops it (e.g. a new sim in block 5 testing a skill taught in block 7) -- the
+    dashboard's asymmetry filter would silently drop those, so this makes the drift visible so the
+    skill's ``develops`` can be moved earlier. Untaught skills (in no block's ``develops``) are
+    skipped -- that's a separate "not in the curriculum" concern.
+    """
+    routing = build_skill_routing(program)
+    order = {b.id: b.order for b in program.blocks}
+    seen: Dict[str, Set[int]] = {}
+    for skill, blk in observed:
+        if skill is None or blk is None:
+            continue
+        seen.setdefault(str(skill), set()).add(int(blk))
+    out: Dict[str, Dict[str, Any]] = {}
+    for skill, blks in seen.items():
+        route = routing.get(skill) or []
+        if not route:
+            continue
+        taught = min(order.get(b, 10 ** 9) for b in route)
+        early = sorted(b for b in blks if b < taught)
+        if early:
+            out[skill] = {"taught": taught, "early_blocks": early}
+    return out
+
+
 def program_coverage(program: Program, catalog_skills: Optional[Set[str]] = None) -> Dict[str, Any]:
     """Report which parts of the program are defined vs still TODO."""
     catalog_skills = set(catalog_skills or set())

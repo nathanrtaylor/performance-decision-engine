@@ -141,6 +141,19 @@ _LOB_PROFILES = {
 }
 
 
+def test_new_skills_mapped_in_real_catalog():
+    # The 5 newly-added skills resolve in the real training_profiles.yaml catalog.
+    from pathlib import Path
+    from pde.utils.io import load_yaml
+    prof = load_yaml(Path("configs/training/training_profiles.yaml"))
+    b2s = build_behavior_skill_map(prof)
+    assert b2s["actively listen"] == "active_listening"
+    assert b2s["test troubleshooting was effective"] == "test_troubleshooting"
+    assert b2s["follow the proper transfer procedures"] == "transfer_escalation"
+    assert b2s["examples of coverage"] == "coverage_examples"
+    assert b2s["recap"] == "recap"
+
+
 def test_ascend_challenge_ids_selects_only_ascend_lob():
     assert ascend_challenge_ids(_LOB_PROFILES) == {"asc_x"}
 
