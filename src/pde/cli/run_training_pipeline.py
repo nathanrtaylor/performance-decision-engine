@@ -430,6 +430,10 @@ def main(argv=None) -> int:
                          "Lives under data/training/ (gitignored: PII, updated per run).")
     ap.add_argument("--report-date", default=None, help="YYYY-MM-DD; default = today (start of the timeline count is each expert's start date)")
     ap.add_argument("--pass-mark", type=float, default=0.80)
+    ap.add_argument("--publish-dir", default=None,
+                    help="Extra directory to ALSO write (overwrite) the training dashboard into, on top "
+                         "of --out-dir -- a stable copy for a downstream push to a remote folder. "
+                         "Overrides training_dashboard.publish_dir in active.yaml.")
     ap.add_argument("--coaching-history", default=None,
                     help="coaching_history.csv for the 'Recent coaching history' block. Default: "
                          "<raw-dir>/coaching_history.csv, else data/raw/weekly/latest/coaching_history.csv.")
@@ -497,6 +501,17 @@ def main(argv=None) -> int:
     path = write_training_dashboard(out, records, meta)
     n_rem = sum(1 for r in records if r["remediation"])
     print(f"training dashboard: {len(records)} experts, {n_rem} with remediation -> {path}")
+
+    # Optional stable publish copy: --publish-dir, else active.yaml training_dashboard.publish_dir.
+    # Always overwrites training_dashboard.{html,json} there (a downstream job pushes it to a remote folder).
+    publish_dir = args.publish_dir
+    if not publish_dir:
+        active_cfg = load_yaml(configs / "active.yaml") or {}
+        publish_dir = str((active_cfg.get("training_dashboard") or {}).get("publish_dir") or "").strip()
+    if publish_dir:
+        pub_path = write_training_dashboard(Path(publish_dir), records, meta)
+        log.info("training dashboard also published (overwritten) to %s", pub_path)
+        print(f"  .. also published to {pub_path}")
     return 0
 
 
