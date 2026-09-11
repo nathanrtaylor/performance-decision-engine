@@ -304,6 +304,10 @@ program:
       pass_mark: 0.9
     develops:
     - coverage_examples
+    - brand_representation
+    - build_confidence
+    - positive_tone
+    - professionalism_courtesy
     components:
     - kind: cbt
       ref: cbt_20008859412510010a38b04b1efd0001
@@ -378,6 +382,7 @@ program:
     - show_empathy
     - reassure
     - set_expectations
+    - protect_customer_information
     components:
     - kind: cbt
       ref: cbt_64844428d3b010010c4df913730d0001
