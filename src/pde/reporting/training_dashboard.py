@@ -32,7 +32,8 @@ from pde.utils.logging import get_logger
 
 log = get_logger(__name__)
 
-SCHEMA_VERSION = "1.9"   # 1.9: days_since_start = TRAINING days (distinct class activity-days), not calendar days
+SCHEMA_VERSION = "2.0"   # 2.0: block skills carry `core` (core learning-block skill vs surfaced-but-not-trained)
+# 1.9: days_since_start = TRAINING days (distinct class activity-days), not calendar days
 # 1.8: sim/cbt items carry `attempts` (per-attempt drill-down, newest-first); CBT top line = highest
 # 1.7: block skills are block-discrete + latest-attempt (from block_skills), not the curriculum develops-map mean
 # 1.6: sim items carry native `passed`/`result`/`present_ratio` (EvaluationDetails.Results verdict + present/total evidence)
@@ -258,7 +259,8 @@ def build_training_records(
             per_block: Dict[int, List[Dict[str, Any]]] = {}
             for r in grp_.itertuples():
                 per_block.setdefault(int(r.block_num), []).append(
-                    {"skill": str(r.skill), "value": _num(r.value), "below": bool(r.below)})
+                    {"skill": str(r.skill), "value": _num(r.value), "below": bool(r.below),
+                     "core": bool(getattr(r, "core", True))})
             bskills_by_agent[str(aid_)] = per_block
 
     records: List[Dict[str, Any]] = []
@@ -344,19 +346,22 @@ def build_training_records(
                 passed_blocks.add(b.order)
             bskills = []
             if use_block_skills:
-                # Block-discrete: skills come only from THIS block's own sims (challenge->sim->block),
-                # scored from the latest attempt -- never back-attributed via the develops map.
+                # Every skill this block's sims exercised. `core` (in the block's develops) are the
+                # scored learning-block skills that gate closing out / retraining; surfaced (core=False)
+                # are shown for visibility but excluded from avg / deficiency / remediation here.
                 for row in agent_block_skills.get(b.order, []):
-                    sid, v, below = row["skill"], row["value"], row["below"]
+                    sid, v, below, core = row["skill"], row["value"], row["below"], bool(row.get("core", True))
                     m = skill_meta.get(sid, {})
                     bskills.append({"skill": sid, "label": m.get("label", _title(sid)),
                                     "category": m.get("category", ""),
-                                    "value": None if v is None else round(v, 3), "below": below})
-                    surfaced.add(sid)
-                    if v is not None:
-                        shown_vals.append(v)
-                    if below:
-                        deficient_set.add(sid)
+                                    "value": None if v is None else round(v, 3),
+                                    "below": below, "core": core})
+                    surfaced.add(sid)                       # any displayed skill -> the expert has skill data
+                    if core:                                # only CORE skills feed avg + deficiency
+                        if v is not None:
+                            shown_vals.append(v)
+                        if below:
+                            deficient_set.add(sid)
             elif skill_reached:
                 # Legacy fallback (no block_skills): curriculum develops-map ∩ block-agnostic vals.
                 for sid in b.develops_all:
@@ -369,9 +374,11 @@ def build_training_records(
                                     "category": m.get("category", ""),
                                     "value": None if v is None else round(v, 3), "below": below})
                     surfaced.add(sid)
-            has_below = any(s["below"] for s in bskills)
+            # Only CORE (trained) skills gate the block's retraining status + remediation; a below-mark
+            # SURFACED skill is shown but doesn't flag this block (it remediates where it's trained).
+            has_below = any(s["below"] for s in bskills if s.get("core", True))
             if has_below:
-                block_defic[b.order] = [s["skill"] for s in bskills if s["below"]]
+                block_defic[b.order] = [s["skill"] for s in bskills if s["below"] and s.get("core", True)]
             status = block_status(has_progress, current_num, b.order, has_below, block_passed)
             # Expected counts = the block's enumerated sim/CBT components (the denominator for the
             # collapsed "done / expected" summary in the dashboard).
@@ -651,6 +658,11 @@ select,input[type=search]{background:var(--surface-1);color:var(--text-1);border
 .att .inum,.attline .inum{margin-left:auto;text-align:right;white-space:nowrap}
 .atttbl{margin:2px 0 8px 26px;width:calc(100% - 26px)}
 .atttbl th{font-size:10.5px}
+/* Core vs surfaced skill markers (skillRows). Core = trained here; surfaced = exercised here but trained elsewhere. */
+.skmark{font-size:10px;line-height:1;margin-right:3px;cursor:help}
+.skmark.core{color:var(--good)}
+.skmark.surf{color:var(--muted)}
+.cmtable tr.surfaced td{color:var(--text-2)}   /* surfaced skills read muted vs core */
 .retrain{display:flex;flex-direction:column;padding:12px 14px;border-radius:10px;
   border:1px solid color-mix(in srgb,var(--serious) 40%,var(--border));
   background:color-mix(in srgb,var(--serious) 8%,var(--surface-2));font-size:13px}
@@ -836,11 +848,22 @@ function render(){
   document.querySelectorAll(".card").forEach(c=>c.onclick=()=>openModal(c.dataset.id));
 }
 
-/* ---- modal: learning blocks with skills rolled up under them ---- */
+/* ---- modal: learning blocks with skills rolled up under them ----
+   Each skill is CORE (in the block's develops -- a core learning-block skill, scored + gates the block)
+   or SURFACED (exercised by this block's sims but trained in another block). Surfaced skills carry a
+   marker + tooltip and still show value + pass/below, but don't gate closing out / remediation. */
 function skillRows(b){
   if(!b.skills || !b.skills.length) return `<tr><td class="cat" colspan="3">no tracked skills yet</td></tr>`;
-  return b.skills.map(s=>`<tr><td>${esc(s.label)}</td><td class="cat">${esc(s.category)}</td>`+
-    `<td class="num">${pct(s.value)} ${s.below?chip("critical","below"):chip("good","pass")}</td></tr>`).join("");
+  return b.skills.map(s=>{
+    const core = s.core!==false;   // legacy rows (no `core`) render as core
+    const verdict = s.below?chip("critical","below"):chip("good","pass");
+    const mark = core
+      ? `<span class="skmark core" title="Core learning-block skill (trained here)">●</span>`
+      : `<span class="skmark surf" title="Surfaced by this block's sims but not a core skill of this block — trained/remediated in another block">⚑</span>`;
+    return `<tr class="${core?'':'surfaced'}"><td>${mark} ${esc(s.label)}</td>`+
+      `<td class="cat">${esc(s.category)}</td>`+
+      `<td class="num">${pct(s.value)} ${verdict}</td></tr>`;
+  }).join("");
 }
 /* Recent coaching history — same block as the coaching expert dashboard (newest first). */
 function coachingHistoryTable(rows){

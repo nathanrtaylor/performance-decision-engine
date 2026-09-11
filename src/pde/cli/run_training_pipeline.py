@@ -22,14 +22,12 @@ import pandas as pd
 
 from pde.cli import run_pipeline as base_pipeline
 from pde.ingestion.training_assist_skills import (
-    _counted_levels,
     _norm,
     ascend_challenge_ids,
     build_behavior_skill_map,
-    build_profile_requirements,
 )
 from pde.reporting.training_dashboard import build_training_records, write_training_dashboard
-from pde.training.program import build_skill_routing, cbt_metric_key, load_program, load_policy
+from pde.training.program import cbt_metric_key, load_program, load_policy
 from pde.training.roster import load_class_roster
 from pde.utils.io import load_yaml
 from pde.utils.logging import get_logger
@@ -339,17 +337,22 @@ def _class_training_days(raw_dir: Path, roster_df: pd.DataFrame) -> dict:
 
 
 def _build_block_skills(raw_dir: Path, program, profiles: dict, pass_mark: float = 0.80) -> pd.DataFrame:
-    """Per-(agent, block, skill) LATEST-attempt pass-rate -- block-discrete skill scoring.
+    """Per-(agent, block, skill) LATEST-attempt pass-rate, tagged CORE vs SURFACED.
 
-    Reads the session-grain behavior extract (training_assist_behaviors.csv). For each
-    (agent, sim) it keeps only the LATEST session (max session_start_time), maps behavior->skill
-    under the profile relevance rules, crosswalks challenge_id -> sim_id -> block, aggregates per
-    (agent, block, skill), and keeps a (block, skill) only where the skill is taught at/before that
-    block (the asymmetry: earlier-taught skills may surface on later blocks, never the reverse).
+    Reads the session-grain behavior extract (training_assist_behaviors.csv). For each (agent, sim)
+    it keeps only the LATEST session (max session_start_time), maps behavior->skill, crosswalks
+    challenge_id -> sim_id -> block, and aggregates per (agent, block, skill).
 
-    Columns: agent_id, block_num, skill, value, below.
+    Every skill a block's sims actually exercised is emitted (requirements no longer gate the block
+    DISPLAY). Each row carries `core`:
+      - core = True  : the skill is in that block's `develops` -- a core learning-block skill (scored,
+                       and the only skills that gate closing out / retraining the block downstream).
+      - core = False : "surfaced-but-not-trained" -- exercised by this block's sims but trained in
+                       another block; shown for visibility, excluded from closing out / remediation.
+
+    Columns: agent_id, block_num, skill, value, below, core.
     """
-    cols = ["agent_id", "block_num", "skill", "value", "below"]
+    cols = ["agent_id", "block_num", "skill", "value", "below", "core"]
     path = raw_dir / "training_assist_behaviors.csv"
     if not path.exists():
         return pd.DataFrame(columns=cols)
@@ -361,7 +364,6 @@ def _build_block_skills(raw_dir: Path, program, profiles: dict, pass_mark: float
     prof = profiles.get("profiles") or {}
     ascend = ascend_challenge_ids(profiles)
     b2s = build_behavior_skill_map(profiles)
-    prof_req = build_profile_requirements(profiles, _counted_levels(profiles))
 
     df["_cid"] = df["scorecard_name"].map(_norm)
     df = df[df["_cid"].isin(ascend)].copy()               # ASCEND scope
@@ -375,11 +377,10 @@ def _build_block_skills(raw_dir: Path, program, profiles: dict, pass_mark: float
     df = df.merge(latest, on=["agent_id", "_cid"])
     df = df[df["session_id"] == df["_latest_sid"]].copy()
 
-    # --- behavior -> skill, keep only skills that are a counted requirement for the sim ---
+    # --- behavior -> skill (ALL observed skills the sim surfaced; core vs surfaced is decided by the
+    #     block's develops below, not by persona requirements) ---
     df["skill"] = df["behavior"].map(_norm).map(b2s)
     df = df[df["skill"].notna()].copy()
-    rel = [sk in prof_req.get(c, ()) for sk, c in zip(df["skill"], df["_cid"])]
-    df = df[pd.Series(rel, index=df.index)].copy()
     if df.empty:
         return pd.DataFrame(columns=cols)
 
@@ -400,21 +401,13 @@ def _build_block_skills(raw_dir: Path, program, profiles: dict, pass_mark: float
     grp["block_num"] = grp["block_num"].astype(int)
     grp["value"] = grp["numerator"] / grp["denominator"].where(grp["denominator"] != 0)
 
-    # --- asymmetry filter: surface a skill under block N only if it is taught at/before N ---
-    routing = build_skill_routing(program)
-    order_by_id = {b.id: b.order for b in program.blocks}
-
-    def _taught_at_or_before(skill: str, block_num: int) -> bool:
-        blocks = routing.get(skill) or []
-        if not blocks:                                    # skill not in any curriculum map -> keep
-            return True
-        return min(order_by_id.get(bid, 10 ** 9) for bid in blocks) <= block_num
-
-    keep = [_taught_at_or_before(sk, bn) for sk, bn in zip(grp["skill"], grp["block_num"])]
-    grp = grp[pd.Series(keep, index=grp.index)].copy()
+    # --- core vs surfaced: CORE iff the skill is in that block's develops (what the block trains) ---
+    develops_by_order = {b.order: set(b.develops_all) for b in program.blocks}
+    grp["core"] = [sk in develops_by_order.get(bn, set()) for sk, bn in zip(grp["skill"], grp["block_num"])]
 
     grp["below"] = grp["value"] < pass_mark
-    return grp[cols].sort_values(["agent_id", "block_num", "skill"]).reset_index(drop=True)
+    return grp[cols].sort_values(["agent_id", "block_num", "core", "skill"],
+                                 ascending=[True, True, False, True]).reset_index(drop=True)
 
 
 def main(argv=None) -> int:

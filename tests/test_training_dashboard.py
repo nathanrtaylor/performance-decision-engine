@@ -184,7 +184,7 @@ def test_coaching_history_is_attached_and_roster_bounded():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         coaching_history=ch)
     by = {r["id"]: r for r in recs}
-    assert meta["schema_version"] == "1.9"
+    assert meta["schema_version"] == "2.0"
     # a1 gets its events, newest-first; keys are the compact {ty,tp,dt,st}
     assert [h["dt"] for h in by["a1"]["hist"]] == ["2026-08-15", "2026-08-10"]
     assert by["a1"]["hist"][0] == {"ty": "Growth Plan", "tp": "Drive Results",
@@ -219,7 +219,7 @@ def test_sims_taken_nest_under_block_and_cbts_attach():
                                         _SKILL_META, report_date="2026-01-06", pass_mark=0.80,
                                         sims_taken=sims, cbts_taken=cbts)
     a1 = {r["id"]: r for r in recs}["a1"]
-    assert meta["schema_version"] == "1.9"
+    assert meta["schema_version"] == "2.0"
     b2 = {b["num"]: b for b in a1["blocks"]}[2]
     assert [s["sim_id"] for s in b2["sims"]] == ["ASC-SIM-6J5TR3"]
     assert [s["label"] for s in a1["sims_unmapped"]] == ["Becky Bergen"]
@@ -335,6 +335,36 @@ def test_sim_and_cbt_items_carry_attempts_newest_first():
                                       sims_taken=sims.drop(columns=["attempts"]))
     b2b = {b["num"]: b for b in {r["id"]: r for r in recs2}["a1"]["blocks"]}[2]
     assert b2b["sims"][0]["attempts"] == []
+
+
+def test_surfaced_skill_shown_but_does_not_flag_block_or_remediation():
+    # A CORE below-mark skill flags its block (retraining + remediation); a SURFACED below-mark skill
+    # is shown under the block but does NOT flag it or drive remediation.
+    prog = _program()  # b1 greet, b2 solve, b3 close
+    sims = pd.DataFrame([{"agent_id": "a1", "challenge_id": f"S{o}", "label": "s", "sim_id": f"S{o}",
+                          "block_num": o, "sessions": 1, "pass_rate": 0.9, "last_period": "2026-01-05"}
+                         for o in (1, 2, 3)])
+    block_skills = pd.DataFrame([
+        # block 2: a below-mark SURFACED skill (greet, not block-2's develops) + an ok core skill
+        {"agent_id": "a1", "block_num": 2, "skill": "greet", "value": 0.40, "below": True, "core": False},
+        {"agent_id": "a1", "block_num": 2, "skill": "solve", "value": 0.90, "below": False, "core": True},
+        # block 3: a below-mark CORE skill (close)
+        {"agent_id": "a1", "block_num": 3, "skill": "close", "value": 0.50, "below": True, "core": True},
+    ])
+    recs, _ = build_training_records(_skills_df(), _agents_df(), prog, RemediationPolicy(), _SKILL_META,
+                                     report_date="2026-01-06", pass_mark=0.80,
+                                     sims_taken=sims, block_skills=block_skills)
+    a1 = {r["id"]: r for r in recs}["a1"]
+    bynum = {b["num"]: b for b in a1["blocks"]}
+    # block 2: the surfaced below-mark greet is DISPLAYED (with core False) but does NOT flag the block
+    b2skills = {s["skill"]: s for s in bynum[2]["skills"]}
+    assert b2skills["greet"]["below"] is True and b2skills["greet"]["core"] is False
+    assert bynum[2]["status"] != "retraining"
+    # block 3: core below-mark close DOES flag + drives remediation
+    assert bynum[3]["status"] == "retraining"
+    assert a1["remediation"]["primary_block"] == 3 and a1["remediation"]["focus_skills"] == ["Close"]
+    # 'greet' (surfaced-only) is not in the deficiency/remediation set
+    assert "Warm Greeting" not in (a1["remediation"]["focus_skills"] or [])
 
 
 def test_block_skills_drive_discrete_per_block_deficiency():
